@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Tabelas do outro site (preservadas) ───────────────────────────────────
+
+model contas {
+  id                       BigInt    @id @default(autoincrement())
+  email                    String    @unique
+  senha_hash               String
+  token_sessao             String?
+  nome                     String?
+  sobrenome                String?
+  cpf                      String?
+  whatsapp                 String?
+  cep                      String?
+  logradouro               String?
+  numero                   String?
+  complemento              String?
+  bairro                   String?
+  cidade                   String?
+  estado                   String?
+  created_at               DateTime? @default(now()) @db.Timestamptz(6)
+  reset_token              String?
+  reset_token_expiry       DateTime? @db.Timestamptz(6)
+  revendedor_status        String?
+  revendedor_codigo        String?   @unique
+  revendedor_desconto      Decimal?  @default(50) @db.Decimal
+  revendedor_solicitado_em DateTime? @db.Timestamptz(6)
+  pedidos                  pedidos[]
+}
+
+model pedidos {
+  id                  BigInt    @id @default(autoincrement())
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  nome                String?
+  sobrenome           String?
+  whatsapp            String?
+  cpf                 String?
+  cep                 String?
+  logradouro          String?
+  numero              String?
+  complemento         String?
+  bairro              String?
+  cidade              String?
+  estado              String?
+  cor                 String?
+  pagamento           String?
+  status              String?   @default("pendente")
+  email               String?
+  obs                 String?
+  parcelas            String?
+  frete_nome          String?
+  frete_valor         Decimal?  @db.Decimal
+  frete_prazo         String?
+  valor_total         Decimal?  @db.Decimal
+  produto             String?
+  itens               Json?
+  cupom_codigo        String?
+  revendedor_conta_id BigInt?
+  comissao_valor      Decimal?  @db.Decimal
+  contas              contas?   @relation(fields: [revendedor_conta_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model produtos {
+  chave          String   @id
+  nome           String
+  preco          Int
+  ativo          Boolean? @default(true)
+  descricao      Json?    @default("[]")
+  ordem          Int?     @default(0)
+  imgs           Json?    @default("[]")
+  cores          Json?    @default("[]")
+  altura         Decimal? @default(11) @db.Decimal
+  largura        Decimal? @default(30) @db.Decimal
+  comprimento    Decimal? @default(32) @db.Decimal
+  peso           Decimal? @default(1.0) @db.Decimal
+  video          String?
+  preco_original Decimal? @db.Decimal
+  categoria      String?
+}
+
+// ─── Tabelas do site-hearts ────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  role      String   @default("CUSTOMER")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+  addresses Address[]
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String
+  price       Float
+  category    String
+  images      String
+  stock       Int      @default(0)
+  active      Boolean  @default(true)
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variants   ProductVariant[]
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  color     String?
+  size      String?
+  stock     Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  userId     String
+  name       String
+  street     String
+  number     String
+  complement String?
+  district   String
+  city       String
+  state      String
+  zipCode    String
+  isDefault  Boolean @default(false)
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@map("addresses")
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  userId        String
+  addressId     String
+  status        String   @default("PENDING")
+  paymentMethod String
+  subtotal      Float
+  shipping      Float
+  total         Float
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user    User      @relation(fields: [userId], references: [id])
+  address Address   @relation(fields: [addressId], references: [id])
+  items   OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  color     String?
+  size      String?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
