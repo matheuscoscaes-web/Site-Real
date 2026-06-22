@@ -41,11 +41,6 @@ export function Header() {
         scrolled ? "bg-white shadow-md" : "bg-white/95 backdrop-blur-sm"
       )}
     >
-      {/* Top bar */}
-      <div className="bg-brand-700 text-white text-xs py-2 text-center px-4">
-        Frete grátis acima de R$ 299,90 &nbsp;|&nbsp; Parcele em até 12x sem juros &nbsp;|&nbsp;
-        <span className="font-semibold">WhatsApp: (11) 99999-0000</span> &nbsp;|&nbsp; Cupom: <span className="font-bold">HEARTS10</span>
-      </div>
 
       <div className="container-main">
         <div className="flex items-center justify-between h-16 md:h-20">
