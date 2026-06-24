@@ -30,7 +30,7 @@ export function Footer() {
       <div className="container-main py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
-          <div>
+          <div className="mb-6 md:mb-0">
             <div className="mb-4">
               <span className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "Playfair Display, serif" }}>
                 Hearts Couro
@@ -53,65 +53,67 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Links */}
-          <div>
-            <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Loja</h4>
-            <ul className="space-y-2 text-sm">
-              {[
-                { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
-                { label: "Mochilas Feminino", href: "/produtos?categoria=Mochilas" },
-                { label: "Bolsa Tira-Colo", href: "/produtos?categoria=Bolsa Tira-Colo" },
-                { label: "Novidades", href: "/produtos?novidades=true" },
-                { label: "Sale", href: "/produtos?sale=true" },
-              ].map((l) => (
-                <li key={l.href}>
-                  <Link href={l.href} className="hover:text-brand-400 transition-colors">{l.label}</Link>
+          {/* Loja + Ajuda + Contato sempre lado a lado */}
+          <div className="grid grid-cols-3 gap-4 md:col-span-3">
+            {/* Links */}
+            <div>
+              <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Loja</h4>
+              <ul className="space-y-2 text-sm">
+                {[
+                  { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
+                  { label: "Mochilas Feminino", href: "/produtos?categoria=Mochilas" },
+                  { label: "Bolsa Tira-Colo", href: "/produtos?categoria=Bolsa Tira-Colo" },
+                  { label: "Novidades", href: "/produtos?novidades=true" },
+                  { label: "Sale", href: "/produtos?sale=true" },
+                ].map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="hover:text-brand-400 transition-colors">{l.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Ajuda */}
+            <div>
+              <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Ajuda</h4>
+              <ul className="space-y-2 text-sm">
+                {[
+                  { label: "Minha Conta", href: "/conta" },
+                  { label: "Meus Pedidos", href: "/conta/pedidos" },
+                  { label: "Política de Trocas", href: "/politicas" },
+                  { label: "Política de Privacidade", href: "/privacidade" },
+                  { label: "Como Comprar", href: "/como-comprar" },
+                  { label: "Frete e Prazo", href: "/frete" },
+                ].map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="hover:text-brand-400 transition-colors">{l.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contato */}
+            <div>
+              <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Contato</h4>
+              <ul className="space-y-3 text-sm">
+                <li className="flex items-start gap-3">
+                  <Phone size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
+                  <span>(21) 96666-8724<br /><span className="text-xs text-gray-500">WhatsApp disponível</span></span>
                 </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Ajuda */}
-          <div>
-            <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Ajuda</h4>
-            <ul className="space-y-2 text-sm">
-              {[
-                { label: "Minha Conta", href: "/conta" },
-                { label: "Meus Pedidos", href: "/conta/pedidos" },
-                { label: "Política de Trocas", href: "/politicas" },
-                { label: "Política de Privacidade", href: "/privacidade" },
-                { label: "Como Comprar", href: "/como-comprar" },
-                { label: "Frete e Prazo", href: "/frete" },
-              ].map((l) => (
-                <li key={l.href}>
-                  <Link href={l.href} className="hover:text-brand-400 transition-colors">{l.label}</Link>
+                <li className="flex items-start gap-3">
+                  <Mail size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
+                  <span>contato@heartscouro.com.br</span>
                 </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Contato */}
-          <div>
-            <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Contato</h4>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-3">
-                <Phone size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                <span>(21) 96666-8724<br /><span className="text-xs text-gray-500">WhatsApp disponível</span></span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Mail size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                <span>contato@heartscouro.com.br</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <MapPin size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                <span>Rua Desembargador Omar Dutra, 60<br />Rio de Janeiro, RJ</span>
-              </li>
-            </ul>
-
-            <div className="mt-5 p-3 bg-gray-900 rounded-xl">
-              <p className="text-xs text-gray-400 mb-1 font-medium">Atendimento</p>
-              <p className="text-xs text-gray-500">Seg–Sex: 9h às 18h</p>
-              <p className="text-xs text-gray-500">Sáb: 9h às 13h</p>
+                <li className="flex items-start gap-3">
+                  <MapPin size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
+                  <span>Rua Desembargador Omar Dutra, 60<br />Rio de Janeiro, RJ</span>
+                </li>
+              </ul>
+              <div className="mt-5 p-3 bg-gray-900 rounded-xl">
+                <p className="text-xs text-gray-400 mb-1 font-medium">Atendimento</p>
+                <p className="text-xs text-gray-500">Seg–Sex: 9h às 18h</p>
+                <p className="text-xs text-gray-500">Sáb: 9h às 13h</p>
+              </div>
             </div>
           </div>
         </div>
