@@ -18,9 +18,10 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const [liked, setLiked] = useState(false);
   const [added, setAdded] = useState(false);
 
-  const images = JSON.parse(product.images) as string[];
-  const mainImage = images[0];
-  const hoverImage = images[1];
+  const rawImages = JSON.parse(product.images) as Array<string | { url: string; color?: string }>;
+  const imageUrls = rawImages.map((img) => typeof img === "string" ? img : img.url);
+  const mainImage = imageUrls[0];
+  const hoverImage = imageUrls[1];
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();

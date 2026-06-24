@@ -5,16 +5,26 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { formatCurrency } from "@/lib/utils";
 import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check } from "lucide-react";
-import { Product, ProductVariant } from "@/types";
+import { Product, ProductImage, ProductVariant } from "@/types";
 
 interface ProductWithVariants extends Product {
   variants: ProductVariant[];
 }
 
+function parseImages(raw: string): ProductImage[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) =>
+      typeof item === "string" ? { url: item } : { url: item.url || "", color: item.color || null }
+    );
+  } catch { return []; }
+}
+
 export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const addItem = useCartStore((s) => s.addItem);
 
-  const images = JSON.parse(product.images) as string[];
+  const images = parseImages(product.images);
   const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])];
   const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean) as string[])];
 
@@ -25,12 +35,18 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const [added, setAdded] = useState(false);
   const [liked, setLiked] = useState(false);
 
+  function handleColorSelect(color: string) {
+    setSelectedColor(color);
+    const colorImgIdx = images.findIndex((img) => img.color === color);
+    if (colorImgIdx !== -1) setSelectedImage(colorImgIdx);
+  }
+
   function handleAddToCart() {
     addItem({
       productId: product.id,
       name: product.name,
       price: product.price,
-      image: images[0],
+      image: images[0]?.url || "",
       quantity,
       color: selectedColor || undefined,
       size: selectedSize || undefined,
@@ -52,7 +68,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
       <div className="space-y-3">
         <div className="relative overflow-hidden rounded-2xl bg-gray-50 aspect-square">
           <Image
-            src={images[selectedImage]}
+            src={images[selectedImage]?.url || images[0]?.url || ""}
             alt={product.name}
             fill
             className="object-cover"
@@ -75,7 +91,12 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
                   selectedImage === i ? "border-brand-600" : "border-transparent hover:border-gray-300"
                 }`}
               >
-                <Image src={img} alt={`${product.name} ${i + 1}`} fill sizes="100px" className="object-cover" />
+                <Image src={img.url} alt={img.color || `${product.name} ${i + 1}`} fill sizes="100px" className="object-cover" />
+                {img.color && (
+                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 truncate px-0.5">
+                    {img.color}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -129,7 +150,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
               {colors.map((color) => (
                 <button
                   key={color}
-                  onClick={() => setSelectedColor(color)}
+                  onClick={() => handleColorSelect(color)}
                   className={`px-4 py-2 rounded-full text-sm border-2 transition-all ${
                     selectedColor === color
                       ? "border-brand-600 bg-brand-50 text-brand-700 font-semibold"

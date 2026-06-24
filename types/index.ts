@@ -1,3 +1,8 @@
+export interface ProductImage {
+  url: string;
+  color?: string | null;
+}
+
 export interface Product {
   id: string;
   name: string;

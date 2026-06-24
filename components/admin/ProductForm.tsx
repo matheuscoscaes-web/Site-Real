@@ -58,7 +58,18 @@ export function ProductForm({ product }: { product?: ProductData }) {
   const router = useRouter();
   const isEdit = !!product?.id;
 
-  const initialImages: string[] = product?.images ? JSON.parse(product.images) as string[] : [""];
+  type ProductImg = { url: string; color: string };
+  function parseFormImages(raw?: string): ProductImg[] {
+    if (!raw) return [{ url: "", color: "" }];
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length === 0) return [{ url: "", color: "" }];
+      return parsed.map((item) =>
+        typeof item === "string" ? { url: item, color: "" } : { url: item.url || "", color: item.color || "" }
+      );
+    } catch { return [{ url: "", color: "" }]; }
+  }
+
   const initialVariants: Variant[] = product?.variants && product.variants.length > 0
     ? product.variants.map((v) => ({ color: v.color ?? "", size: v.size ?? "", stock: v.stock }))
     : [{ color: "", size: "", stock: 0 }];
@@ -74,7 +85,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     featured: product?.featured ?? false,
   });
 
-  const [images, setImages] = useState<string[]>(initialImages);
+  const [images, setImages] = useState<ProductImg[]>(parseFormImages(product?.images));
   const [variants, setVariants] = useState<Variant[]>(initialVariants);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -98,8 +109,10 @@ export function ProductForm({ product }: { product?: ProductData }) {
   }
 
   // Imagens
-  function addImage() { setImages((p) => [...p, ""]); }
-  function updateImage(i: number, val: string) { setImages((p) => p.map((img, idx) => idx === i ? val : img)); }
+  function addImage() { setImages((p) => [...p, { url: "", color: "" }]); }
+  function updateImage(i: number, field: "url" | "color", val: string) {
+    setImages((p) => p.map((img, idx) => idx === i ? { ...img, [field]: val } : img));
+  }
   function removeImage(i: number) { setImages((p) => p.filter((_, idx) => idx !== i)); }
   function moveImage(i: number, dir: -1 | 1) {
     const arr = [...images];
@@ -121,7 +134,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     const data = await res.json();
     setUploadingIndex(null);
     if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
-    updateImage(index, data.url);
+    updateImage(index, "url", data.url);
     e.target.value = "";
   }
 
@@ -143,9 +156,9 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setError("");
     setSuccess("");
 
-    const validImages = images.filter((img) => img.trim());
+    const validImages = images.filter((img) => img.url.trim());
     if (validImages.length === 0) {
-      setError("Adicione pelo menos uma imagem (URL).");
+      setError("Adicione pelo menos uma imagem.");
       return;
     }
     if (!form.price || parseFloat(form.price) <= 0) {
@@ -184,7 +197,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setTimeout(() => router.push("/admin/produtos"), 1200);
   }
 
-  const validImages = images.filter((img) => img.trim());
+  const validImages = images.filter((img) => img.url.trim());
 
   return (
     <form onSubmit={handleSubmit}>
@@ -263,8 +276,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
                 {validImages.map((img, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 flex-shrink-0">
                     <Image
-                      src={img}
-                      alt={`Foto ${i + 1}`}
+                      src={img.url}
+                      alt={img.color || `Foto ${i + 1}`}
                       fill
                       className="object-cover"
                       onError={(e) => { (e.target as HTMLImageElement).src = "https://picsum.photos/200"; }}
@@ -272,6 +285,11 @@ export function ProductForm({ product }: { product?: ProductData }) {
                     {i === 0 && (
                       <span className="absolute top-0.5 left-0.5 bg-brand-700 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
                         Principal
+                      </span>
+                    )}
+                    {img.color && (
+                      <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 truncate px-1">
+                        {img.color}
                       </span>
                     )}
                   </div>
@@ -292,9 +310,9 @@ export function ProductForm({ product }: { product?: ProductData }) {
                   </div>
 
                   <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                    {img ? (
+                    {img.url ? (
                       <Image
-                        src={img}
+                        src={img.url}
                         alt=""
                         fill
                         className="object-cover"
@@ -305,18 +323,26 @@ export function ProductForm({ product }: { product?: ProductData }) {
                     )}
                   </div>
 
-                  <input
-                    className="input-field flex-1 text-sm py-2.5"
-                    value={img}
-                    onChange={(e) => updateImage(i, e.target.value)}
-                    placeholder="Cole uma URL ou use o botão de upload →"
-                  />
-
-                  {/* Botão upload */}
-                  <label className={`flex-shrink-0 p-2.5 rounded-lg border transition-colors cursor-pointer ${uploadingIndex === i ? "bg-gray-100 border-gray-200" : "bg-brand-50 border-brand-200 hover:bg-brand-100 text-brand-700"}`} title="Fazer upload de imagem">
-                    <input type="file" accept="image/*,image/webp" className="hidden" onChange={(e) => handleFileUpload(e, i)} disabled={uploadingIndex !== null} />
-                    {uploadingIndex === i ? <Loader2 size={15} className="animate-spin text-gray-400" /> : <Upload size={15} />}
-                  </label>
+                  <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <div className="flex gap-2 items-center">
+                      <input
+                        className="input-field flex-1 text-sm py-2"
+                        value={img.url}
+                        onChange={(e) => updateImage(i, "url", e.target.value)}
+                        placeholder="Cole uma URL ou use o botão de upload →"
+                      />
+                      <label className={`flex-shrink-0 p-2.5 rounded-lg border transition-colors cursor-pointer ${uploadingIndex === i ? "bg-gray-100 border-gray-200" : "bg-brand-50 border-brand-200 hover:bg-brand-100 text-brand-700"}`} title="Fazer upload de imagem">
+                        <input type="file" accept="image/*,image/webp" className="hidden" onChange={(e) => handleFileUpload(e, i)} disabled={uploadingIndex !== null} />
+                        {uploadingIndex === i ? <Loader2 size={15} className="animate-spin text-gray-400" /> : <Upload size={15} />}
+                      </label>
+                    </div>
+                    <input
+                      className="input-field text-xs py-1.5 text-gray-600"
+                      value={img.color}
+                      onChange={(e) => updateImage(i, "color", e.target.value)}
+                      placeholder="Cor desta foto (ex: Preto, Caramelo, Rosé)"
+                    />
+                  </div>
 
                   {images.length > 1 && (
                     <button type="button" onClick={() => removeImage(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
