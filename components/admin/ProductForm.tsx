@@ -383,14 +383,16 @@ export function ProductForm({ product }: { product?: ProductData }) {
                   {/* Cor */}
                   <div className="col-span-5">
                     <label className="text-xs text-gray-500 mb-1 block font-medium">Cor</label>
-                    <select
+                    <input
+                      list={`cores-${i}`}
                       className="input-field text-sm py-2"
                       value={v.color ?? ""}
                       onChange={(e) => updateVariant(i, "color", e.target.value)}
-                    >
-                      <option value="">— Sem cor —</option>
-                      {COLORS.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                      placeholder="Digite ou escolha..."
+                    />
+                    <datalist id={`cores-${i}`}>
+                      {COLORS.map((c) => <option key={c} value={c} />)}
+                    </datalist>
                   </div>
 
                   {/* Tamanho */}
