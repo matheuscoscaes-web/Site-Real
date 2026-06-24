@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/products/ProductCard";
 import { CATEGORIES } from "@/lib/utils";
-import { Filter, SlidersHorizontal } from "lucide-react";
+import { Filter } from "lucide-react";
 import { SortSelect } from "./SortSelect";
+import { FilterSidebar } from "./FilterSidebar";
 
 interface SearchParams {
   categoria?: string;
@@ -84,63 +85,22 @@ export default async function ProdutosPage({
       </nav>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Filtros */}
-        <aside className="lg:w-60 flex-shrink-0">
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 sticky top-24">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <SlidersHorizontal size={18} /> Filtros
-            </h3>
-
-            {/* Categorias */}
-            <div className="mb-6">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Categoria</p>
-              <div className="space-y-1">
-                <a
-                  href={buildUrl({ categoria: undefined })}
-                  className={`block text-sm px-3 py-2 rounded-lg transition-colors ${!params.categoria ? "bg-brand-50 text-brand-700 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}
-                >
-                  Todos
-                </a>
-                {CATEGORIES.map((cat) => (
-                  <a
-                    key={cat}
-                    href={buildUrl({ categoria: cat })}
-                    className={`block text-sm px-3 py-2 rounded-lg transition-colors ${params.categoria === cat ? "bg-brand-50 text-brand-700 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}
-                  >
-                    {cat}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Preço */}
-            <div className="mb-6">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Faixa de Preço</p>
-              <div className="space-y-1">
-                {priceRanges.map((range) => (
-                  <a
-                    key={range.label}
-                    href={buildUrl({ preco_min: range.min, preco_max: range.max })}
-                    className={`block text-sm px-3 py-2 rounded-lg transition-colors ${
-                      params.preco_min === range.min && params.preco_max === range.max
-                        ? "bg-brand-50 text-brand-700 font-semibold"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    {range.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Limpar filtros */}
-            {(params.categoria || params.preco_min || params.busca) && (
-              <a href="/produtos" className="block text-center text-sm text-brand-700 font-medium hover:underline">
-                Limpar filtros
-              </a>
-            )}
-          </div>
-        </aside>
+        <FilterSidebar
+          categories={[
+            { label: "Todos", href: buildUrl({ categoria: undefined }), active: !params.categoria },
+            ...CATEGORIES.map((cat) => ({
+              label: cat,
+              href: buildUrl({ categoria: cat }),
+              active: params.categoria === cat,
+            })),
+          ]}
+          priceRanges={priceRanges.map((range) => ({
+            label: range.label,
+            href: buildUrl({ preco_min: range.min, preco_max: range.max }),
+            active: params.preco_min === range.min && params.preco_max === range.max,
+          }))}
+          clearHref={(params.categoria || params.preco_min || params.busca) ? "/produtos" : null}
+        />
 
         {/* Lista de produtos */}
         <div className="flex-1">
