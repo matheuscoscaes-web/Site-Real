@@ -35,7 +35,7 @@ export function Footer() {
               <span className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "Playfair Display, serif" }}>
                 Hearts Couro
               </span>
-              <span className="block text-[9px] tracking-[0.35em] text-gray-500 uppercase">Bolsas &amp; Acessórios</span>
+              <span className="block text-[9px] tracking-[0.35em] text-gray-500 uppercase">Bolsas &amp; Bolsa Tira-Colo</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed mb-4">
               Bolsas e acessórios em couro legítimo com sofisticação e durabilidade. Peças únicas para mulheres que valorizam qualidade.
@@ -60,7 +60,7 @@ export function Footer() {
               {[
                 { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
                 { label: "Mochilas Feminino", href: "/produtos?categoria=Mochilas" },
-                { label: "Acessórios", href: "/produtos?categoria=Acessórios" },
+                { label: "Bolsa Tira-Colo", href: "/produtos?categoria=Bolsa Tira-Colo" },
                 { label: "Novidades", href: "/produtos?novidades=true" },
                 { label: "Sale", href: "/produtos?sale=true" },
               ].map((l) => (

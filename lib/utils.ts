@@ -61,7 +61,7 @@ export const PAYMENT_LABELS: Record<string, string> = {
   BOLETO: "Boleto Bancário",
 };
 
-export const CATEGORIES = ["Bolsas", "Mochilas", "Acessórios"];
+export const CATEGORIES = ["Bolsas", "Mochilas", "Bolsa Tira-Colo"];
 export const SIZES = ["PP", "P", "M", "G", "GG", "36", "38", "40", "42", "44"];
 export const COLORS = [
   "Preto", "Branco", "Off-White", "Bege", "Caramel", "Marrom",

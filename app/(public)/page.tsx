@@ -28,7 +28,7 @@ async function getCategories() {
   const [bolsas, vestuario, acessorios] = await Promise.all([
     prisma.product.count({ where: { active: true, OR: [{ category: "Bolsas" }, { name: { startsWith: "Bolsa", mode: "insensitive" } }] } }),
     prisma.product.count({ where: { active: true, category: "Mochilas" } }),
-    prisma.product.count({ where: { active: true, category: "Acessórios" } }),
+    prisma.product.count({ where: { active: true, category: "Bolsa Tira-Colo" } }),
   ]);
 
   return [
@@ -47,9 +47,9 @@ async function getCategories() {
       gradient: "from-purple-900/70",
     },
     {
-      name: "Acessórios",
-      href: "/produtos?categoria=Acessórios",
-      image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=600",
+      name: "Bolsa Tira-Colo",
+      href: "/produtos?categoria=Bolsa Tira-Colo",
+      image: "/imagens/bolsatira-colo.png",
       count: `${acessorios} produto${acessorios !== 1 ? "s" : ""}`,
       gradient: "from-amber-900/70",
     },

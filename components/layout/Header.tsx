@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const navLinks = [
   { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
   { label: "Mochilas", href: "/produtos?categoria=Mochilas" },
-  { label: "Acessórios", href: "/produtos?categoria=Acessórios" },
+  { label: "Bolsa Tira-Colo", href: "/produtos?categoria=Bolsa Tira-Colo" },
   { label: "Novidades", href: "/produtos?novidades=true" },
   { label: "Sale", href: "/produtos?sale=true", className: "text-brand-600 font-bold" },
 ];
@@ -50,7 +50,7 @@ export function Header() {
               <span className="text-xl md:text-2xl font-bold text-brand-700 leading-none tracking-tight" style={{ fontFamily: "Playfair Display, serif" }}>
                 Hearts Couro
               </span>
-              <span className="text-[9px] tracking-[0.35em] text-gray-400 uppercase">Bolsas &amp; Acessórios</span>
+              <span className="text-[9px] tracking-[0.35em] text-gray-400 uppercase">Bolsas &amp; Bolsa Tira-Colo</span>
             </div>
           </Link>
 

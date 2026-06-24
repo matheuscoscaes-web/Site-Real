@@ -66,7 +66,7 @@ export default async function AdminProdutosPage({
               <option value="">Todas</option>
               <option value="Bolsas">Bolsas</option>
               <option value="Mochilas">Mochilas</option>
-              <option value="Acessórios">Acessórios</option>
+              <option value="Bolsa Tira-Colo">Bolsa Tira-Colo</option>
             </select>
           </div>
           <button type="submit" className="btn-primary py-2.5 text-sm">Filtrar</button>
