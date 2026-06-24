@@ -120,7 +120,7 @@ export function Footer() {
       {/* Bottom */}
       <div className="border-t border-gray-800">
         <div className="container-main py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-          <p>© 2026 Hearts Couro. Todos os direitos reservados. CNPJ: 00.000.000/0001-00</p>
+          <p>© 2026 Hearts Couro. Todos os direitos reservados. CNPJ: 18.921.382/0001-51</p>
           <p className="flex items-center gap-1">
             Feito com <Heart size={12} className="text-brand-600" /> no Rio de Janeiro, Brasil
           </p>
