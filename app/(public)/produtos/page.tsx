@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/products/ProductCard";
 import { CATEGORIES } from "@/lib/utils";
@@ -18,10 +20,16 @@ async function getProducts(params: SearchParams) {
   const where: Record<string, unknown> = { active: true };
 
   if (params.categoria === "Bolsas") {
-    where.OR = [
-      { category: "Bolsas" },
-      { name: { startsWith: "Bolsa", mode: "insensitive" } },
+    where.AND = [
+      { active: true },
+      {
+        OR: [
+          { category: "Bolsas" },
+          { name: { startsWith: "Bolsa", mode: "insensitive" } },
+        ],
+      },
     ];
+    delete where.active;
   } else if (params.categoria) {
     where.category = params.categoria;
   }
