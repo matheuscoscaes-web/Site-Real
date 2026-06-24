@@ -23,7 +23,16 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { address, paymentMethod, items, subtotal, shipping, total } = body;
+  const { address, paymentMethod, items, subtotal, shipping } = body;
+
+  // Verifica se é a primeira compra (server-side, não confia no cliente)
+  const orderCount = await prisma.order.count({
+    where: { userId: session.user.id, status: { not: "CANCELLED" } },
+  });
+  const isFirstPurchase = orderCount === 0;
+  const finalShipping = isFirstPurchase ? 0 : shipping;
+  const discount = isFirstPurchase ? subtotal * 0.4 : 0;
+  const finalTotal = subtotal - discount + finalShipping;
 
   // Cria ou reutiliza endereço
   const savedAddress = await prisma.address.create({
@@ -41,8 +50,8 @@ export async function POST(request: NextRequest) {
       paymentMethod,
       status: "PENDING",
       subtotal,
-      shipping,
-      total,
+      shipping: finalShipping,
+      total: finalTotal,
       items: {
         create: items.map((item: { productId: string; quantity: number; price: number; color?: string; size?: string }) => ({
           productId: item.productId,

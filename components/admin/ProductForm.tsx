@@ -85,7 +85,14 @@ export function ProductForm({ product }: { product?: ProductData }) {
   }
 
   function handleNameChange(name: string) {
-    setForm((p) => ({ ...p, name, ...(!isEdit && { slug: slugify(name) }) }));
+    const lower = name.trim().toLowerCase();
+    const autoCategory = lower.startsWith("bolsa") ? "Bolsas" : null;
+    setForm((p) => ({
+      ...p,
+      name,
+      ...(!isEdit && { slug: slugify(name) }),
+      ...(autoCategory && !isEdit && { category: autoCategory }),
+    }));
   }
 
   // Imagens

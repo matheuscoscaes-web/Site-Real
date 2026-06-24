@@ -45,9 +45,12 @@ export default function CheckoutPage() {
   const [cardData, setCardData] = useState({ number: "", name: "", expiry: "", cvv: "" });
   const [processing, setProcessing] = useState(false);
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
+  const [isFirstPurchase, setIsFirstPurchase] = useState(false);
 
   const sub = subtotal();
-  const total = sub + shipping;
+  const discount = isFirstPurchase ? sub * 0.4 : 0;
+  const effectiveShipping = isFirstPurchase ? 0 : shipping;
+  const total = sub - discount + effectiveShipping;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -57,6 +60,14 @@ export default function CheckoutPage() {
       router.push("/carrinho");
     }
   }, [status, items.length, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/pedidos/primeiro-desconto")
+      .then((r) => r.json())
+      .then((d: { isFirstPurchase: boolean }) => setIsFirstPurchase(d.isFirstPurchase))
+      .catch(() => {});
+  }, [status]);
 
   if (status === "loading") {
     return (
@@ -105,7 +116,7 @@ export default function CheckoutPage() {
             size: i.size,
           })),
           subtotal: sub,
-          shipping,
+          shipping: effectiveShipping,
           total,
         }),
       });
@@ -165,6 +176,16 @@ export default function CheckoutPage() {
           </div>
         ))}
       </div>
+
+      {isFirstPurchase && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <p className="font-bold text-green-800 text-sm">Desconto de primeira compra aplicado!</p>
+            <p className="text-xs text-green-700 mt-0.5">40% de desconto + frete grátis neste pedido.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Form */}
@@ -271,7 +292,7 @@ export default function CheckoutPage() {
                 <div className="bg-green-50 rounded-2xl p-5 text-center mb-6 border border-green-200">
                   <QrCode size={64} className="text-green-600 mx-auto mb-3" />
                   <p className="font-bold text-green-800 text-lg">{formatCurrency(total * 0.95)}</p>
-                  <p className="text-sm text-green-700 mt-1">5% de desconto aplicado via PIX</p>
+                  <p className="text-sm text-green-700 mt-1">5% de desconto adicional via PIX</p>
                   <p className="text-xs text-green-600 mt-3">O QR Code será gerado após confirmação do pedido</p>
                 </div>
               )}
@@ -428,12 +449,21 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span><span>{formatCurrency(sub)}</span>
                 </div>
+                {isFirstPurchase && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>Desconto 1ª compra (40%)</span>
+                    <span>-{formatCurrency(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-600">
-                  <span>Frete</span><span>{formatCurrency(shipping)}</span>
+                  <span>Frete</span>
+                  <span className={isFirstPurchase ? "text-green-600 font-medium" : ""}>
+                    {isFirstPurchase ? "Grátis" : formatCurrency(shipping)}
+                  </span>
                 </div>
                 {paymentMethod === "PIX" && (
                   <div className="flex justify-between text-green-600 font-medium">
-                    <span>Desconto PIX</span><span>-{formatCurrency(total * 0.05)}</span>
+                    <span>Desconto PIX (5%)</span><span>-{formatCurrency(total * 0.05)}</span>
                   </div>
                 )}
                 <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900 text-base">

@@ -16,7 +16,14 @@ interface SearchParams {
 async function getProducts(params: SearchParams) {
   const where: Record<string, unknown> = { active: true };
 
-  if (params.categoria) where.category = params.categoria;
+  if (params.categoria === "Bolsas") {
+    where.OR = [
+      { category: "Bolsas" },
+      { name: { startsWith: "Bolsa", mode: "insensitive" } },
+    ];
+  } else if (params.categoria) {
+    where.category = params.categoria;
+  }
   if (params.busca) {
     where.OR = [
       { name: { contains: params.busca } },

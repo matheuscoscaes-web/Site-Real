@@ -218,9 +218,9 @@ export default async function HomePage() {
                   Oferta Especial
                 </span>
                 <h3 className="text-3xl md:text-4xl font-bold mb-3" style={{ fontFamily: "Playfair Display, serif" }}>
-                  Primeira compra<br />com 10% off
+                  Primeira compra<br />com 40% off + frete grátis
                 </h3>
-                <p className="text-white/80">Use o cupom: <span className="font-bold bg-white/20 px-2 py-0.5 rounded">HEARTS10</span></p>
+                <p className="text-white/80">Desconto aplicado automaticamente no primeiro pedido</p>
               </div>
               <Link href="/cadastro" className="btn-primary bg-white text-brand-800 hover:bg-cream-100 shadow-lg flex-shrink-0">
                 Criar conta e aproveitar
