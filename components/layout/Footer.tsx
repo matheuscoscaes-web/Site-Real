@@ -28,7 +28,7 @@ export function Footer() {
 
       {/* Main footer */}
       <div className="container-main py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
             <div className="mb-4">
