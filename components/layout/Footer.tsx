@@ -12,7 +12,7 @@ export function Footer() {
           <h3 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "Playfair Display, serif" }}>
             Receba novidades e ofertas exclusivas
           </h3>
-          <p className="text-brand-100 mb-6 text-sm">Cadastre seu e-mail e ganhe 10% de desconto na primeira compra</p>
+          <p className="text-brand-100 mb-6 text-sm">Cadastre seu e-mail e ganhe 40% de desconto + frete grátis na primeira compra</p>
           <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
             <input
               type="email"
