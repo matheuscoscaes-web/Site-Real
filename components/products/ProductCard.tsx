@@ -59,16 +59,20 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
             />
           )}
 
+          {/* Overlay esgotado */}
+          {product.stock === 0 && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+              <span className="bg-white text-gray-800 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow">
+                Esgotado
+              </span>
+            </div>
+          )}
+
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-1">
-            {product.featured && (
+          <div className="absolute top-3 left-3 flex flex-col gap-1 z-20">
+            {product.featured && product.stock > 0 && (
               <span className="bg-brand-700 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
                 Destaque
-              </span>
-            )}
-            {product.stock === 0 && (
-              <span className="bg-gray-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">
-                Esgotado
               </span>
             )}
           </div>
