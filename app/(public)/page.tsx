@@ -45,6 +45,7 @@ async function getCategories() {
       image: "/imagens/mochila.png",
       count: `${vestuario} produto${vestuario !== 1 ? "s" : ""}`,
       gradient: "from-purple-900/70",
+      objectPosition: "center 30%",
     },
     {
       name: "Bolsa Tira-Colo",
@@ -165,7 +166,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {categories.map((cat) => (
               <Link key={cat.name} href={cat.href} className="group relative overflow-hidden rounded-3xl h-72 shadow-md hover:shadow-xl transition-shadow">
-                <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" style={{ objectPosition: (cat as {objectPosition?: string}).objectPosition || "center" }} />
                 <div className={`absolute inset-0 bg-gradient-to-t ${cat.gradient} to-transparent`} />
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                   <p className="text-xs uppercase tracking-wider text-white/70 mb-1">{cat.count}</p>
