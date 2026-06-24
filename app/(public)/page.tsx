@@ -8,34 +8,49 @@ import {
 import { formatCurrency } from "@/lib/utils";
 
 async function getFeaturedProducts() {
-  return prisma.product.findMany({
+  const featured = await prisma.product.findMany({
     where: { featured: true, active: true },
+    take: 8,
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (featured.length > 0) return featured;
+
+  // fallback: produtos mais recentes se não houver destaques
+  return prisma.product.findMany({
+    where: { active: true },
     take: 8,
     orderBy: { createdAt: "desc" },
   });
 }
 
 async function getCategories() {
+  const [bolsas, vestuario, acessorios] = await Promise.all([
+    prisma.product.count({ where: { active: true, OR: [{ category: "Bolsas" }, { name: { startsWith: "Bolsa", mode: "insensitive" } }] } }),
+    prisma.product.count({ where: { active: true, category: "Vestuário" } }),
+    prisma.product.count({ where: { active: true, category: "Acessórios" } }),
+  ]);
+
   return [
     {
       name: "Bolsas",
       href: "/produtos?categoria=Bolsas",
       image: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600",
-      count: "45 produtos",
+      count: `${bolsas} produto${bolsas !== 1 ? "s" : ""}`,
       gradient: "from-brand-900/70",
     },
     {
       name: "Vestuário",
       href: "/produtos?categoria=Vestuário",
       image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600",
-      count: "62 produtos",
+      count: `${vestuario} produto${vestuario !== 1 ? "s" : ""}`,
       gradient: "from-purple-900/70",
     },
     {
       name: "Acessórios",
       href: "/produtos?categoria=Acessórios",
       image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=600",
-      count: "38 produtos",
+      count: `${acessorios} produto${acessorios !== 1 ? "s" : ""}`,
       gradient: "from-amber-900/70",
     },
   ];
@@ -80,8 +95,11 @@ const testimonials = [
 ];
 
 export default async function HomePage() {
-  const featuredProducts = await getFeaturedProducts();
-  const categories = await getCategories();
+  const [featuredProducts, categories] = await Promise.all([
+    getFeaturedProducts(),
+    getCategories(),
+  ]);
+  const hasFeatured = featuredProducts.some((p) => p.featured);
 
   return (
     <>
@@ -179,8 +197,8 @@ export default async function HomePage() {
         <div className="container-main">
           <div className="flex items-end justify-between mb-10">
             <div>
-              <h2 className="section-title mb-2">Produtos em Destaque</h2>
-              <p className="text-gray-500">Peças selecionadas especialmente para você</p>
+              <h2 className="section-title mb-2">{hasFeatured ? "Produtos em Destaque" : "Nossos Produtos"}</h2>
+              <p className="text-gray-500">{hasFeatured ? "Peças selecionadas especialmente para você" : "Conheça nossa coleção"}</p>
             </div>
             <Link href="/produtos" className="btn-ghost text-brand-700 hidden md:flex">
               Ver todos <ChevronRight size={18} />
