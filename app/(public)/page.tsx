@@ -244,7 +244,7 @@ export default async function HomePage() {
             <h2 className="section-title mb-3">Por que comprar aqui?</h2>
             <p className="text-gray-500">Experiência de compra pensada para você</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {benefits.map((b) => (
               <div key={b.title} className="bg-white rounded-2xl p-6 text-center shadow-sm hover:shadow-md transition-shadow border border-gray-100">
                 <div className="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center mx-auto mb-4">
