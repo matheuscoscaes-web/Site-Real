@@ -42,7 +42,7 @@ async function getCategories() {
     {
       name: "Mochilas",
       href: "/produtos?categoria=Mochilas",
-      image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600",
+      image: "/imagens/mochila.png",
       count: `${vestuario} produto${vestuario !== 1 ? "s" : ""}`,
       gradient: "from-purple-900/70",
     },
