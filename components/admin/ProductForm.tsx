@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { slugify, CATEGORIES, COLORS, SIZES } from "@/lib/utils";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
-  ChevronUp, ChevronDown, Tag, Package, Info, Star,
+  ChevronUp, ChevronDown, Tag, Package, Info, Star, Upload,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -79,6 +79,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState("");
 
   function set(field: string, value: string | boolean) {
     setForm((p) => ({ ...p, [field]: value }));
@@ -105,6 +107,22 @@ export function ProductForm({ product }: { product?: ProductData }) {
     if (j < 0 || j >= arr.length) return;
     [arr[i], arr[j]] = [arr[j], arr[i]];
     setImages(arr);
+  }
+
+  // Upload de arquivo
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, index: number) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingIndex(index);
+    setUploadError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const data = await res.json();
+    setUploadingIndex(null);
+    if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
+    updateImage(index, data.url);
+    e.target.value = "";
   }
 
   // Variantes
@@ -233,8 +251,11 @@ export function ProductForm({ product }: { product?: ProductData }) {
           {/* FOTOS */}
           <Section title="Fotos do Produto" icon={ImageIcon}>
             <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Cole URLs de imagens. A primeira foto é a principal exibida nos cards. Arraste para reordenar.
+              Envie um arquivo do seu computador ou cole uma URL. A primeira foto é a principal.
             </p>
+            {uploadError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
+            )}
 
             {/* Preview das fotos */}
             {validImages.length > 0 && (
@@ -288,8 +309,14 @@ export function ProductForm({ product }: { product?: ProductData }) {
                     className="input-field flex-1 text-sm py-2.5"
                     value={img}
                     onChange={(e) => updateImage(i, e.target.value)}
-                    placeholder="https://images.unsplash.com/photo-..."
+                    placeholder="Cole uma URL ou use o botão de upload →"
                   />
+
+                  {/* Botão upload */}
+                  <label className={`flex-shrink-0 p-2.5 rounded-lg border transition-colors cursor-pointer ${uploadingIndex === i ? "bg-gray-100 border-gray-200" : "bg-brand-50 border-brand-200 hover:bg-brand-100 text-brand-700"}`} title="Fazer upload de imagem">
+                    <input type="file" accept="image/*,image/webp" className="hidden" onChange={(e) => handleFileUpload(e, i)} disabled={uploadingIndex !== null} />
+                    {uploadingIndex === i ? <Loader2 size={15} className="animate-spin text-gray-400" /> : <Upload size={15} />}
+                  </label>
 
                   {images.length > 1 && (
                     <button type="button" onClick={() => removeImage(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
