@@ -40,7 +40,11 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     setTimeout(() => setAdded(false), 3000);
   }
 
-  const installment = product.price / 12;
+  const installment = product.price / 6;
+
+  const colorStock = selectedColor
+    ? product.variants.filter((v) => v.color === selectedColor).reduce((s, v) => s + v.stock, 0)
+    : product.stock;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
@@ -103,7 +107,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
             <span className="text-sm bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">17% off</span>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            ou <strong>12x de {formatCurrency(installment)}</strong> sem juros no cartão
+            ou <strong>6x de {formatCurrency(installment)}</strong> sem juros no cartão
           </p>
           <p className="text-sm text-brand-700 font-medium mt-1">
             5% de desconto no PIX: {formatCurrency(product.price * 0.95)}
@@ -115,6 +119,11 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
           <div className="mb-5">
             <p className="text-sm font-semibold text-gray-700 mb-2">
               Cor: <span className="font-normal text-gray-600">{selectedColor}</span>
+              {selectedColor && (
+                <span className={`text-xs ml-2 ${colorStock > 0 ? "text-gray-400" : "text-red-500"}`}>
+                  ({colorStock > 0 ? `${colorStock} disponíveis` : "Esgotado"})
+                </span>
+              )}
             </p>
             <div className="flex flex-wrap gap-2">
               {colors.map((color) => (
@@ -182,7 +191,6 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
                 <Plus size={16} />
               </button>
             </div>
-            <span className="text-sm text-gray-500">{product.stock} disponíveis</span>
           </div>
         </div>
 

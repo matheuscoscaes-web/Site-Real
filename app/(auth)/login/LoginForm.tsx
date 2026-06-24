@@ -114,12 +114,6 @@ export function LoginForm() {
             </Link>
           </p>
 
-          <div className="mt-5 p-3 bg-gray-50 rounded-xl text-xs text-gray-500 space-y-1">
-            <p className="font-semibold text-gray-600">Contas para teste:</p>
-            <p>👤 admin@bellaforma.com.br / Admin@2024</p>
-            <p>👤 ana.paula@email.com / Cliente@123</p>
-            <p className="text-gray-400 mt-1">(dados fictícios — substitua pelos reais)</p>
-          </div>
         </div>
 
         <Link href="/" className="block text-center text-sm text-gray-400 hover:text-gray-600 mt-6">

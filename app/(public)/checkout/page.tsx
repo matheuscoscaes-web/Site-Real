@@ -333,7 +333,7 @@ export default function CheckoutPage() {
                   <div>
                     <label className="label">Parcelas</label>
                     <select className="input-field">
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                      {Array.from({ length: 6 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
                           {n}x de {formatCurrency(total / n)} {n === 1 ? "" : "sem juros"}
                         </option>

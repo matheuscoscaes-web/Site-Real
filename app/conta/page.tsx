@@ -30,7 +30,6 @@ export default async function ContaPage() {
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: "Pedidos", value: user.orders.length, icon: Package },
-          { label: "Total gasto", value: formatCurrency(totalSpent), icon: ShoppingBag },
           { label: "Endereços", value: "—", icon: MapPin },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">

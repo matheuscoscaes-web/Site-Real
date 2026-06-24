@@ -66,11 +66,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
                 Destaque
               </span>
             )}
-            {product.stock <= 5 && product.stock > 0 && (
-              <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">
-                Últimas {product.stock}
-              </span>
-            )}
             {product.stock === 0 && (
               <span className="bg-gray-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">
                 Esgotado
@@ -121,7 +116,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-gray-900">{formatCurrency(product.price)}</span>
             <span className="text-xs text-gray-400">
-              ou 12x de {formatCurrency(product.price / 12)}
+              ou 6x de {formatCurrency(product.price / 6)}
             </span>
           </div>
           {product.price >= 299.9 && (
