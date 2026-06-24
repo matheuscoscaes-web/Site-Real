@@ -101,7 +101,8 @@ export default async function AdminProdutosPage({
                   </td>
                 </tr>
               ) : products.map((product) => {
-                const imgs = JSON.parse(product.images) as string[];
+                const rawImgs = JSON.parse(product.images) as Array<string | { url: string }>;
+                const imgs = rawImgs.map((img) => typeof img === "string" ? img : img.url);
                 const isLowStock = product.stock <= 5 && product.active;
                 const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean))];
                 const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))];
