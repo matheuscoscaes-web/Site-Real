@@ -104,12 +104,12 @@ export default async function HomePage() {
   return (
     <>
       {/* HERO */}
-      <section className="relative overflow-hidden bg-white min-h-[80vh] flex items-center border-b border-gray-100">
+      <section className="relative overflow-hidden bg-white lg:min-h-[80vh] flex items-center border-b border-gray-100">
         {/* Faixa lateral decorativa */}
         <div className="absolute right-0 top-0 w-1/2 h-full bg-cream-50 hidden lg:block" />
         <div className="absolute right-0 top-0 w-px h-full bg-brand-200 hidden lg:block" />
 
-        <div className="relative container-main py-20 grid lg:grid-cols-2 gap-12 items-center z-10">
+        <div className="relative container-main py-10 lg:py-20 grid lg:grid-cols-2 gap-12 items-center z-10">
           <div className="animate-fade-in-up">
             <span className="inline-flex items-center gap-2 bg-brand-50 text-brand-700 text-xs font-bold px-4 py-2 rounded-full mb-6 border border-brand-200">
               <span className="w-2 h-2 rounded-full bg-brand-700 inline-block" />
