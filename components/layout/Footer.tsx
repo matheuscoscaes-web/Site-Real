@@ -59,7 +59,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               {[
                 { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
-                { label: "Vestuário Feminino", href: "/produtos?categoria=Vestuário" },
+                { label: "Mochilas Feminino", href: "/produtos?categoria=Mochilas" },
                 { label: "Acessórios", href: "/produtos?categoria=Acessórios" },
                 { label: "Novidades", href: "/produtos?novidades=true" },
                 { label: "Sale", href: "/produtos?sale=true" },

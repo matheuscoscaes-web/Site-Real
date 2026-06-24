@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 const navLinks = [
   { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
-  { label: "Vestuário", href: "/produtos?categoria=Vestuário" },
+  { label: "Mochilas", href: "/produtos?categoria=Mochilas" },
   { label: "Acessórios", href: "/produtos?categoria=Acessórios" },
   { label: "Novidades", href: "/produtos?novidades=true" },
   { label: "Sale", href: "/produtos?sale=true", className: "text-brand-600 font-bold" },

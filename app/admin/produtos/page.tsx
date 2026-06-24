@@ -65,7 +65,7 @@ export default async function AdminProdutosPage({
             <select name="categoria" defaultValue={params.categoria} className="input-field py-2 text-sm">
               <option value="">Todas</option>
               <option value="Bolsas">Bolsas</option>
-              <option value="Vestuário">Vestuário</option>
+              <option value="Mochilas">Mochilas</option>
               <option value="Acessórios">Acessórios</option>
             </select>
           </div>

@@ -27,7 +27,7 @@ async function getFeaturedProducts() {
 async function getCategories() {
   const [bolsas, vestuario, acessorios] = await Promise.all([
     prisma.product.count({ where: { active: true, OR: [{ category: "Bolsas" }, { name: { startsWith: "Bolsa", mode: "insensitive" } }] } }),
-    prisma.product.count({ where: { active: true, category: "Vestuário" } }),
+    prisma.product.count({ where: { active: true, category: "Mochilas" } }),
     prisma.product.count({ where: { active: true, category: "Acessórios" } }),
   ]);
 
@@ -40,8 +40,8 @@ async function getCategories() {
       gradient: "from-brand-900/70",
     },
     {
-      name: "Vestuário",
-      href: "/produtos?categoria=Vestuário",
+      name: "Mochilas",
+      href: "/produtos?categoria=Mochilas",
       image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600",
       count: `${vestuario} produto${vestuario !== 1 ? "s" : ""}`,
       gradient: "from-purple-900/70",
