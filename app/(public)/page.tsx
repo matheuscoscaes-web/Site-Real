@@ -35,7 +35,7 @@ async function getCategories() {
     {
       name: "Bolsas",
       href: "/produtos?categoria=Bolsas",
-      image: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600",
+      image: "/imagens/foto-entrada.png",
       count: `${bolsas} produto${bolsas !== 1 ? "s" : ""}`,
       gradient: "from-brand-900/70",
     },
