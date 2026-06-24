@@ -132,18 +132,6 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="flex gap-10 mt-12 pt-8 border-t border-gray-100">
-              {[
-                { num: "5.000+", label: "Clientes felizes" },
-                { num: "200+", label: "Produtos" },
-                { num: "4.9★", label: "Avaliação média" },
-              ].map((stat) => (
-                <div key={stat.label}>
-                  <p className="text-2xl font-bold text-brand-700">{stat.num}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{stat.label}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div className="hidden lg:grid grid-cols-2 gap-4">
