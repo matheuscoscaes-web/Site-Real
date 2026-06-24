@@ -41,7 +41,7 @@ export function Footer() {
               Bolsas e acessórios em couro legítimo com sofisticação e durabilidade. Peças únicas para mulheres que valorizam qualidade.
             </p>
             <div className="flex gap-3">
-              <a href="#" className="w-9 h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-brand-700 transition-colors" aria-label="Instagram">
+              <a href="https://www.instagram.com/heartscouro" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-brand-700 transition-colors" aria-label="Instagram">
                 <Instagram size={16} />
               </a>
               <a href="#" className="w-9 h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-brand-700 transition-colors" aria-label="Facebook">

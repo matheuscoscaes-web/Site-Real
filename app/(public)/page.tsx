@@ -290,7 +290,7 @@ export default async function HomePage() {
         <div className="container-main text-center">
           <h2 className="section-title mb-3">Siga no Instagram</h2>
           <p className="text-gray-500 mb-6">@heartscouro • Novidades, looks e bastidores da marca</p>
-          <a href="#" className="btn-primary">
+          <a href="https://www.instagram.com/heartscouro" target="_blank" rel="noopener noreferrer" className="btn-primary">
             Seguir no Instagram ✨
           </a>
         </div>
