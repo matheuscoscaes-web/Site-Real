@@ -3,7 +3,7 @@
 export function SortSelect({ currentValue }: { currentValue?: string }) {
   return (
     <select
-      className="input-field w-auto text-sm py-2"
+      className="input-field w-full sm:w-auto text-sm py-2"
       defaultValue={currentValue || ""}
       onChange={(e) => {
         const url = new URL(window.location.href);
