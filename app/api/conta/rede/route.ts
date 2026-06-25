@@ -44,13 +44,24 @@ export async function GET() {
             user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
             orders: {
               where: { status: { not: "CANCELLED" } },
-              select: { id: true, total: true, commissionValue: true, createdAt: true, status: true },
+              orderBy: { createdAt: "desc" },
+              select: {
+                id: true, total: true, subtotal: true, shipping: true,
+                commissionValue: true, couponCode: true, couponDiscount: true,
+                paymentMethod: true, status: true, createdAt: true,
+              },
             },
           },
+          orderBy: { createdAt: "desc" },
         },
         orders: {
           where: { resellerId: null, status: { not: "CANCELLED" } },
-          select: { id: true, total: true, commissionValue: true, createdAt: true, status: true },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true, total: true, subtotal: true, shipping: true,
+            commissionValue: true, couponCode: true, couponDiscount: true,
+            paymentMethod: true, status: true, createdAt: true,
+          },
         },
       },
       orderBy: { createdAt: "desc" },
