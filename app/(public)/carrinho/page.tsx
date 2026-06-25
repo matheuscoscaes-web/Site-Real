@@ -1,26 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { formatCurrency } from "@/lib/utils";
 import { calcularFrete, type FreteOption } from "@/lib/frete";
-import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } from "lucide-react";
 
 export default function CarrinhoPage() {
+  const router = useRouter();
   const { items, removeItem, updateQuantity, subtotal } = useCartStore();
   const [cep, setCep] = useState("");
   const [freteOptions, setFreteOptions] = useState<FreteOption[]>([]);
   const [selectedFrete, setSelectedFrete] = useState<FreteOption | null>(null);
   const [loadingFrete, setLoadingFrete] = useState(false);
   const [freteError, setFreteError] = useState("");
-  const [cupom, setCupom] = useState("");
-  const [desconto, setDesconto] = useState(0);
-  const [cupomMsg, setCupomMsg] = useState("");
+  const [cupomInput, setCupomInput] = useState("");
+  const [cupomLoading, setCupomLoading] = useState(false);
+  const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discount: number; ownerName: string } | null>(null);
+  const [cupomError, setCupomError] = useState("");
 
   const sub = subtotal();
   const freteTotal = selectedFrete?.price ?? 0;
+  const desconto = cupomAplicado ? sub * cupomAplicado.discount / 100 : 0;
   const total = sub - desconto + freteTotal;
 
   async function handleCalcularFrete() {
@@ -43,19 +47,24 @@ export default function CarrinhoPage() {
     }
   }
 
-  function handleCupom() {
-    const cupons: Record<string, number> = {
-      HEARTS10: sub * 0.1,
-      HEARTS15: sub * 0.15,
-      FRETEGRATIS: freteTotal,
-    };
-    if (cupons[cupom.toUpperCase()] !== undefined) {
-      setDesconto(cupons[cupom.toUpperCase()]);
-      setCupomMsg(`Cupom aplicado! Desconto de ${formatCurrency(cupons[cupom.toUpperCase()])}`);
+  async function handleCupom() {
+    if (!cupomInput.trim()) return;
+    setCupomLoading(true);
+    setCupomError("");
+    const res = await fetch(`/api/cupom?code=${encodeURIComponent(cupomInput.trim())}`);
+    const data = await res.json();
+    setCupomLoading(false);
+    if (data.valid) {
+      setCupomAplicado({ code: cupomInput.trim().toUpperCase(), discount: data.discount, ownerName: data.ownerName });
+      setCupomInput("");
     } else {
-      setCupomMsg("Cupom inválido ou expirado.");
-      setDesconto(0);
+      setCupomError(data.error || "Cupom inválido ou expirado.");
     }
+  }
+
+  function handleCheckout() {
+    const url = cupomAplicado ? `/checkout?cupom=${encodeURIComponent(cupomAplicado.code)}` : "/checkout";
+    router.push(url);
   }
 
   if (items.length === 0) {
@@ -155,22 +164,33 @@ export default function CarrinhoPage() {
             <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
               <Tag size={18} className="text-brand-700" /> Cupom de desconto
             </h3>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={cupom}
-                onChange={(e) => setCupom(e.target.value.toUpperCase())}
-                placeholder="HEARTS10"
-                className="input-field flex-1 text-sm py-2.5"
-              />
-              <button onClick={handleCupom} className="btn-primary text-sm px-4 py-2.5">
-                Aplicar
-              </button>
-            </div>
-            {cupomMsg && (
-              <p className={`text-xs mt-2 font-medium ${cupomMsg.includes("inválido") ? "text-red-500" : "text-green-600"}`}>
-                {cupomMsg}
-              </p>
+            {cupomAplicado ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <div>
+                  <p className="font-mono font-bold text-green-700 text-sm">{cupomAplicado.code}</p>
+                  <p className="text-xs text-green-600">{cupomAplicado.discount}% de desconto — economia de {formatCurrency(desconto)}</p>
+                </div>
+                <button onClick={() => setCupomAplicado(null)} className="text-gray-400 hover:text-red-500 ml-3">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={cupomInput}
+                    onChange={(e) => { setCupomInput(e.target.value.toUpperCase()); setCupomError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleCupom()}
+                    placeholder="Digite o cupom"
+                    className="input-field flex-1 text-sm py-2.5 font-mono uppercase"
+                  />
+                  <button onClick={handleCupom} disabled={cupomLoading} className="btn-primary text-sm px-4 py-2.5 min-w-[90px]">
+                    {cupomLoading ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Aplicar"}
+                  </button>
+                </div>
+                {cupomError && <p className="text-xs mt-2 font-medium text-red-500">{cupomError}</p>}
+              </>
             )}
           </div>
 
@@ -255,12 +275,12 @@ export default function CarrinhoPage() {
               </div>
             </div>
 
-            <Link
-              href="/checkout"
+            <button
+              onClick={handleCheckout}
               className="btn-primary w-full mt-5 text-base py-4"
             >
               Finalizar compra <ArrowRight size={18} />
-            </Link>
+            </button>
 
             <p className="text-xs text-center text-gray-400 mt-3 flex items-center justify-center gap-1">
               🔒 Compra 100% segura

@@ -71,6 +71,21 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, [status]);
 
+  // Auto-aplica cupom vindo do carrinho via URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("cupom");
+    if (!code) return;
+    fetch(`/api/cupom?code=${encodeURIComponent(code)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.valid) {
+          setCoupon((p) => ({ ...p, applied: true, code: code.toUpperCase(), discount: data.discount, ownerName: data.ownerName, error: "" }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
