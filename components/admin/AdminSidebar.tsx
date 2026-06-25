@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Package, ShoppingCart, Users, TrendingUp, LogOut, Menu, X,
+  LayoutDashboard, Package, ShoppingCart, Users, TrendingUp, LogOut, Menu, X, UserCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/admin/produtos", label: "Produtos", icon: Package },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingCart },
   { href: "/admin/clientes", label: "Clientes / CRM", icon: Users },
+  { href: "/admin/vendedores", label: "Vendedores", icon: UserCheck },
   { href: "/admin/financeiro", label: "Financeiro", icon: TrendingUp },
 ];
 

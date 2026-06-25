@@ -8,7 +8,7 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { formatCurrency } from "@/lib/utils";
 import { buscarEnderecoPorCEP } from "@/lib/frete";
-import { CreditCard, QrCode, FileText, Lock, ChevronDown, ChevronUp, Check, Loader2 } from "lucide-react";
+import { CreditCard, QrCode, FileText, Lock, ChevronDown, ChevronUp, Check, Loader2, Tag, X } from "lucide-react";
 
 interface Address {
   name: string;
@@ -29,6 +29,7 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCartStore();
 
   const [step, setStep] = useState(1);
+  const [coupon, setCoupon] = useState({ code: "", input: "", discount: 0, ownerName: "", loading: false, error: "", applied: false });
   const [address, setAddress] = useState<Address>({
     name: "Casa",
     street: "",
@@ -48,9 +49,10 @@ export default function CheckoutPage() {
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
 
   const sub = subtotal();
-  const discount = isFirstPurchase ? sub * 0.4 : 0;
+  const firstDiscount = isFirstPurchase ? sub * 0.4 : 0;
+  const couponAmount = !isFirstPurchase ? sub * coupon.discount / 100 : 0;
   const effectiveShipping = isFirstPurchase ? 0 : shipping;
-  const total = sub - discount + effectiveShipping;
+  const total = sub - firstDiscount - couponAmount + effectiveShipping;
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -97,6 +99,18 @@ export default function CheckoutPage() {
     }
   }
 
+  async function applyCoupon() {
+    if (!coupon.input.trim()) return;
+    setCoupon((p) => ({ ...p, loading: true, error: "" }));
+    const res = await fetch(`/api/cupom?code=${encodeURIComponent(coupon.input.trim())}`);
+    const data = await res.json();
+    if (data.valid) {
+      setCoupon((p) => ({ ...p, loading: false, applied: true, code: coupon.input.trim().toUpperCase(), discount: data.discount, ownerName: data.ownerName, error: "" }));
+    } else {
+      setCoupon((p) => ({ ...p, loading: false, error: data.error || "Cupom inválido", applied: false, discount: 0 }));
+    }
+  }
+
   async function handleFinishOrder() {
     if (!session) return;
     setProcessing(true);
@@ -118,6 +132,7 @@ export default function CheckoutPage() {
           subtotal: sub,
           shipping: effectiveShipping,
           total,
+          couponCode: coupon.applied ? coupon.code : null,
         }),
       });
 
@@ -352,6 +367,39 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* Cupom */}
+              {!isFirstPurchase && (
+                <div className="mb-6">
+                  <p className="label mb-1.5">Cupom de desconto</p>
+                  {coupon.applied ? (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Tag size={16} className="text-green-600" />
+                        <span className="font-mono font-bold text-green-700">{coupon.code}</span>
+                        <span className="text-sm text-green-600">— {coupon.discount}% de desconto</span>
+                      </div>
+                      <button onClick={() => setCoupon({ code: "", input: "", discount: 0, ownerName: "", loading: false, error: "", applied: false })} className="text-gray-400 hover:text-red-500">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        className="input-field flex-1 uppercase font-mono"
+                        placeholder="Ex: JOAO10"
+                        value={coupon.input}
+                        onChange={(e) => setCoupon((p) => ({ ...p, input: e.target.value.toUpperCase(), error: "" }))}
+                        onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
+                      />
+                      <button onClick={applyCoupon} disabled={coupon.loading} className="btn-outline px-4 flex-shrink-0">
+                        {coupon.loading ? <Loader2 size={16} className="animate-spin" /> : "Aplicar"}
+                      </button>
+                    </div>
+                  )}
+                  {coupon.error && <p className="text-xs text-red-600 mt-1.5">{coupon.error}</p>}
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <button onClick={() => setStep(1)} className="btn-outline flex-1">Voltar</button>
                 <button onClick={() => setStep(3)} className="btn-primary flex-1">Revisar pedido</button>
@@ -452,7 +500,13 @@ export default function CheckoutPage() {
                 {isFirstPurchase && (
                   <div className="flex justify-between text-green-600 font-medium">
                     <span>Desconto 1ª compra (40%)</span>
-                    <span>-{formatCurrency(discount)}</span>
+                    <span>-{formatCurrency(firstDiscount)}</span>
+                  </div>
+                )}
+                {coupon.applied && !isFirstPurchase && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>Cupom {coupon.code} ({coupon.discount}%)</span>
+                    <span>-{formatCurrency(couponAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-gray-600">

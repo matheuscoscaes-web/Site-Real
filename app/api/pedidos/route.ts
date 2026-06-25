@@ -23,24 +23,54 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { address, paymentMethod, items, subtotal, shipping } = body;
+  const { address, paymentMethod, items, subtotal, shipping, couponCode } = body;
 
-  // Verifica se é a primeira compra (server-side, não confia no cliente)
+  // Primeira compra
   const orderCount = await prisma.order.count({
     where: { userId: session.user.id, status: { not: "CANCELLED" } },
   });
   const isFirstPurchase = orderCount === 0;
-  const finalShipping = isFirstPurchase ? 0 : shipping;
-  const discount = isFirstPurchase ? subtotal * 0.4 : 0;
-  const finalTotal = subtotal - discount + finalShipping;
 
-  // Cria ou reutiliza endereço
+  // Cupom de vendedor/revendedor
+  let couponDiscount = 0;
+  let vendorId: string | null = null;
+  let resellerId: string | null = null;
+  let commissionValue: number | null = null;
+  let appliedCoupon: string | null = null;
+
+  if (couponCode && !isFirstPurchase) {
+    const code = couponCode.toUpperCase().trim();
+
+    const vendor = await prisma.vendor.findUnique({ where: { couponCode: code } });
+    if (vendor && vendor.active && vendor.discount !== null) {
+      couponDiscount = vendor.discount;
+      vendorId = vendor.id;
+      appliedCoupon = code;
+      commissionValue = subtotal * (50 - vendor.discount) / 100;
+    } else {
+      const reseller = await prisma.reseller.findUnique({
+        where: { couponCode: code },
+        include: { vendor: true },
+      });
+      if (reseller && reseller.active) {
+        couponDiscount = reseller.discount;
+        resellerId = reseller.id;
+        vendorId = reseller.vendor.id;
+        appliedCoupon = code;
+        commissionValue = subtotal * (50 - reseller.discount) / 100;
+      }
+    }
+  }
+
+  // Cálculo do total
+  const firstDiscount = isFirstPurchase ? subtotal * 0.4 : 0;
+  const couponAmount = subtotal * couponDiscount / 100;
+  const finalShipping = isFirstPurchase ? 0 : shipping;
+  const finalTotal = subtotal - firstDiscount - couponAmount + finalShipping;
+
+  // Cria endereço
   const savedAddress = await prisma.address.create({
-    data: {
-      userId: session.user.id,
-      ...address,
-      isDefault: false,
-    },
+    data: { userId: session.user.id, ...address, isDefault: false },
   });
 
   const order = await prisma.order.create({
@@ -52,6 +82,11 @@ export async function POST(request: NextRequest) {
       subtotal,
       shipping: finalShipping,
       total: finalTotal,
+      couponCode: appliedCoupon,
+      couponDiscount: couponDiscount > 0 ? couponDiscount : null,
+      vendorId,
+      resellerId,
+      commissionValue,
       items: {
         create: items.map((item: { productId: string; quantity: number; price: number; color?: string; size?: string }) => ({
           productId: item.productId,
@@ -65,13 +100,9 @@ export async function POST(request: NextRequest) {
     include: { items: true, address: true },
   });
 
-  // Simula pagamento confirmado automaticamente para PIX e cartão
   if (paymentMethod !== "BOLETO") {
     setTimeout(async () => {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: "PAID" },
-      });
+      await prisma.order.update({ where: { id: order.id }, data: { status: "PAID" } });
     }, 2000);
   }
 

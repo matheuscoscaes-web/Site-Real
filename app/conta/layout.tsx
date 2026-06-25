@@ -4,9 +4,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { User, Package, MapPin, Settings, ChevronRight } from "lucide-react";
+import { User, Package, MapPin, Settings, ChevronRight, Network } from "lucide-react";
 
-const navItems = [
+const baseNavItems = [
   { href: "/conta", label: "Minha Conta", icon: User, exact: true },
   { href: "/conta/pedidos", label: "Meus Pedidos", icon: Package },
   { href: "/conta/enderecos", label: "Endereços", icon: MapPin },
@@ -16,6 +16,11 @@ const navItems = [
 export default async function ContaLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login?redirect=/conta");
+
+  const showRede = session.user.role === "VENDOR" || session.user.role === "ADMIN";
+  const navItems = showRede
+    ? [...baseNavItems, { href: "/conta/rede", label: "Minha Rede", icon: Network, exact: false }]
+    : baseNavItems;
 
   return (
     <>
