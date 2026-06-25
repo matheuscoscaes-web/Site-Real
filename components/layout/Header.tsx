@@ -47,10 +47,10 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
             <div className="flex flex-col items-start">
-              <span className="text-xl md:text-2xl font-bold text-brand-700 leading-none tracking-tight" style={{ fontFamily: "Playfair Display, serif" }}>
+              <span className="text-lg md:text-2xl font-bold text-brand-700 leading-none tracking-tight" style={{ fontFamily: "Playfair Display, serif" }}>
                 Hearts Couro
               </span>
-              <span className="text-[9px] tracking-[0.35em] text-gray-400 uppercase">Bolsas &amp; Bolsa Tira-Colo</span>
+              <span className="hidden sm:block text-[9px] tracking-[0.35em] text-gray-400 uppercase">Bolsas &amp; Bolsa Tira-Colo</span>
             </div>
           </Link>
 
