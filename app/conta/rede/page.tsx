@@ -2,17 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Tag, Users, Plus, X, Loader2, Check, Copy, CheckCheck, TrendingUp, Pencil, ChevronDown, ChevronUp, DollarSign } from "lucide-react";
+import {
+  Tag, Users, Plus, X, Loader2, Check, Copy, CheckCheck,
+  TrendingUp, Pencil, ChevronDown, ChevronUp, DollarSign,
+  BarChart2, ShoppingBag, Calendar, Award
+} from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
-function gerarCupom(nome: string) {
-  return nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 8);
-}
-
-type OrderSummary = { id: string; total: number; commissionValue: number | null; createdAt: string; status: string; couponCode?: string };
+type OrderSummary = {
+  id: string; total: number; commissionValue: number | null;
+  createdAt: string; status: string; couponCode?: string;
+};
 
 type Reseller = {
-  id: string; couponCode: string | null; discount: number | null; active: boolean; createdAt: string;
+  id: string; couponCode: string | null; discount: number | null;
+  active: boolean; createdAt: string;
   user: { id: string; name: string; email: string; phone?: string };
   orders: OrderSummary[];
 };
@@ -27,12 +31,34 @@ type VendorData = {
 type RedeData =
   | { role: "VENDOR"; vendor: VendorData }
   | { role: "ADMIN"; vendors: VendorData[] }
-  | { role: "RESELLER"; reseller: { couponCode: string | null; discount: number | null; vendor: { user: { name: string; email: string } }; orders: OrderSummary[] } };
+  | {
+      role: "RESELLER";
+      reseller: {
+        couponCode: string | null; discount: number | null;
+        vendor: { user: { name: string; email: string } };
+        orders: OrderSummary[];
+      };
+    };
+
+function getMonthlyBreakdown(orders: OrderSummary[]) {
+  const map: Record<string, { label: string; count: number; revenue: number; commission: number }> = {};
+  orders.forEach((o) => {
+    const d = new Date(o.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+    if (!map[key]) map[key] = { label, count: 0, revenue: 0, commission: 0 };
+    map[key].count++;
+    map[key].revenue += o.total;
+    map[key].commission += o.commissionValue ?? 0;
+  });
+  return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6).map(([, v]) => v);
+}
 
 export default function MinhaRedePage() {
   const { data: session } = useSession();
   const [data, setData] = useState<RedeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"rede" | "crm">("rede");
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
@@ -77,13 +103,18 @@ export default function MinhaRedePage() {
   if (data.role === "RESELLER") {
     const { reseller } = data;
     const configured = !!reseller.couponCode;
-    const totalVendas = reseller.orders.reduce((s, o) => s + o.total, 0);
+    const allOrders = reseller.orders;
+    const totalRevenue = allOrders.reduce((s, o) => s + o.total, 0);
+    const totalCount = allOrders.length;
+    const lastOrder = allOrders[0];
+    const monthly = getMonthlyBreakdown(allOrders);
 
     return (
       <div className="space-y-5">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        {/* Cupom */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Meu Cupom de Revendedor</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Meu Cupom</h2>
             {configured && !showConfig && (
               <button onClick={() => { setConfigForm({ couponCode: reseller.couponCode!, discount: String(reseller.discount) }); setShowConfig(true); setConfigError(""); }}
                 className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
@@ -91,7 +122,6 @@ export default function MinhaRedePage() {
               </button>
             )}
           </div>
-
           {!configured ? (
             <div>
               <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-sm text-amber-700 mb-4">
@@ -105,11 +135,11 @@ export default function MinhaRedePage() {
           ) : showConfig ? (
             <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><Tag size={16} className="text-gray-600" /></div>
                 <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Seu cupom</p><p className="font-mono font-bold text-gray-900">{reseller.couponCode}</p></div>
-                <button onClick={() => copyCoupon(reseller.couponCode!)} className="text-gray-400 hover:text-brand-600">
+                <button onClick={() => copyCoupon(reseller.couponCode!)} className="text-gray-400 hover:text-brand-600 flex-shrink-0">
                   {copied ? <CheckCheck size={16} className="text-green-500" /> : <Copy size={16} />}
                 </button>
               </div>
@@ -125,25 +155,72 @@ export default function MinhaRedePage() {
           )}
         </div>
 
+        {/* CRM */}
         {configured && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 mb-1">Minhas Vendas ({reseller.orders.length})</h3>
-            <p className="text-sm text-gray-400 mb-4">Total movimentado: <strong className="text-gray-900">{formatCurrency(totalVendas)}</strong></p>
-            {reseller.orders.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">Nenhuma venda ainda com seu cupom.</p>
-            ) : reseller.orders.map((o) => (
-              <div key={o.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                <div>
-                  <p className="text-sm font-mono font-bold text-gray-800">#{o.id.slice(-6).toUpperCase()}</p>
-                  <p className="text-xs text-gray-400">{formatDate(o.createdAt)}</p>
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <StatCard icon={ShoppingBag} color="brand" label="Total de vendas" value={String(totalCount)} sub="com seu cupom" />
+              <StatCard icon={DollarSign} color="green" label="Volume gerado" value={formatCurrency(totalRevenue)} sub="valor total das vendas" />
+              <div className="col-span-2 sm:col-span-1">
+                <StatCard icon={Calendar} color="purple" label="Última venda" value={lastOrder ? formatDate(lastOrder.createdAt) : "—"} sub={lastOrder ? formatCurrency(lastOrder.total) : "nenhuma venda ainda"} />
+              </div>
+            </div>
+
+            {/* Quebra mensal */}
+            {monthly.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart2 size={18} className="text-brand-600" />
+                  <h3 className="font-bold text-gray-900">Vendas por mês</h3>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-900 text-sm">{formatCurrency(o.total)}</p>
-                  <span className={`text-xs badge ${o.status === "PAID" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>{o.status === "PAID" ? "Pago" : "Pendente"}</span>
+                <div className="space-y-2">
+                  {monthly.map((m) => {
+                    const pct = Math.round((m.revenue / (monthly[0]?.revenue || 1)) * 100);
+                    return (
+                      <div key={m.label}>
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span className="capitalize font-medium">{m.label}</span>
+                          <span>{m.count} venda{m.count !== 1 ? "s" : ""} · <strong className="text-gray-800">{formatCurrency(m.revenue)}</strong></span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* Vendas recentes */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                <TrendingUp size={16} className="text-green-500" />
+                <h3 className="font-bold text-gray-900">Vendas recentes</h3>
+              </div>
+              {allOrders.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">Nenhuma venda com seu cupom ainda.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {allOrders.map((o) => (
+                    <div key={o.id} className="flex items-center justify-between px-5 py-3">
+                      <div>
+                        <p className="text-sm font-mono font-bold text-gray-800">#{o.id.slice(-6).toUpperCase()}</p>
+                        <p className="text-xs text-gray-400">{formatDate(o.createdAt)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900 text-sm">{formatCurrency(o.total)}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${o.status === "PAID" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
+                          {o.status === "PAID" ? "Pago" : "Pendente"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     );
@@ -155,156 +232,273 @@ export default function MinhaRedePage() {
     const configured = !!vendor.couponCode;
     const myCommission = configured ? 50 - (vendor.discount ?? 0) : null;
 
-    const directSalesCommission = vendor.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
-    const resellerCommission = vendor.resellers.reduce((s, r) => s + r.orders.reduce((ss, o) => ss + (o.commissionValue ?? 0), 0), 0);
-    const totalCommission = directSalesCommission + resellerCommission;
-    const totalResellerSales = vendor.resellers.reduce((s, r) => s + r.orders.reduce((ss, o) => ss + o.total, 0), 0);
+    const directOrders = vendor.orders;
+    const allResellerOrders = vendor.resellers.flatMap((r) => r.orders);
+    const allOrders = [...directOrders, ...allResellerOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const directCommission = directOrders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
+    const resellerCommission = allResellerOrders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
+    const totalCommission = directCommission + resellerCommission;
+
+    const monthlyDirect = getMonthlyBreakdown(directOrders);
+    const monthlyReseller = getMonthlyBreakdown(allResellerOrders);
+    const monthlyAll = getMonthlyBreakdown(allOrders);
+
+    const topResellers = [...vendor.resellers]
+      .sort((a, b) => b.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0) - a.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0))
+      .slice(0, 5);
 
     return (
       <div className="space-y-5">
-        {/* Configuração do cupom do vendedor */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Meu Cupom</h2>
-            {configured && !showConfig && (
-              <button onClick={() => { setConfigForm({ couponCode: vendor.couponCode!, discount: String(vendor.discount) }); setShowConfig(true); setConfigError(""); }}
-                className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
-                <Pencil size={14} /> Editar
-              </button>
-            )}
-          </div>
-
-          {!configured ? (
-            <div>
-              <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-sm text-amber-700 mb-4">
-                Configure seu cupom para começar a vender e cadastrar revendedores.
-              </div>
-              {!showConfig
-                ? <button onClick={() => setShowConfig(true)} className="btn-primary flex items-center gap-2"><Tag size={16} /> Configurar meu cupom</button>
-                : <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
-              }
-            </div>
-          ) : showConfig ? (
-            <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><Tag size={16} className="text-gray-600" /></div>
-                <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Código do cupom</p><p className="font-mono font-bold text-gray-900">{vendor.couponCode}</p></div>
-                <button onClick={() => copyCoupon(vendor.couponCode!)} className="text-gray-400 hover:text-brand-600">
-                  {copied ? <CheckCheck size={16} className="text-green-500" /> : <Copy size={16} />}
-                </button>
-              </div>
-              <div className="rounded-xl border border-gray-100 p-4">
-                <p className="text-xs text-gray-400 mb-1">Desconto ao cliente</p>
-                <p className="text-lg font-bold text-gray-700">{vendor.discount}%</p>
-              </div>
-              <div className="rounded-xl border border-green-100 bg-green-50 p-4">
-                <p className="text-xs text-green-600 mb-1">Sua comissão (vendas diretas)</p>
-                <p className="text-lg font-bold text-green-700">{myCommission}%</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Resumo financeiro */}
+        {/* Tabs */}
         {configured && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-2"><DollarSign size={16} className="text-green-500" /><p className="text-xs text-gray-500 font-medium">Comissão total</p></div>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(totalCommission)}</p>
-              <p className="text-xs text-gray-400 mt-1">vendas diretas + revendedores</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-2"><TrendingUp size={16} className="text-brand-600" /><p className="text-xs text-gray-500 font-medium">Suas vendas diretas</p></div>
-              <p className="text-2xl font-bold text-gray-900">{vendor.orders.length}</p>
-              <p className="text-xs text-green-600 font-medium mt-1">{formatCurrency(directSalesCommission)} de comissão</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-2"><Users size={16} className="text-purple-600" /><p className="text-xs text-gray-500 font-medium">Vendas dos revendedores</p></div>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalResellerSales)}</p>
-              <p className="text-xs text-green-600 font-medium mt-1">{formatCurrency(resellerCommission)} para você (5% por venda)</p>
-            </div>
+          <div className="flex gap-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5">
+            <button onClick={() => setTab("rede")} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${tab === "rede" ? "bg-brand-600 text-white shadow" : "text-gray-500 hover:text-gray-800"}`}>
+              <Users size={16} /> Minha Rede
+            </button>
+            <button onClick={() => setTab("crm")} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${tab === "crm" ? "bg-brand-600 text-white shadow" : "text-gray-500 hover:text-gray-800"}`}>
+              <BarChart2 size={16} /> CRM
+            </button>
           </div>
         )}
 
-        {/* Revendedores */}
-        {configured && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users size={18} className="text-purple-600" />
-                <h2 className="font-bold text-gray-900">Meus Revendedores ({vendor.resellers.length})</h2>
+        {/* ── ABA REDE ── */}
+        {(tab === "rede" || !configured) && (
+          <>
+            {/* Config cupom */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Meu Cupom</h2>
+                {configured && !showConfig && (
+                  <button onClick={() => { setConfigForm({ couponCode: vendor.couponCode!, discount: String(vendor.discount) }); setShowConfig(true); setConfigError(""); }}
+                    className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
+                    <Pencil size={14} /> Editar
+                  </button>
+                )}
               </div>
-              <button onClick={() => setShowForm(true)} className="btn-primary text-sm flex items-center gap-2 py-2">
-                <Plus size={16} /> Novo Revendedor
-              </button>
+              {!configured ? (
+                <div>
+                  <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-sm text-amber-700 mb-4">
+                    Configure seu cupom para começar a vender e cadastrar revendedores.
+                  </div>
+                  {!showConfig
+                    ? <button onClick={() => setShowConfig(true)} className="btn-primary flex items-center gap-2"><Tag size={16} /> Configurar meu cupom</button>
+                    : <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
+                  }
+                </div>
+              ) : showConfig ? (
+                <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><Tag size={16} className="text-gray-600" /></div>
+                    <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Código do cupom</p><p className="font-mono font-bold text-gray-900">{vendor.couponCode}</p></div>
+                    <button onClick={() => copyCoupon(vendor.couponCode!)} className="text-gray-400 hover:text-brand-600 flex-shrink-0">
+                      {copied ? <CheckCheck size={16} className="text-green-500" /> : <Copy size={16} />}
+                    </button>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 p-4">
+                    <p className="text-xs text-gray-400 mb-1">Desconto ao cliente</p>
+                    <p className="text-lg font-bold text-gray-700">{vendor.discount}%</p>
+                  </div>
+                  <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+                    <p className="text-xs text-green-600 mb-1">Sua comissão (vendas diretas)</p>
+                    <p className="text-lg font-bold text-green-700">{myCommission}%</p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="divide-y divide-gray-100">
-              {vendor.resellers.length === 0 ? (
-                <div className="py-10 text-center">
-                  <Users size={36} className="text-gray-200 mx-auto mb-3" />
-                  <p className="text-sm text-gray-400">Nenhum revendedor ainda.</p>
+            {/* Revendedores */}
+            {configured && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users size={18} className="text-purple-600" />
+                    <h2 className="font-bold text-gray-900">Revendedores ({vendor.resellers.length})</h2>
+                  </div>
+                  <button onClick={() => setShowForm(true)} className="btn-primary text-sm flex items-center gap-2 py-2">
+                    <Plus size={15} /> Novo
+                  </button>
                 </div>
-              ) : vendor.resellers.map((r) => {
-                const rSalesTotal = r.orders.reduce((s, o) => s + o.total, 0);
-                const rCommission = r.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
-                const isExpanded = expandedReseller === r.id;
-                return (
-                  <div key={r.id}>
-                    <div className="flex items-center justify-between p-4">
-                      <div>
-                        <p className="font-semibold text-gray-900 text-sm">{r.user.name}</p>
-                        <p className="text-xs text-gray-400">{r.user.email}</p>
-                        <div className="flex items-center gap-3 mt-1">
-                          {r.couponCode
-                            ? <><span className="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">{r.couponCode}</span><span className="text-xs text-gray-400">{r.discount}% desconto</span></>
-                            : <span className="text-xs text-amber-500">Aguardando configurar cupom</span>
-                          }
-                          <span className="text-xs text-green-600 font-bold">+5% para você</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-gray-900">{r.orders.length} {r.orders.length === 1 ? "venda" : "vendas"}</p>
-                        <p className="text-xs text-green-600 font-bold">{formatCurrency(rCommission)} comissão</p>
-                        <button onClick={() => setExpandedReseller(isExpanded ? null : r.id)} className="text-xs text-brand-600 hover:underline flex items-center gap-0.5 mt-1 ml-auto">
-                          {isExpanded ? <><ChevronUp size={12} /> Fechar</> : <><ChevronDown size={12} /> Ver vendas</>}
-                        </button>
-                      </div>
+                <div className="divide-y divide-gray-100">
+                  {vendor.resellers.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <Users size={36} className="text-gray-200 mx-auto mb-3" />
+                      <p className="text-sm text-gray-400">Nenhum revendedor ainda.</p>
                     </div>
-
-                    {isExpanded && (
-                      <div className="bg-gray-50 border-t border-gray-100 px-5 pb-4 pt-3">
-                        {r.orders.length === 0 ? (
-                          <p className="text-sm text-gray-400 text-center py-4">Nenhuma venda com o cupom <strong>{r.couponCode || r.user.name}</strong> ainda.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-4 text-xs font-semibold text-gray-400 uppercase tracking-wide pb-1 border-b border-gray-200">
-                              <span>Pedido</span><span>Data</span><span className="text-right">Valor</span><span className="text-right">Comissão (5%)</span>
+                  ) : vendor.resellers.map((r) => {
+                    const rSalesTotal = r.orders.reduce((s, o) => s + o.total, 0);
+                    const rCommission = r.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
+                    const isExpanded = expandedReseller === r.id;
+                    return (
+                      <div key={r.id}>
+                        <div className="flex items-start justify-between p-4 gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 text-sm truncate">{r.user.name}</p>
+                            <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                              {r.couponCode
+                                ? <span className="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">{r.couponCode}</span>
+                                : <span className="text-xs text-amber-500">Aguardando configurar cupom</span>
+                              }
+                              {r.discount !== null && <span className="text-xs text-gray-400">{r.discount}% desc.</span>}
+                              <span className="text-xs text-green-600 font-bold">+5% p/ você</span>
                             </div>
-                            {r.orders.map((o) => (
-                              <div key={o.id} className="grid grid-cols-4 text-sm py-1.5 border-b border-gray-100 last:border-0">
-                                <span className="font-mono text-xs text-gray-700">#{o.id.slice(-6).toUpperCase()}</span>
-                                <span className="text-xs text-gray-500">{formatDate(o.createdAt)}</span>
-                                <span className="text-right font-medium text-gray-900">{formatCurrency(o.total)}</span>
-                                <span className="text-right font-bold text-green-600">{formatCurrency(o.commissionValue ?? 0)}</span>
-                              </div>
-                            ))}
-                            <div className="grid grid-cols-4 text-sm pt-2 font-bold border-t border-gray-200">
-                              <span className="col-span-2 text-gray-600">Total</span>
-                              <span className="text-right text-gray-900">{formatCurrency(rSalesTotal)}</span>
-                              <span className="text-right text-green-600">{formatCurrency(rCommission)}</span>
-                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-bold text-gray-900">{r.orders.length} {r.orders.length === 1 ? "venda" : "vendas"}</p>
+                            <p className="text-xs text-green-600 font-bold">{formatCurrency(rCommission)}</p>
+                            <button onClick={() => setExpandedReseller(isExpanded ? null : r.id)} className="text-xs text-brand-600 hover:underline flex items-center gap-0.5 mt-1 ml-auto">
+                              {isExpanded ? <><ChevronUp size={12} /> Fechar</> : <><ChevronDown size={12} /> Vendas</>}
+                            </button>
+                          </div>
+                        </div>
+                        {isExpanded && (
+                          <div className="bg-gray-50 border-t border-gray-100 px-4 pb-4 pt-3">
+                            {r.orders.length === 0 ? (
+                              <p className="text-sm text-gray-400 text-center py-4">Nenhuma venda ainda.</p>
+                            ) : (
+                              <>
+                                <div className="space-y-2">
+                                  {r.orders.map((o) => (
+                                    <div key={o.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                                      <div>
+                                        <p className="font-mono text-xs text-gray-700 font-bold">#{o.id.slice(-6).toUpperCase()}</p>
+                                        <p className="text-xs text-gray-400">{formatDate(o.createdAt)}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="font-medium text-gray-900 text-sm">{formatCurrency(o.total)}</p>
+                                        <p className="text-xs text-green-600 font-bold">{formatCurrency(o.commissionValue ?? 0)} p/ você</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="flex justify-between pt-2 mt-1 border-t border-gray-200 font-bold text-sm">
+                                  <span className="text-gray-600">Total</span>
+                                  <div className="text-right">
+                                    <span className="text-gray-900 mr-3">{formatCurrency(rSalesTotal)}</span>
+                                    <span className="text-green-600">{formatCurrency(rCommission)}</span>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── ABA CRM ── */}
+        {tab === "crm" && configured && (
+          <>
+            {/* Stats principais */}
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard icon={DollarSign} color="green" label="Comissão total" value={formatCurrency(totalCommission)} sub="diretas + revendedores" />
+              <StatCard icon={ShoppingBag} color="brand" label="Vendas totais" value={String(allOrders.length)} sub={`${directOrders.length} diretas · ${allResellerOrders.length} via rede`} />
+              <StatCard icon={TrendingUp} color="purple" label="Vendas diretas" value={formatCurrency(directCommission)} sub={`${directOrders.length} pedidos · ${vendor.discount}% desc.`} />
+              <StatCard icon={Users} color="orange" label="Via revendedores" value={formatCurrency(resellerCommission)} sub={`${vendor.resellers.length} revendedores · 5% p/ venda`} />
             </div>
-          </div>
+
+            {/* Gráfico de barras mensal */}
+            {monthlyAll.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+                <div className="flex items-center gap-2 mb-5">
+                  <BarChart2 size={18} className="text-brand-600" />
+                  <h3 className="font-bold text-gray-900">Comissão por mês</h3>
+                </div>
+                <div className="space-y-3">
+                  {monthlyAll.map((m) => {
+                    const maxC = Math.max(...monthlyAll.map(x => x.commission), 1);
+                    const pct = Math.round((m.commission / maxC) * 100);
+                    return (
+                      <div key={m.label}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="capitalize font-medium text-gray-600">{m.label}</span>
+                          <span className="text-gray-500">{m.count} venda{m.count !== 1 ? "s" : ""} · <strong className="text-green-600">{formatCurrency(m.commission)}</strong></span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Top revendedores */}
+            {topResellers.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                  <Award size={16} className="text-yellow-500" />
+                  <h3 className="font-bold text-gray-900">Top revendedores</h3>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {topResellers.map((r, i) => {
+                    const rC = r.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
+                    const rV = r.orders.reduce((s, o) => s + o.total, 0);
+                    return (
+                      <div key={r.id} className="flex items-center gap-3 px-5 py-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-gray-100 text-gray-600" : "bg-orange-50 text-orange-600"}`}>{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 text-sm truncate">{r.user.name}</p>
+                          <p className="text-xs text-gray-400">{r.orders.length} venda{r.orders.length !== 1 ? "s" : ""} · {formatCurrency(rV)} gerado</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="font-bold text-green-600 text-sm">{formatCurrency(rC)}</p>
+                          <p className="text-xs text-gray-400">p/ você</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Breakdown diretas vs rede */}
+            {(monthlyDirect.length > 0 || monthlyReseller.length > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <MiniMonthly title="Vendas diretas" color="brand" monthly={monthlyDirect} />
+                <MiniMonthly title="Via revendedores" color="purple" monthly={monthlyReseller} />
+              </div>
+            )}
+
+            {/* Feed de vendas recentes */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                <TrendingUp size={16} className="text-green-500" />
+                <h3 className="font-bold text-gray-900">Últimas vendas</h3>
+              </div>
+              {allOrders.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">Nenhuma venda ainda.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {allOrders.slice(0, 20).map((o) => (
+                    <div key={o.id} className="flex items-center justify-between px-5 py-3 gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-mono font-bold text-gray-800">#{o.id.slice(-6).toUpperCase()}</p>
+                        <p className="text-xs text-gray-400">{formatDate(o.createdAt)}</p>
+                        {o.couponCode && <p className="text-xs text-gray-400 font-mono">{o.couponCode}</p>}
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold text-gray-900 text-sm">{formatCurrency(o.total)}</p>
+                        <p className="text-xs text-green-600 font-bold">{formatCurrency(o.commissionValue ?? 0)} p/ você</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${o.status === "PAID" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
+                          {o.status === "PAID" ? "Pago" : "Pendente"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {showForm && (
@@ -317,15 +511,17 @@ export default function MinhaRedePage() {
   // ── ADMIN ─────────────────────────────────────────────────────
   if (data.role === "ADMIN") {
     const { vendors } = data;
-    const totalCommission = vendors.reduce((s, v) => s + [...v.orders, ...v.resellers.flatMap((r) => r.orders)].reduce((ss, o) => ss + (o.commissionValue ?? 0), 0), 0);
+    const totalCommission = vendors.reduce((s, v) =>
+      s + [...v.orders, ...v.resellers.flatMap((r) => r.orders)].reduce((ss, o) => ss + (o.commissionValue ?? 0), 0), 0);
+
     return (
       <div className="space-y-5">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-bold text-gray-900">Rede de Vendedores</h2>
             <button onClick={() => setShowForm(true)} className="btn-primary text-sm flex items-center gap-2 py-2"><Plus size={16} /> Novo Revendedor</button>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-xl border border-gray-100 p-4"><p className="text-xs text-gray-400">Vendedores</p><p className="font-bold text-gray-900 text-xl">{vendors.length}</p></div>
             <div className="rounded-xl border border-gray-100 p-4"><p className="text-xs text-gray-400">Total revendedores</p><p className="font-bold text-gray-900 text-xl">{vendors.reduce((s, v) => s + v.resellers.length, 0)}</p></div>
             <div className="rounded-xl border border-green-100 bg-green-50 p-4"><p className="text-xs text-green-600">Comissões geradas</p><p className="font-bold text-green-700 text-xl">{formatCurrency(totalCommission)}</p></div>
@@ -336,44 +532,45 @@ export default function MinhaRedePage() {
           const vCommission = [...v.orders, ...v.resellers.flatMap((r) => r.orders)].reduce((s, o) => s + (o.commissionValue ?? 0), 0);
           return (
             <div key={v.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 font-bold flex items-center justify-center text-sm">{v.user.name[0]}</div>
-                  <div>
-                    <p className="font-bold text-gray-900 text-sm">{v.user.name}</p>
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 font-bold flex items-center justify-center text-sm flex-shrink-0">{v.user.name[0]}</div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-900 text-sm truncate">{v.user.name}</p>
                     {v.couponCode
-                      ? <p className="text-xs text-gray-400">Cupom: <span className="font-mono font-bold">{v.couponCode}</span> · {v.discount}% → <span className="text-green-600 font-bold">{50 - (v.discount ?? 0)}% comissão direta</span></p>
+                      ? <p className="text-xs text-gray-400">Cupom: <span className="font-mono font-bold">{v.couponCode}</span> · {v.discount}% → <span className="text-green-600 font-bold">{50 - (v.discount ?? 0)}%</span></p>
                       : <p className="text-xs text-amber-500">Aguardando configurar cupom</p>
                     }
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <p className="text-xs text-gray-400">Comissão total</p>
                   <p className="font-bold text-green-600">{formatCurrency(vCommission)}</p>
                 </div>
               </div>
               <div className="divide-y divide-gray-100">
-                {v.resellers.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-6">Nenhum revendedor ainda.</p>
-                ) : v.resellers.map((r) => {
-                  const rCommission = r.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
-                  return (
-                    <div key={r.id} className="flex items-center justify-between px-5 py-3">
-                      <div>
-                        <p className="font-medium text-gray-900 text-sm">{r.user.name}</p>
-                        <p className="text-xs text-gray-400">{r.user.email}</p>
+                {v.resellers.length === 0
+                  ? <p className="text-sm text-gray-400 text-center py-6">Nenhum revendedor ainda.</p>
+                  : v.resellers.map((r) => {
+                    const rCommission = r.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
+                    return (
+                      <div key={r.id} className="flex items-center justify-between px-5 py-3 gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{r.user.name}</p>
+                          <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          {r.couponCode
+                            ? <p className="font-mono text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-lg inline-block">{r.couponCode}{r.discount !== null ? ` · ${r.discount}%` : ""}</p>
+                            : <p className="text-xs text-amber-500">Sem cupom</p>
+                          }
+                          <p className="text-xs text-gray-500">{r.orders.length} vendas</p>
+                          <p className="text-xs text-green-600 font-bold">{formatCurrency(rCommission)} → {v.user.name}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        {r.couponCode
-                          ? <p className="font-mono text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-lg inline-block">{r.couponCode} · {r.discount}%</p>
-                          : <p className="text-xs text-amber-500">Sem cupom</p>
-                        }
-                        <p className="text-xs text-gray-500">{r.orders.length} vendas</p>
-                        <p className="text-xs text-green-600 font-bold">{formatCurrency(rCommission)} → {v.user.name} (5%)</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                }
               </div>
             </div>
           );
@@ -397,6 +594,49 @@ export default function MinhaRedePage() {
   }
 
   return null;
+}
+
+// ── Componentes auxiliares ────────────────────────────────────
+
+function StatCard({ icon: Icon, color, label, value, sub }: { icon: React.ElementType; color: string; label: string; value: string; sub: string }) {
+  const colors: Record<string, string> = {
+    green: "bg-green-50 text-green-600",
+    brand: "bg-brand-50 text-brand-600",
+    purple: "bg-purple-50 text-purple-600",
+    orange: "bg-orange-50 text-orange-600",
+  };
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${colors[color]}`}><Icon size={18} /></div>
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <p className="text-lg sm:text-xl font-bold text-gray-900 leading-tight">{value}</p>
+      <p className="text-xs text-gray-400 mt-1">{sub}</p>
+    </div>
+  );
+}
+
+function MiniMonthly({ title, color, monthly }: { title: string; color: string; monthly: { label: string; count: number; revenue: number; commission: number }[] }) {
+  const barColor = color === "brand" ? "bg-brand-500" : "bg-purple-500";
+  if (monthly.length === 0) return null;
+  const maxC = Math.max(...monthly.map(x => x.commission), 1);
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h4 className="font-bold text-gray-900 text-sm mb-4">{title}</h4>
+      <div className="space-y-2">
+        {monthly.map((m) => (
+          <div key={m.label}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="capitalize text-gray-500">{m.label}</span>
+              <span className="text-gray-700 font-medium">{formatCurrency(m.commission)}</span>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className={`h-full ${barColor} rounded-full`} style={{ width: `${Math.round((m.commission / maxC) * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function ConfigForm({ form, setForm, onSubmit, onCancel, loading, error }: {
@@ -426,7 +666,7 @@ function ConfigForm({ form, setForm, onSubmit, onCancel, loading, error }: {
       <div className="flex gap-3 pt-1">
         <button type="button" onClick={onCancel} className="btn-ghost flex-1">Cancelar</button>
         <button type="submit" disabled={loading} className="btn-primary flex-1">
-          {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Check size={16} /> Salvar cupom</>}
+          {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Check size={16} /> Salvar</>}
         </button>
       </div>
     </form>

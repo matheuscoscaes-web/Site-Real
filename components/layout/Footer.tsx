@@ -54,11 +54,11 @@ export function Footer() {
           </div>
 
           {/* Loja + Ajuda + Contato sempre lado a lado */}
-          <div className="grid grid-cols-3 gap-4 md:col-span-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 md:col-span-3">
             {/* Links */}
             <div>
-              <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Loja</h4>
-              <ul className="space-y-2 text-sm">
+              <h4 className="text-white font-semibold mb-4 text-xs sm:text-sm uppercase tracking-wider">Loja</h4>
+              <ul className="space-y-2 text-xs sm:text-sm">
                 {[
                   { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
                   { label: "Mochilas Feminino", href: "/produtos?categoria=Mochilas" },
@@ -75,8 +75,8 @@ export function Footer() {
 
             {/* Ajuda */}
             <div>
-              <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Ajuda</h4>
-              <ul className="space-y-2 text-sm">
+              <h4 className="text-white font-semibold mb-4 text-xs sm:text-sm uppercase tracking-wider">Ajuda</h4>
+              <ul className="space-y-2 text-xs sm:text-sm">
                 {[
                   { label: "Minha Conta", href: "/conta" },
                   { label: "Meus Pedidos", href: "/conta/pedidos" },
@@ -94,19 +94,19 @@ export function Footer() {
 
             {/* Contato */}
             <div>
-              <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Contato</h4>
-              <ul className="space-y-3 text-sm">
-                <li className="flex items-start gap-3">
-                  <Phone size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                  <span>(21) 96666-8724<br /><span className="text-xs text-gray-500">WhatsApp disponível</span></span>
+              <h4 className="text-white font-semibold mb-4 text-xs sm:text-sm uppercase tracking-wider">Contato</h4>
+              <ul className="space-y-3 text-xs sm:text-sm">
+                <li className="flex items-start gap-2">
+                  <Phone size={13} className="text-brand-400 mt-0.5 flex-shrink-0" />
+                  <span className="break-words">(21) 96666-8724<br /><span className="text-xs text-gray-500">WhatsApp</span></span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <Mail size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                  <span>contato@heartscouro.com.br</span>
+                <li className="flex items-start gap-2">
+                  <Mail size={13} className="text-brand-400 mt-0.5 flex-shrink-0" />
+                  <span className="break-all">contato@heartscouro.com.br</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <MapPin size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                  <span>Rua Desembargador Omar Dutra, 60<br />Rio de Janeiro, RJ</span>
+                <li className="flex items-start gap-2">
+                  <MapPin size={13} className="text-brand-400 mt-0.5 flex-shrink-0" />
+                  <span className="break-words">Rua Des. Omar Dutra, 60<br />Rio de Janeiro, RJ</span>
                 </li>
               </ul>
               <div className="mt-5 p-3 bg-gray-900 rounded-xl">
@@ -121,8 +121,8 @@ export function Footer() {
 
       {/* Bottom */}
       <div className="border-t border-gray-800">
-        <div className="container-main py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-          <p>© 2026 Hearts Couro. Todos os direitos reservados. CNPJ: 18.921.382/0001-51</p>
+        <div className="container-main py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-600 text-center md:text-left">
+          <p>© 2026 Hearts Couro. Todos os direitos reservados.<br className="sm:hidden" /> CNPJ: 18.921.382/0001-51</p>
           <p className="flex items-center gap-1">
             Feito com <Heart size={12} className="text-brand-600" /> no Rio de Janeiro, Brasil
           </p>
