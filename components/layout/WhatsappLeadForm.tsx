@@ -42,7 +42,7 @@ export function WhatsappLeadForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
       <input
         type="text"
         placeholder="Seu nome"

@@ -10,12 +10,9 @@ export function Footer() {
       {/* Grupo VIP WhatsApp */}
       <div className="bg-brand-700 py-12">
         <div className="container-main text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <span className="text-2xl">💚</span>
-            <h3 className="text-2xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>
-              Entre no nosso Grupo VIP do WhatsApp
-            </h3>
-          </div>
+          <h3 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "Playfair Display, serif" }}>
+            Entre no nosso Grupo VIP do WhatsApp
+          </h3>
           <p className="text-brand-100 mb-6 text-sm">Promoções exclusivas, lançamentos em primeira mão e ofertas especiais só para membros VIP</p>
           <WhatsappLeadForm />
         </div>
