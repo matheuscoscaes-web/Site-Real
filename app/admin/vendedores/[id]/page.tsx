@@ -132,9 +132,12 @@ export default async function AdminVendedorDetailPage({ params }: { params: Prom
                     <p className="text-xs text-gray-400 mt-0.5">Cadastrado em {formatDate(r.createdAt)}</p>
                   </div>
                   <div className="text-right space-y-1">
-                    <p className="font-mono text-sm bg-gray-100 text-gray-800 px-2 py-0.5 rounded-lg inline-block">{r.couponCode}</p>
-                    <p className="text-xs text-gray-400">desconto {r.discount}%</p>
-                    <p className="text-xs text-green-600 font-bold">vendedor ganha {50 - r.discount}%</p>
+                    {r.couponCode
+                      ? <p className="font-mono text-sm bg-gray-100 text-gray-800 px-2 py-0.5 rounded-lg inline-block">{r.couponCode}</p>
+                      : <p className="text-xs text-amber-500">Aguardando configurar cupom</p>
+                    }
+                    {r.discount !== null && <p className="text-xs text-gray-400">desconto {r.discount}%</p>}
+                    <p className="text-xs text-green-600 font-bold">vendedor ganha 5% por venda</p>
                     <span className={`badge text-xs block ${r.active ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>
                       {r.active ? "Ativo" : "Inativo"}
                     </span>

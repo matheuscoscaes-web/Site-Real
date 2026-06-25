@@ -7,8 +7,9 @@ export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  if (session.user.role !== "VENDOR") {
-    return NextResponse.json({ error: "Apenas vendedores podem configurar cupom" }, { status: 403 });
+  const role = session.user.role;
+  if (role !== "VENDOR" && role !== "RESELLER") {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }
 
   const { couponCode, discount } = await req.json();
@@ -22,19 +23,23 @@ export async function PATCH(req: Request) {
 
   const code = couponCode.toUpperCase().trim();
 
-  // Verifica se já existe o cupom em outro vendedor ou revendedor
-  const couponVendor = await prisma.vendor.findFirst({
-    where: { couponCode: code, NOT: { userId: session.user.id } },
-  });
-  if (couponVendor) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
+  // Verifica unicidade do cupom (ignora o próprio registro)
+  if (role === "VENDOR") {
+    const dup = await prisma.vendor.findFirst({ where: { couponCode: code, NOT: { userId: session.user.id } } });
+    if (dup) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
+    const dupR = await prisma.reseller.findUnique({ where: { couponCode: code } });
+    if (dupR) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
 
-  const couponReseller = await prisma.reseller.findUnique({ where: { couponCode: code } });
-  if (couponReseller) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
+    const vendor = await prisma.vendor.update({ where: { userId: session.user.id }, data: { couponCode: code, discount: discountNum } });
+    return NextResponse.json(vendor);
+  }
 
-  const vendor = await prisma.vendor.update({
-    where: { userId: session.user.id },
-    data: { couponCode: code, discount: discountNum },
-  });
+  // RESELLER
+  const dup = await prisma.reseller.findFirst({ where: { couponCode: code, NOT: { userId: session.user.id } } });
+  if (dup) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
+  const dupV = await prisma.vendor.findUnique({ where: { couponCode: code } });
+  if (dupV) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
 
-  return NextResponse.json(vendor);
+  const reseller = await prisma.reseller.update({ where: { userId: session.user.id }, data: { couponCode: code, discount: discountNum } });
+  return NextResponse.json(reseller);
 }

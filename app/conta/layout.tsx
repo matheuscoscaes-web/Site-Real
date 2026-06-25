@@ -17,7 +17,7 @@ export default async function ContaLayout({ children }: { children: React.ReactN
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login?redirect=/conta");
 
-  const showRede = session.user.role === "VENDOR" || session.user.role === "ADMIN";
+  const showRede = session.user.role === "VENDOR" || session.user.role === "ADMIN" || session.user.role === "RESELLER";
   const navItems = showRede
     ? [...baseNavItems, { href: "/conta/rede", label: "Minha Rede", icon: Network, exact: false }]
     : baseNavItems;

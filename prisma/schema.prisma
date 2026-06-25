@@ -128,8 +128,8 @@ model Reseller {
   id         String   @id @default(cuid())
   userId     String   @unique
   vendorId   String
-  couponCode String   @unique
-  discount   Float    @default(10)
+  couponCode String?  @unique
+  discount   Float?
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

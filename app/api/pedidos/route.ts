@@ -46,18 +46,20 @@ export async function POST(request: NextRequest) {
       couponDiscount = vendor.discount;
       vendorId = vendor.id;
       appliedCoupon = code;
+      // Venda direta do vendedor: comissão = (50 - desconto)%
       commissionValue = subtotal * (50 - vendor.discount) / 100;
     } else {
       const reseller = await prisma.reseller.findUnique({
         where: { couponCode: code },
         include: { vendor: true },
       });
-      if (reseller && reseller.active) {
+      if (reseller && reseller.active && reseller.discount !== null) {
         couponDiscount = reseller.discount;
         resellerId = reseller.id;
         vendorId = reseller.vendor.id;
         appliedCoupon = code;
-        commissionValue = subtotal * (50 - reseller.discount) / 100;
+        // Venda de revendedor: vendedor ganha 5% fixo do valor da loja
+        commissionValue = subtotal * 0.05;
       }
     }
   }

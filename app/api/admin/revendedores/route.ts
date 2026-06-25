@@ -31,22 +31,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const { name, email, password, phone, couponCode, discount, vendorId } = await req.json();
+  const { name, email, password, phone, vendorId } = await req.json();
 
-  if (!name || !email || !password || !couponCode || !vendorId) {
+  if (!name || !email || !password || !vendorId) {
     return NextResponse.json({ error: "Campos obrigatórios faltando" }, { status: 400 });
-  }
-
-  const discountNum = Number(discount) || 10;
-  if (discountNum < 0 || discountNum > 50) {
-    return NextResponse.json({ error: "Desconto deve ser entre 0% e 50%" }, { status: 400 });
   }
 
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) return NextResponse.json({ error: "E-mail já cadastrado" }, { status: 409 });
-
-  const couponExists = await prisma.reseller.findUnique({ where: { couponCode: couponCode.toUpperCase() } });
-  if (couponExists) return NextResponse.json({ error: "Cupom já em uso" }, { status: 409 });
 
   const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
   if (!vendor) return NextResponse.json({ error: "Vendedor não encontrado" }, { status: 404 });
@@ -60,13 +52,7 @@ export async function POST(req: Request) {
       password: hashed,
       phone: phone || null,
       role: "RESELLER",
-      reseller: {
-        create: {
-          vendorId,
-          couponCode: couponCode.toUpperCase(),
-          discount: discountNum,
-        },
-      },
+      reseller: { create: { vendorId } },
     },
     include: { reseller: true },
   });
