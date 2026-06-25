@@ -219,6 +219,15 @@ model Order {
   @@map("orders")
 }
 
+model WhatsappLead {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+
+  @@map("whatsapp_leads")
+}
+
 model OrderItem {
   id        String  @id @default(cuid())
   orderId   String

@@ -2,27 +2,22 @@
 
 import Link from "next/link";
 import { Instagram, Facebook, Youtube, Mail, Phone, MapPin, Heart } from "lucide-react";
+import { WhatsappLeadForm } from "@/components/layout/WhatsappLeadForm";
 
 export function Footer() {
   return (
     <footer className="bg-gray-950 text-gray-300">
-      {/* Newsletter */}
+      {/* Grupo VIP WhatsApp */}
       <div className="bg-brand-700 py-12">
         <div className="container-main text-center">
-          <h3 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "Playfair Display, serif" }}>
-            Receba novidades e ofertas exclusivas
-          </h3>
-          <p className="text-brand-100 mb-6 text-sm">Cadastre seu e-mail e ganhe 40% de desconto + frete grátis na primeira compra</p>
-          <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto" onSubmit={(e) => e.preventDefault()}>
-            <input
-              type="email"
-              placeholder="Seu melhor e-mail"
-              className="flex-1 px-5 py-3 rounded-full text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white"
-            />
-            <button type="submit" className="bg-white text-brand-700 font-bold px-8 py-3 rounded-full hover:bg-brand-50 transition-colors text-sm whitespace-nowrap">
-              Quero desconto!
-            </button>
-          </form>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-2xl">💚</span>
+            <h3 className="text-2xl font-bold text-white" style={{ fontFamily: "Playfair Display, serif" }}>
+              Entre no nosso Grupo VIP do WhatsApp
+            </h3>
+          </div>
+          <p className="text-brand-100 mb-6 text-sm">Promoções exclusivas, lançamentos em primeira mão e ofertas especiais só para membros VIP</p>
+          <WhatsappLeadForm />
         </div>
       </div>
 
