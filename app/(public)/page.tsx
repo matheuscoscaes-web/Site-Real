@@ -261,33 +261,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* DEPOIMENTOS */}
-      <section className="py-16">
-        <div className="container-main">
-          <div className="text-center mb-10">
-            <h2 className="section-title mb-3">O que nossas clientes dizem</h2>
-            <p className="text-gray-500">Mais de 5.000 clientes satisfeitas em todo o Brasil</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {testimonials.map((t) => (
-              <div key={t.name} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex gap-0.5 mb-3">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star key={s} size={14} className={s <= t.stars ? "fill-amber-400 text-amber-400" : "text-gray-200 fill-gray-200"} />
-                  ))}
-                </div>
-                <p className="text-sm text-gray-600 leading-relaxed mb-4 italic">&ldquo;{t.text}&rdquo;</p>
-                <div className="border-t border-gray-100 pt-3">
-                  <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                  <p className="text-xs text-gray-400">{t.city}</p>
-                  <p className="text-xs text-brand-600 mt-1">Comprou: {t.product}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* INSTAGRAM CTA */}
       <section className="py-12 bg-cream-50 border-t border-cream-100">
         <div className="container-main text-center">
