@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { SlidersHorizontal, ChevronDown, ChevronUp, X } from "lucide-react";
 
 interface FilterLink {
@@ -46,7 +47,7 @@ export function FilterSidebar({ categories, priceRanges, clearHref }: FilterSide
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Categoria</p>
           <div className="space-y-1">
             {categories.map((cat) => (
-              <a
+              <Link
                 key={cat.href}
                 href={cat.href}
                 className={`block text-sm px-3 py-2 rounded-lg transition-colors ${
@@ -54,7 +55,7 @@ export function FilterSidebar({ categories, priceRanges, clearHref }: FilterSide
                 }`}
               >
                 {cat.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -64,7 +65,7 @@ export function FilterSidebar({ categories, priceRanges, clearHref }: FilterSide
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Faixa de Preço</p>
           <div className="space-y-1">
             {priceRanges.map((range) => (
-              <a
+              <Link
                 key={range.label}
                 href={range.href}
                 className={`block text-sm px-3 py-2 rounded-lg transition-colors ${
@@ -72,16 +73,16 @@ export function FilterSidebar({ categories, priceRanges, clearHref }: FilterSide
                 }`}
               >
                 {range.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
 
         {/* Limpar filtros */}
         {clearHref && (
-          <a href={clearHref} className="flex items-center justify-center gap-1 text-sm text-brand-700 font-medium hover:underline">
+          <Link href={clearHref} className="flex items-center justify-center gap-1 text-sm text-brand-700 font-medium hover:underline">
             <X size={14} /> Limpar filtros
-          </a>
+          </Link>
         )}
       </div>
     </aside>

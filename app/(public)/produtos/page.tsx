@@ -1,5 +1,4 @@
-export const dynamic = "force-dynamic";
-
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/products/ProductCard";
 import { CATEGORIES } from "@/lib/utils";
@@ -16,42 +15,46 @@ interface SearchParams {
   novidades?: string;
 }
 
-async function getProducts(params: SearchParams) {
-  const where: Record<string, unknown> = { active: true };
+const getProducts = unstable_cache(
+  async (params: SearchParams) => {
+    const where: Record<string, unknown> = { active: true };
 
-  if (params.categoria === "Bolsas") {
-    where.AND = [
-      { active: true },
-      {
-        OR: [
-          { category: "Bolsas" },
-          { name: { startsWith: "Bolsa", mode: "insensitive" } },
-        ],
-      },
-    ];
-    delete where.active;
-  } else if (params.categoria) {
-    where.category = params.categoria;
-  }
-  if (params.busca) {
-    where.OR = [
-      { name: { contains: params.busca } },
-      { description: { contains: params.busca } },
-    ];
-  }
-  if (params.preco_min || params.preco_max) {
-    where.price = {};
-    if (params.preco_min) (where.price as Record<string, number>).gte = parseFloat(params.preco_min);
-    if (params.preco_max) (where.price as Record<string, number>).lte = parseFloat(params.preco_max);
-  }
+    if (params.categoria === "Bolsas") {
+      where.AND = [
+        { active: true },
+        {
+          OR: [
+            { category: "Bolsas" },
+            { name: { startsWith: "Bolsa", mode: "insensitive" } },
+          ],
+        },
+      ];
+      delete where.active;
+    } else if (params.categoria) {
+      where.category = params.categoria;
+    }
+    if (params.busca) {
+      where.OR = [
+        { name: { contains: params.busca } },
+        { description: { contains: params.busca } },
+      ];
+    }
+    if (params.preco_min || params.preco_max) {
+      where.price = {};
+      if (params.preco_min) (where.price as Record<string, number>).gte = parseFloat(params.preco_min);
+      if (params.preco_max) (where.price as Record<string, number>).lte = parseFloat(params.preco_max);
+    }
 
-  let orderBy: Record<string, string> = { createdAt: "desc" };
-  if (params.ordem === "preco_asc") orderBy = { price: "asc" };
-  if (params.ordem === "preco_desc") orderBy = { price: "desc" };
-  if (params.ordem === "nome") orderBy = { name: "asc" };
+    let orderBy: Record<string, string> = { createdAt: "desc" };
+    if (params.ordem === "preco_asc") orderBy = { price: "asc" };
+    if (params.ordem === "preco_desc") orderBy = { price: "desc" };
+    if (params.ordem === "nome") orderBy = { name: "asc" };
 
-  return prisma.product.findMany({ where, orderBy });
-}
+    return prisma.product.findMany({ where, orderBy });
+  },
+  ["products-list"],
+  { revalidate: 60, tags: ["products"] }
+);
 
 export default async function ProdutosPage({
   searchParams,
