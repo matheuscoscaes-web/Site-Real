@@ -102,11 +102,5 @@ export async function POST(request: NextRequest) {
     include: { items: true, address: true },
   });
 
-  if (paymentMethod !== "BOLETO") {
-    setTimeout(async () => {
-      await prisma.order.update({ where: { id: order.id }, data: { status: "PAID" } });
-    }, 2000);
-  }
-
   return NextResponse.json(order, { status: 201 });
 }

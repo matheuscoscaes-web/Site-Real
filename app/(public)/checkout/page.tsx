@@ -8,7 +8,7 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { formatCurrency } from "@/lib/utils";
 import { buscarEnderecoPorCEP } from "@/lib/frete";
-import { CreditCard, QrCode, FileText, Lock, ChevronDown, ChevronUp, Check, Loader2, Tag, X } from "lucide-react";
+import { Lock, ChevronDown, ChevronUp, Check, Loader2, Tag, X, AlertCircle } from "lucide-react";
 
 interface Address {
   name: string;
@@ -21,8 +21,6 @@ interface Address {
   zipCode: string;
 }
 
-type PaymentMethod = "PIX" | "CARTAO_CREDITO" | "BOLETO";
-
 export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -30,37 +28,23 @@ export default function CheckoutPage() {
 
   const [step, setStep] = useState(1);
   const [coupon, setCoupon] = useState({ code: "", input: "", discount: 0, ownerName: "", loading: false, error: "", applied: false });
-  const [address, setAddress] = useState<Address>({
-    name: "Casa",
-    street: "",
-    number: "",
-    complement: "",
-    district: "",
-    city: "",
-    state: "",
-    zipCode: "",
-  });
+  const [address, setAddress] = useState<Address>({ name: "Casa", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
   const [loadingCep, setLoadingCep] = useState(false);
-  const [shipping] = useState(18.90);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("PIX");
-  const [cardData, setCardData] = useState({ number: "", name: "", expiry: "", cvv: "" });
+  const [shipping] = useState(18.9);
   const [processing, setProcessing] = useState(false);
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
+  const [erro, setErro] = useState("");
 
   const sub = subtotal();
   const firstDiscount = isFirstPurchase ? sub * 0.4 : 0;
-  const couponAmount = !isFirstPurchase ? sub * coupon.discount / 100 : 0;
+  const couponAmount = !isFirstPurchase ? (sub * coupon.discount) / 100 : 0;
   const effectiveShipping = isFirstPurchase ? 0 : shipping;
   const total = sub - firstDiscount - couponAmount + effectiveShipping;
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login?redirect=/checkout");
-    }
-    if (items.length === 0 && status === "authenticated") {
-      router.push("/carrinho");
-    }
+    if (status === "unauthenticated") router.push("/login?redirect=/checkout");
+    if (items.length === 0 && status === "authenticated") router.push("/carrinho");
   }, [status, items.length, router]);
 
   useEffect(() => {
@@ -71,9 +55,11 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, [status]);
 
-  // Auto-aplica cupom vindo do carrinho via URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("erro") === "pagamento") {
+      setErro("O pagamento não foi aprovado. Tente novamente.");
+    }
     const code = params.get("cupom");
     if (!code) return;
     fetch(`/api/cupom?code=${encodeURIComponent(code)}`)
@@ -108,7 +94,7 @@ export default function CheckoutPage() {
         state: data.state || prev.state,
       }));
     } catch {
-      /* mantém como está se falhar */
+      /* mantém como está */
     } finally {
       setLoadingCep(false);
     }
@@ -126,17 +112,19 @@ export default function CheckoutPage() {
     }
   }
 
-  async function handleFinishOrder() {
+  async function handlePagar() {
     if (!session) return;
     setProcessing(true);
+    setErro("");
 
     try {
-      const res = await fetch("/api/pedidos", {
+      // 1. Cria o pedido no banco
+      const orderRes = await fetch("/api/pedidos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address,
-          paymentMethod,
+          paymentMethod: "MERCADOPAGO",
           items: items.map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
@@ -151,27 +139,39 @@ export default function CheckoutPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Falha ao criar pedido");
-      const order = await res.json();
+      if (!orderRes.ok) throw new Error("Falha ao criar pedido");
+      const order = await orderRes.json();
+
+      // 2. Cria preferência no Mercado Pago
+      const prefRes = await fetch("/api/mercadopago/preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order.id,
+          items: items.map((i) => ({
+            title: i.name,
+            quantity: i.quantity,
+            unit_price: i.price,
+          })),
+          email: session.user.email,
+        }),
+      });
+
+      if (!prefRes.ok) throw new Error("Falha ao iniciar pagamento");
+      const { init_point } = await prefRes.json();
+
+      // 3. Limpa carrinho e redireciona para o Mercado Pago
       clearCart();
-      router.push(`/checkout/sucesso?pedido=${order.id}`);
+      window.location.href = init_point;
     } catch {
-      alert("Ocorreu um erro. Tente novamente.");
-    } finally {
+      setErro("Ocorreu um erro ao iniciar o pagamento. Tente novamente.");
       setProcessing(false);
     }
   }
 
   const steps = [
     { n: 1, label: "Endereço" },
-    { n: 2, label: "Pagamento" },
-    { n: 3, label: "Revisão" },
-  ];
-
-  const paymentOptions = [
-    { id: "PIX" as PaymentMethod, label: "PIX", sub: "5% de desconto", icon: QrCode },
-    { id: "CARTAO_CREDITO" as PaymentMethod, label: "Cartão de Crédito", sub: "Até 12x sem juros", icon: CreditCard },
-    { id: "BOLETO" as PaymentMethod, label: "Boleto Bancário", sub: "Vence em 3 dias úteis", icon: FileText },
+    { n: 2, label: "Revisão" },
   ];
 
   return (
@@ -217,9 +217,16 @@ export default function CheckoutPage() {
         </div>
       )}
 
+      {erro && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
+          <AlertCircle size={18} className="text-red-600 flex-shrink-0" />
+          <p className="text-sm text-red-700">{erro}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Form */}
         <div className="lg:col-span-2">
+
           {/* Passo 1: Endereço */}
           {step === 1 && (
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
@@ -295,96 +302,48 @@ export default function CheckoutPage() {
                 }}
                 className="btn-primary w-full mt-6"
               >
-                Continuar para pagamento
+                Continuar para revisão
               </button>
             </div>
           )}
 
-          {/* Passo 2: Pagamento */}
+          {/* Passo 2: Revisão */}
           {step === 2 && (
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-5">Forma de pagamento</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-5">Revisão do pedido</h2>
 
-              <div className="space-y-3 mb-6">
-                {paymentOptions.map(({ id, label, sub: subLabel, icon: Icon }) => (
-                  <label key={id} className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === id ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-gray-300"}`}>
-                    <input type="radio" name="payment" value={id} checked={paymentMethod === id} onChange={() => setPaymentMethod(id)} className="accent-brand-700" />
-                    <Icon size={20} className={paymentMethod === id ? "text-brand-700" : "text-gray-400"} />
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm">{label}</p>
-                      <p className="text-xs text-gray-500">{subLabel}</p>
+              {/* Endereço resumido */}
+              <div className="p-4 bg-gray-50 rounded-xl mb-5">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Endereço de entrega</p>
+                <p className="text-sm text-gray-700">
+                  {address.street}, {address.number}
+                  {address.complement && `, ${address.complement}`} — {address.district}
+                  <br />{address.city}/{address.state} — CEP {address.zipCode}
+                </p>
+                <button onClick={() => setStep(1)} className="text-xs text-brand-600 underline mt-1">Alterar</button>
+              </div>
+
+              {/* Itens */}
+              <div className="space-y-3 mb-5">
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 py-2 border-b border-gray-100">
+                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
+                      <Image src={item.image} alt={item.name} fill className="object-cover" />
                     </div>
-                  </label>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                      <p className="text-xs text-gray-400">
+                        Qtd: {item.quantity}{item.color ? ` • ${item.color}` : ""}{item.size ? ` • ${item.size}` : ""}
+                      </p>
+                    </div>
+                    <p className="text-sm font-bold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>
+                  </div>
                 ))}
               </div>
 
-              {paymentMethod === "PIX" && (
-                <div className="bg-green-50 rounded-2xl p-5 text-center mb-6 border border-green-200">
-                  <QrCode size={64} className="text-green-600 mx-auto mb-3" />
-                  <p className="font-bold text-green-800 text-lg">{formatCurrency(total * 0.95)}</p>
-                  <p className="text-sm text-green-700 mt-1">5% de desconto adicional via PIX</p>
-                  <p className="text-xs text-green-600 mt-3">O QR Code será gerado após confirmação do pedido</p>
-                </div>
-              )}
-
-              {paymentMethod === "CARTAO_CREDITO" && (
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="label">Número do cartão</label>
-                    <input
-                      className="input-field"
-                      placeholder="0000 0000 0000 0000"
-                      value={cardData.number}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, "").slice(0, 16);
-                        const formatted = v.replace(/(.{4})/g, "$1 ").trim();
-                        setCardData((p) => ({ ...p, number: formatted }));
-                      }}
-                      maxLength={19}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Nome no cartão</label>
-                    <input className="input-field" placeholder="NOME COMPLETO" value={cardData.name} onChange={(e) => setCardData((p) => ({ ...p, name: e.target.value.toUpperCase() }))} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="label">Validade</label>
-                      <input className="input-field" placeholder="MM/AA" value={cardData.expiry} maxLength={5} onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, "").slice(0, 4);
-                        setCardData((p) => ({ ...p, expiry: v.length > 2 ? `${v.slice(0, 2)}/${v.slice(2)}` : v }));
-                      }} />
-                    </div>
-                    <div>
-                      <label className="label">CVV</label>
-                      <input className="input-field" placeholder="123" maxLength={4} value={cardData.cvv} onChange={(e) => setCardData((p) => ({ ...p, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) }))} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="label">Parcelas</label>
-                    <select className="input-field">
-                      {Array.from({ length: 6 }, (_, i) => i + 1).map((n) => (
-                        <option key={n} value={n}>
-                          {n}x de {formatCurrency(total / n)} {n === 1 ? "" : "sem juros"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === "BOLETO" && (
-                <div className="bg-yellow-50 rounded-2xl p-5 text-center mb-6 border border-yellow-200">
-                  <FileText size={48} className="text-yellow-600 mx-auto mb-3" />
-                  <p className="font-semibold text-yellow-800">{formatCurrency(total)}</p>
-                  <p className="text-sm text-yellow-700 mt-2">O boleto vence em 3 dias úteis</p>
-                  <p className="text-xs text-yellow-600 mt-1">O código de barras será enviado por e-mail</p>
-                </div>
-              )}
-
               {/* Cupom */}
               {!isFirstPurchase && (
-                <div className="mb-6">
+                <div className="mb-5">
                   <p className="label mb-1.5">Cupom de desconto</p>
                   {coupon.applied ? (
                     <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
@@ -393,7 +352,10 @@ export default function CheckoutPage() {
                         <span className="font-mono font-bold text-green-700">{coupon.code}</span>
                         <span className="text-sm text-green-600">— {coupon.discount}% de desconto</span>
                       </div>
-                      <button onClick={() => setCoupon({ code: "", input: "", discount: 0, ownerName: "", loading: false, error: "", applied: false })} className="text-gray-400 hover:text-red-500">
+                      <button
+                        onClick={() => setCoupon({ code: "", input: "", discount: 0, ownerName: "", loading: false, error: "", applied: false })}
+                        className="text-gray-400 hover:text-red-500"
+                      >
                         <X size={16} />
                       </button>
                     </div>
@@ -415,63 +377,23 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* Pagamento via MP */}
+              <div className="bg-sky-50 border border-sky-200 rounded-xl p-4 mb-5 text-sm text-sky-800">
+                Você será redirecionado para o <strong>Mercado Pago</strong> para escolher a forma de pagamento: PIX, cartão de crédito ou boleto.
+              </div>
+
               <div className="flex gap-3">
                 <button onClick={() => setStep(1)} className="btn-outline flex-1">Voltar</button>
-                <button onClick={() => setStep(3)} className="btn-primary flex-1">Revisar pedido</button>
-              </div>
-            </div>
-          )}
-
-          {/* Passo 3: Revisão */}
-          {step === 3 && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-5">Revisão do pedido</h2>
-
-              <div className="space-y-4 mb-6">
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Endereço de entrega</p>
-                  <p className="text-sm text-gray-700">
-                    {address.street}, {address.number}
-                    {address.complement && `, ${address.complement}`} — {address.district}
-                    <br />{address.city}/{address.state} — CEP {address.zipCode}
-                  </p>
-                  <button onClick={() => setStep(1)} className="text-xs text-brand-600 underline mt-1">Alterar</button>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-xl">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Pagamento</p>
-                  <p className="text-sm text-gray-700">
-                    {paymentMethod === "PIX" && "PIX (5% de desconto)"}
-                    {paymentMethod === "CARTAO_CREDITO" && `Cartão de crédito terminado em ${cardData.number.slice(-4) || "****"}`}
-                    {paymentMethod === "BOLETO" && "Boleto bancário"}
-                  </p>
-                  <button onClick={() => setStep(2)} className="text-xs text-brand-600 underline mt-1">Alterar</button>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                {items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 py-2 border-b border-gray-100">
-                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
-                      <Image src={item.image} alt={item.name} fill className="object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                      <p className="text-xs text-gray-400">Qtd: {item.quantity}{item.color ? ` • ${item.color}` : ""}{item.size ? ` • ${item.size}` : ""}</p>
-                    </div>
-                    <p className="text-sm font-bold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-3">
-                <button onClick={() => setStep(2)} className="btn-outline flex-1">Voltar</button>
                 <button
-                  onClick={handleFinishOrder}
+                  onClick={handlePagar}
                   disabled={processing}
-                  className="btn-primary flex-1 py-4"
+                  className="btn-primary flex-1 py-4 gap-2"
                 >
-                  {processing ? <><Loader2 size={18} className="animate-spin" /> Processando...</> : <><Lock size={18} /> Confirmar pedido</>}
+                  {processing ? (
+                    <><Loader2 size={18} className="animate-spin" /> Aguarde...</>
+                  ) : (
+                    <><Lock size={18} /> Pagar com Mercado Pago</>
+                  )}
                 </button>
               </div>
             </div>
@@ -485,7 +407,7 @@ export default function CheckoutPage() {
               className="w-full flex items-center justify-between p-4 font-bold text-gray-900 lg:cursor-default"
               onClick={() => setOrderSummaryOpen(!orderSummaryOpen)}
             >
-              <span>Resumo do pedido ({items.length} {items.length === 1 ? "item" : "itens"})</span>
+              <span>Resumo ({items.length} {items.length === 1 ? "item" : "itens"})</span>
               <span className="lg:hidden">{orderSummaryOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</span>
             </button>
 
@@ -530,14 +452,9 @@ export default function CheckoutPage() {
                     {isFirstPurchase ? "Grátis" : formatCurrency(shipping)}
                   </span>
                 </div>
-                {paymentMethod === "PIX" && (
-                  <div className="flex justify-between text-green-600 font-medium">
-                    <span>Desconto PIX (5%)</span><span>-{formatCurrency(total * 0.05)}</span>
-                  </div>
-                )}
                 <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900 text-base">
                   <span>Total</span>
-                  <span>{formatCurrency(paymentMethod === "PIX" ? total * 0.95 : total)}</span>
+                  <span>{formatCurrency(total)}</span>
                 </div>
               </div>
             </div>
