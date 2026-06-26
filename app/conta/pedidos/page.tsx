@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { ShoppingBag, ChevronRight } from "lucide-react";
 import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+import { AvaliarCompra } from "@/components/reviews/AvaliarCompra";
 
 export default async function PedidosPage() {
   const session = await getServerSession(authOptions);
@@ -15,6 +16,7 @@ export default async function PedidosPage() {
     include: {
       items: { include: { product: true } },
       address: true,
+      reviews: { select: { productId: true } },
     },
   });
 
@@ -33,44 +35,62 @@ export default async function PedidosPage() {
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
-          {orders.map((order) => (
-            <div key={order.id} className="p-5">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <p className="font-bold text-gray-900">Pedido #{order.id.slice(-8).toUpperCase()}</p>
-                    <span className={`badge ${ORDER_STATUS_COLORS[order.status]}`}>
-                      {ORDER_STATUS_LABELS[order.status]}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1">{formatDate(order.createdAt)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
-                  <p className="text-xs text-gray-400">{order.items.length} {order.items.length === 1 ? "item" : "itens"}</p>
-                </div>
-              </div>
+          {orders.map((order) => {
+            const reviewedProductIds = new Set(order.reviews.map((r) => r.productId));
+            const unreviewedItems = order.status === "DELIVERED"
+              ? order.items.filter((item) => !reviewedProductIds.has(item.productId))
+              : [];
 
-              {/* Produtos do pedido */}
-              <div className="space-y-2">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 text-sm">
-                    <Link href={`/produtos/${item.product.slug}`} className="flex items-center gap-2 hover:text-brand-700 transition-colors flex-1 min-w-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
-                      <span className="truncate">{item.product.name}</span>
-                      <span className="text-gray-400 flex-shrink-0">×{item.quantity}</span>
-                    </Link>
-                    <span className="text-gray-600 font-medium flex-shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+            return (
+              <div key={order.id} className="p-5">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <p className="font-bold text-gray-900">Pedido #{order.id.slice(-8).toUpperCase()}</p>
+                      <span className={`badge ${ORDER_STATUS_COLORS[order.status]}`}>
+                        {ORDER_STATUS_LABELS[order.status]}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">{formatDate(order.createdAt)}</p>
                   </div>
-                ))}
-              </div>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
+                    <p className="text-xs text-gray-400">{order.items.length} {order.items.length === 1 ? "item" : "itens"}</p>
+                  </div>
+                </div>
 
-              {/* Endereço */}
-              <p className="text-xs text-gray-400 mt-3">
-                Entrega: {order.address.city}/{order.address.state}
-              </p>
-            </div>
-          ))}
+                {/* Produtos do pedido */}
+                <div className="space-y-2">
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 text-sm">
+                      <Link href={`/produtos/${item.product.slug}`} className="flex items-center gap-2 hover:text-brand-700 transition-colors flex-1 min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                        <span className="truncate">{item.product.name}</span>
+                        <span className="text-gray-400 flex-shrink-0">×{item.quantity}</span>
+                      </Link>
+                      <span className="text-gray-600 font-medium flex-shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Endereço */}
+                <p className="text-xs text-gray-400 mt-3">
+                  Entrega: {order.address.city}/{order.address.state}
+                </p>
+
+                {/* Avaliação — só aparece após entrega e se ainda houver produtos não avaliados */}
+                {unreviewedItems.length > 0 && (
+                  <AvaliarCompra
+                    orderId={order.id}
+                    items={unreviewedItems.map((item) => ({
+                      productId: item.productId,
+                      productName: item.product.name,
+                    }))}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
