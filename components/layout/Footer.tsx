@@ -90,15 +90,34 @@ export function Footer() {
               <ul className="space-y-3 text-xs sm:text-sm">
                 <li className="flex items-start gap-2">
                   <Phone size={13} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                  <span className="break-words">(21) 96666-8724<br /><span className="text-xs text-gray-500">WhatsApp</span></span>
+                  <a
+                    href="https://wa.me/5521966668724"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="break-words hover:text-brand-400 transition-colors"
+                  >
+                    (21) 96666-8724<br /><span className="text-xs text-gray-500">WhatsApp</span>
+                  </a>
                 </li>
                 <li className="flex items-start gap-2">
                   <Mail size={13} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                  <span className="break-all">contato@heartscouro.com.br</span>
+                  <a
+                    href="mailto:contato@heartscouro.com.br"
+                    className="break-all hover:text-brand-400 transition-colors"
+                  >
+                    contato@heartscouro.com.br
+                  </a>
                 </li>
                 <li className="flex items-start gap-2">
                   <MapPin size={13} className="text-brand-400 mt-0.5 flex-shrink-0" />
-                  <span className="break-words">Rua Des. Omar Dutra, 60<br />Rio de Janeiro, RJ</span>
+                  <a
+                    href="https://www.google.com/maps/search/Rua+Des.+Omar+Dutra,+60,+Rio+de+Janeiro,+RJ"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="break-words hover:text-brand-400 transition-colors"
+                  >
+                    Rua Des. Omar Dutra, 60<br />Rio de Janeiro, RJ
+                  </a>
                 </li>
               </ul>
               <div className="mt-5 p-3 bg-gray-900 rounded-xl">
