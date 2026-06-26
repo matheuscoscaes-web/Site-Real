@@ -357,9 +357,6 @@ export function ProductForm({ product }: { product?: ProductData }) {
               <Plus size={16} /> Adicionar mais foto
             </button>
 
-            <p className="text-xs text-gray-400">
-              💡 Dica: use imagens do <a href="https://unsplash.com" target="_blank" className="text-brand-600 underline">Unsplash</a> (gratuitas) ou faça upload em serviços como Imgur, Cloudinary ou ImgBB e cole a URL aqui.
-            </p>
           </Section>
 
           {/* VARIAÇÕES — COR, TAMANHO E ESTOQUE */}
