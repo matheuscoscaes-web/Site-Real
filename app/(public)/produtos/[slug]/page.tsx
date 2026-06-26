@@ -4,6 +4,9 @@ import { ProductDetail } from "./ProductDetail";
 import { ProductCard } from "@/components/products/ProductCard";
 import { AvaliacoesSection } from "./AvaliacoesSection";
 
+export const revalidate = 60;
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
   const products = await prisma.product.findMany({ select: { slug: true } });
   return products.map((p) => ({ slug: p.slug }));
