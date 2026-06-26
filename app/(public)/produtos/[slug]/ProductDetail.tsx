@@ -6,6 +6,7 @@ import { useCartStore } from "@/store/cartStore";
 import { formatCurrency } from "@/lib/utils";
 import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check } from "lucide-react";
 import { Product, ProductImage, ProductVariant } from "@/types";
+import { AvaliacoesBadge } from "./AvaliacoesSection";
 
 interface ProductWithVariants extends Product {
   variants: ProductVariant[];
@@ -111,13 +112,8 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
         </h1>
 
         {/* Rating */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex gap-0.5">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Star key={s} size={14} className={s <= 4 ? "fill-amber-400 text-amber-400" : "fill-gray-200 text-gray-200"} />
-            ))}
-          </div>
-          <span className="text-sm text-gray-500">4.8 (47 avaliações)</span>
+        <div className="mb-4">
+          <AvaliacoesBadge productId={product.id} />
         </div>
 
         {/* Preço */}

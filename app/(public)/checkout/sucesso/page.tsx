@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import Link from "next/link";
 import { CheckCircle, Package, ArrowRight, Mail } from "lucide-react";
 import { formatCurrency, formatDate, ORDER_STATUS_LABELS, PAYMENT_LABELS } from "@/lib/utils";
+import { AvaliarCompra } from "./AvaliarCompra";
 
 export default async function SucessoPage({
   searchParams,
@@ -9,6 +12,7 @@ export default async function SucessoPage({
   searchParams: Promise<{ pedido?: string }>;
 }) {
   const { pedido } = await searchParams;
+  const session = await getServerSession(authOptions);
 
   const order = pedido
     ? await prisma.order.findUnique({
@@ -139,6 +143,17 @@ export default async function SucessoPage({
           </p>
           <p className="text-xs text-green-600 mt-2">Válido por 30 minutos</p>
         </div>
+      )}
+
+      {/* Avaliação de produtos (só para usuários logados) */}
+      {session && session.user.id === order.userId && (
+        <AvaliarCompra
+          orderId={order.id}
+          items={order.items.map((item) => ({
+            productId: item.productId,
+            productName: item.product.name,
+          }))}
+        />
       )}
 
       {/* Ações */}

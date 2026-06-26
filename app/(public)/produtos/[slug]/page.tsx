@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ProductDetail } from "./ProductDetail";
 import { ProductCard } from "@/components/products/ProductCard";
+import { AvaliacoesSection } from "./AvaliacoesSection";
 
 export async function generateStaticParams() {
   const products = await prisma.product.findMany({ select: { slug: true } });
@@ -48,6 +49,8 @@ export default async function ProdutoPage({
       </nav>
 
       <ProductDetail product={product} />
+
+      <AvaliacoesSection productId={product.id} />
 
       {/* Produtos relacionados */}
       {related.length > 0 && (

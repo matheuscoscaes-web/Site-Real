@@ -104,6 +104,7 @@ model User {
   addresses Address[]
   vendor    Vendor?
   reseller  Reseller?
+  reviews   Review[]
 
   @@map("users")
 }
@@ -157,6 +158,7 @@ model Product {
 
   variants   ProductVariant[]
   orderItems OrderItem[]
+  reviews    Review[]
 
   @@map("products")
 }
@@ -215,6 +217,7 @@ model Order {
   items    OrderItem[]
   vendor   Vendor?   @relation(fields: [vendorId], references: [id])
   reseller Reseller? @relation(fields: [resellerId], references: [id])
+  reviews  Review[]
 
   @@map("orders")
 }
@@ -241,4 +244,21 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id])
 
   @@map("order_items")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  orderId   String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, productId])
+  @@map("reviews")
 }
