@@ -25,7 +25,8 @@ function parseImages(raw: string): ProductImage[] {
 
 export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const addItem = useCartStore((s) => s.addItem);
-  const { toggle: toggleWishlist, isLiked } = useWishlistStore();
+  const toggleWishlist = useWishlistStore((s) => s.toggle);
+  const liked = useWishlistStore((s) => s.items.some((i) => i.productId === product.id));
 
   const images = parseImages(product.images);
   const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])];
@@ -36,8 +37,6 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const [selectedSize, setSelectedSize] = useState(sizes[0] || "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-
-  const liked = isLiked(product.id);
 
   function handleColorSelect(color: string) {
     setSelectedColor(color);

@@ -24,11 +24,13 @@ export const useWishlistStore = create<WishlistStore>()(
       items: [],
 
       toggle: (item) => {
-        const exists = get().items.some((i) => i.productId === item.productId);
-        set({
-          items: exists
-            ? get().items.filter((i) => i.productId !== item.productId)
-            : [...get().items, item],
+        set((state) => {
+          const exists = state.items.some((i) => i.productId === item.productId);
+          return {
+            items: exists
+              ? state.items.filter((i) => i.productId !== item.productId)
+              : [...state.items, item],
+          };
         });
       },
 
