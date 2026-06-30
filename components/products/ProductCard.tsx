@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+
 import { Heart, ShoppingBag, Star } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
+import { useWishlistStore } from "@/store/wishlistStore";
 import { Product } from "@/types";
 
 interface ProductCardProps {
@@ -15,7 +17,8 @@ interface ProductCardProps {
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
-  const [liked, setLiked] = useState(false);
+  const toggleWishlist = useWishlistStore((s) => s.toggle);
+  const liked = useWishlistStore((s) => s.items.some((i) => i.productId === product.id));
   const [added, setAdded] = useState(false);
 
   const rawImages = JSON.parse(product.images) as Array<string | { url: string; color?: string }>;
@@ -71,7 +74,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
           {/* Favorito */}
           <button
-            onClick={(e) => { e.preventDefault(); setLiked(!liked); }}
+            onClick={(e) => { e.preventDefault(); toggleWishlist({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: mainImage }); }}
             className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition-transform"
             aria-label="Favoritar"
           >
