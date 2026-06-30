@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { formatCurrency } from "@/lib/utils";
-import { calcularFrete, type FreteOption } from "@/lib/frete";
+import { type FreteOption } from "@/lib/frete";
 import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } from "lucide-react";
 
 export default function CarrinhoPage() {
@@ -37,9 +37,15 @@ export default function CarrinhoPage() {
     setFreteOptions([]);
     setSelectedFrete(null);
     try {
-      const options = await calcularFrete(cep, items.reduce((s, i) => s + i.quantity, 0));
-      setFreteOptions(options);
-      setSelectedFrete(options[0]);
+      const res = await fetch("/api/frete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cep, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data)) throw new Error(data.error ?? "Erro");
+      setFreteOptions(data);
+      setSelectedFrete(data[0] ?? null);
     } catch {
       setFreteError("Não foi possível calcular o frete. Verifique o CEP.");
     } finally {
