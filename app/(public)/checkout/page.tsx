@@ -55,6 +55,9 @@ export default function CheckoutPage() {
   const [boletoData, setBoletoData] = useState<BoletoData | null>(null);
   const [copied, setCopied] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [paymentTab, setPaymentTab] = useState<"PIX" | "CARD">("PIX");
+  const [pixDireto, setPixDireto] = useState<{ emv: string; qrBase64: string } | null>(null);
+  const [loadingPixDireto, setLoadingPixDireto] = useState(false);
 
   const sub = subtotal();
   const firstDiscount = isFirstPurchase ? sub * 0.4 : 0;
@@ -211,6 +214,20 @@ export default function CheckoutPage() {
     } catch {
       setErro("Erro ao processar pagamento. Tente novamente.");
     }
+  }
+
+  async function gerarPixDireto() {
+    if (!currentOrderId) return;
+    setLoadingPixDireto(true);
+    try {
+      const res = await fetch("/api/pix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ valor: total, txid: currentOrderId }),
+      });
+      const data = await res.json();
+      if (data.emv) setPixDireto(data);
+    } catch { /* ignora */ } finally { setLoadingPixDireto(false); }
   }
 
   async function copyPix(text: string) {
@@ -430,11 +447,10 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Passo 2: Brick de pagamento */}
+          {/* Passo 2: Forma de pagamento */}
           {step === 2 && (
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-1">Forma de pagamento</h2>
-              <p className="text-sm text-gray-500 mb-5">PIX, cartão de crédito ou boleto — tudo aqui mesmo.</p>
 
               <div className="p-4 bg-gray-50 rounded-xl mb-5 text-sm text-gray-700">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Endereço de entrega</p>
@@ -443,11 +459,78 @@ export default function CheckoutPage() {
                 <button onClick={() => setStep(1)} className="block text-xs text-brand-600 underline mt-1">Alterar</button>
               </div>
 
-              <MercadoPagoBrick
-                amount={total}
-                onSubmit={handlePaymentSubmit}
-                onError={() => setErro("Erro no componente de pagamento. Tente recarregar a página.")}
-              />
+              {/* Abas */}
+              <div className="flex gap-2 mb-6">
+                <button
+                  onClick={() => { setPaymentTab("PIX"); setPixDireto(null); }}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm border-2 transition-all ${
+                    paymentTab === "PIX" ? "border-brand-700 bg-brand-50 text-brand-700" : "border-gray-200 text-gray-500 hover:border-gray-300"
+                  }`}
+                >
+                  PIX
+                </button>
+                <button
+                  onClick={() => setPaymentTab("CARD")}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm border-2 transition-all ${
+                    paymentTab === "CARD" ? "border-brand-700 bg-brand-50 text-brand-700" : "border-gray-200 text-gray-500 hover:border-gray-300"
+                  }`}
+                >
+                  Cartão / Boleto
+                </button>
+              </div>
+
+              {/* PIX direto */}
+              {paymentTab === "PIX" && (
+                <div className="text-center">
+                  {!pixDireto && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-600">
+                        Pague <span className="font-bold text-gray-900">{formatCurrency(total)}</span> via PIX e envie o comprovante no WhatsApp para confirmar seu pedido.
+                      </p>
+                      <button
+                        onClick={gerarPixDireto}
+                        disabled={loadingPixDireto}
+                        className="btn-primary gap-2"
+                      >
+                        {loadingPixDireto ? <><Loader2 size={16} className="animate-spin" /> Gerando...</> : "Gerar QR Code PIX"}
+                      </button>
+                    </div>
+                  )}
+
+                  {pixDireto && (
+                    <div className="space-y-4">
+                      <div className="flex justify-center">
+                        <img src={pixDireto.qrBase64} alt="QR Code PIX" className="w-52 h-52 rounded-2xl border-4 border-gray-100" />
+                      </div>
+                      <p className="text-sm font-semibold text-gray-700">
+                        Valor: <span className="text-brand-700">{formatCurrency(total)}</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mb-1">Ou copie o código PIX:</p>
+                      <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs font-mono text-gray-700 break-all text-left">
+                        {pixDireto.emv}
+                      </div>
+                      <button onClick={() => copyPix(pixDireto.emv)} className="btn-outline gap-2">
+                        {copied ? <><CheckCheck size={16} /> Copiado!</> : <><Copy size={16} /> Copiar código PIX</>}
+                      </button>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Após pagar, envie o comprovante no WhatsApp para confirmarmos seu pedido.
+                      </p>
+                      <button onClick={() => { clearCart(); router.push(`/checkout/sucesso?pedido=${currentOrderId}`); }} className="btn-primary w-full mt-2">
+                        Já paguei — ver meu pedido
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cartão / Boleto via Mercado Pago */}
+              {paymentTab === "CARD" && (
+                <MercadoPagoBrick
+                  amount={total}
+                  onSubmit={handlePaymentSubmit}
+                  onError={() => setErro("Erro no componente de pagamento. Tente recarregar a página.")}
+                />
+              )}
             </div>
           )}
 
