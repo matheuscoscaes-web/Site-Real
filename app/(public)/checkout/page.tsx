@@ -23,6 +23,11 @@ interface Address {
   district: string; city: string; state: string; zipCode: string;
 }
 
+interface SavedAddress extends Address {
+  id: string;
+  isDefault: boolean;
+}
+
 interface PixData {
   orderId: string;
   qrCode: string;
@@ -58,6 +63,8 @@ export default function CheckoutPage() {
   const [paymentTab, setPaymentTab] = useState<"PIX" | "CARD">("PIX");
   const [pixDireto, setPixDireto] = useState<{ qrCode: string; qrBase64: string } | null>(null);
   const [loadingPixDireto, setLoadingPixDireto] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | "new" | null>(null);
 
   const sub = subtotal();
   const firstDiscount = isFirstPurchase ? sub * 0.4 : 0;
@@ -75,6 +82,20 @@ export default function CheckoutPage() {
     fetch("/api/pedidos/primeiro-desconto")
       .then((r) => r.json())
       .then((d: { isFirstPurchase: boolean }) => setIsFirstPurchase(d.isFirstPurchase))
+      .catch(() => {});
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/clientes/me/enderecos")
+      .then((r) => r.json())
+      .then((data: SavedAddress[]) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setSavedAddresses(data);
+        const def = data.find((a) => a.isDefault) ?? data[0];
+        setSelectedAddressId(def.id);
+        setAddress({ name: def.name, street: def.street, number: def.number, complement: def.complement ?? "", district: def.district, city: def.city, state: def.state, zipCode: def.zipCode });
+      })
       .catch(() => {});
   }, [status]);
 
@@ -98,6 +119,27 @@ export default function CheckoutPage() {
         <Loader2 className="animate-spin text-brand-700" size={40} />
       </div>
     );
+  }
+
+  async function handleSelectSavedAddress(id: string) {
+    setSelectedAddressId(id);
+    const addr = savedAddresses.find((a) => a.id === id);
+    if (!addr) return;
+    setAddress({ name: addr.name, street: addr.street, number: addr.number, complement: addr.complement ?? "", district: addr.district, city: addr.city, state: addr.state, zipCode: addr.zipCode });
+    if (!isFirstPurchase && addr.zipCode) {
+      setLoadingFrete(true);
+      setShippingOptions([]);
+      setSelectedShipping(null);
+      try {
+        const res = await fetch("/api/frete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cep: addr.zipCode, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
+        });
+        const data = await res.json();
+        if (Array.isArray(data)) setShippingOptions(data);
+      } catch { /* ignora */ } finally { setLoadingFrete(false); }
+    }
   }
 
   async function handleCepBlur() {
@@ -299,6 +341,55 @@ export default function CheckoutPage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-5">Endereço de entrega</h2>
 
+              {/* Endereços salvos */}
+              {savedAddresses.length > 0 && (
+                <div className="mb-5">
+                  <label className="label mb-1.5">Endereços salvos</label>
+                  <div className="space-y-2">
+                    {savedAddresses.map((addr) => (
+                      <label
+                        key={addr.id}
+                        className={`flex items-start gap-3 border-2 rounded-xl px-4 py-3 cursor-pointer transition-all ${
+                          selectedAddressId === addr.id
+                            ? "border-brand-700 bg-brand-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="savedAddress"
+                          checked={selectedAddressId === addr.id}
+                          onChange={() => handleSelectSavedAddress(addr.id)}
+                          className="accent-brand-700 mt-0.5"
+                        />
+                        <div className="text-sm">
+                          <p className="font-semibold text-gray-900">{addr.name}</p>
+                          <p className="text-gray-500 text-xs">{addr.street}, {addr.number}{addr.complement ? `, ${addr.complement}` : ""} — {addr.district}, {addr.city}/{addr.state} — CEP {addr.zipCode}</p>
+                        </div>
+                      </label>
+                    ))}
+                    <label
+                      className={`flex items-center gap-3 border-2 rounded-xl px-4 py-3 cursor-pointer transition-all ${
+                        selectedAddressId === "new"
+                          ? "border-brand-700 bg-brand-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="savedAddress"
+                        checked={selectedAddressId === "new"}
+                        onChange={() => { setSelectedAddressId("new"); setAddress({ name: "Casa", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" }); setShippingOptions([]); setSelectedShipping(null); }}
+                        className="accent-brand-700"
+                      />
+                      <span className="text-sm font-semibold text-gray-700">Usar outro endereço</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Formulário (sempre visível para edição) */}
+              {(selectedAddressId === "new" || savedAddresses.length === 0) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="label">CEP *</label>
@@ -351,6 +442,7 @@ export default function CheckoutPage() {
                   </select>
                 </div>
               </div>
+              )}
 
               {/* Frete */}
               {!isFirstPurchase && (
