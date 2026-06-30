@@ -56,7 +56,7 @@ export default function CheckoutPage() {
   const [copied, setCopied] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [paymentTab, setPaymentTab] = useState<"PIX" | "CARD">("PIX");
-  const [pixDireto, setPixDireto] = useState<{ emv: string; qrBase64: string } | null>(null);
+  const [pixDireto, setPixDireto] = useState<{ qrCode: string; qrBase64: string } | null>(null);
   const [loadingPixDireto, setLoadingPixDireto] = useState(false);
 
   const sub = subtotal();
@@ -223,11 +223,12 @@ export default function CheckoutPage() {
       const res = await fetch("/api/pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ valor: total, txid: currentOrderId }),
+        body: JSON.stringify({ valor: total, orderId: currentOrderId }),
       });
       const data = await res.json();
-      if (data.emv) setPixDireto(data);
-    } catch { /* ignora */ } finally { setLoadingPixDireto(false); }
+      if (data.qrCode) setPixDireto(data);
+      else setErro(data.error ?? "Erro ao gerar PIX");
+    } catch { setErro("Erro ao gerar PIX. Tente novamente."); } finally { setLoadingPixDireto(false); }
   }
 
   async function copyPix(text: string) {
@@ -500,20 +501,24 @@ export default function CheckoutPage() {
                   {pixDireto && (
                     <div className="space-y-4">
                       <div className="flex justify-center">
-                        <img src={pixDireto.qrBase64} alt="QR Code PIX" className="w-52 h-52 rounded-2xl border-4 border-gray-100" />
+                        <img
+                          src={`data:image/png;base64,${pixDireto.qrBase64}`}
+                          alt="QR Code PIX"
+                          className="w-52 h-52 rounded-2xl border-4 border-gray-100"
+                        />
                       </div>
                       <p className="text-sm font-semibold text-gray-700">
                         Valor: <span className="text-brand-700">{formatCurrency(total)}</span>
                       </p>
-                      <p className="text-xs text-gray-500 mb-1">Ou copie o código PIX:</p>
+                      <p className="text-xs text-gray-500 mb-1">Ou copie o código PIX (copia e cola):</p>
                       <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs font-mono text-gray-700 break-all text-left">
-                        {pixDireto.emv}
+                        {pixDireto.qrCode}
                       </div>
-                      <button onClick={() => copyPix(pixDireto.emv)} className="btn-outline gap-2">
+                      <button onClick={() => copyPix(pixDireto.qrCode)} className="btn-outline gap-2">
                         {copied ? <><CheckCheck size={16} /> Copiado!</> : <><Copy size={16} /> Copiar código PIX</>}
                       </button>
                       <p className="text-xs text-gray-400 mt-2">
-                        Após pagar, envie o comprovante no WhatsApp para confirmarmos seu pedido.
+                        O pagamento é confirmado automaticamente. Após pagar, clique abaixo para acompanhar seu pedido.
                       </p>
                       <button onClick={() => { clearCart(); router.push(`/checkout/sucesso?pedido=${currentOrderId}`); }} className="btn-primary w-full mt-2">
                         Já paguei — ver meu pedido

@@ -1,20 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import QRCode from "qrcode";
-import { gerarPixEMV } from "@/lib/pix";
+import { MercadoPagoConfig, Payment } from "mercadopago";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
 export async function POST(request: NextRequest) {
-  const { valor, txid } = await request.json();
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const chave = process.env.PIX_CHAVE;
-  const nome = process.env.PIX_NOME ?? "Hearts Couro";
-  const cidade = process.env.PIX_CIDADE ?? "Rio de Janeiro";
+  const { valor, orderId } = await request.json();
 
-  if (!chave) {
-    return NextResponse.json({ error: "PIX não configurado" }, { status: 500 });
+  const payment = new Payment(client);
+
+  const result = await payment.create({
+    body: {
+      payment_method_id: "pix",
+      transaction_amount: Number(valor),
+      description: "Hearts Couro",
+      external_reference: orderId,
+      notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,
+      payer: { email: session.user.email },
+    },
+    requestOptions: { idempotencyKey: `pix-${orderId}` },
+  });
+
+  if (orderId) {
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { status: "PENDING" },
+    });
   }
 
-  const emv = gerarPixEMV({ chave, nome, cidade, valor, txid });
-  const qrBase64 = await QRCode.toDataURL(emv, { width: 300, margin: 2 });
+  const qrCode = result.point_of_interaction?.transaction_data?.qr_code ?? null;
+  const qrBase64 = result.point_of_interaction?.transaction_data?.qr_code_base64 ?? null;
 
-  return NextResponse.json({ emv, qrBase64 });
+  if (!qrCode) {
+    return NextResponse.json({ error: "Erro ao gerar PIX" }, { status: 500 });
+  }
+
+  return NextResponse.json({ qrCode, qrBase64 });
 }
