@@ -137,7 +137,10 @@ export default function CheckoutPage() {
           body: JSON.stringify({ cep: addr.zipCode, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
         });
         const data = await res.json();
-        if (Array.isArray(data)) setShippingOptions(data);
+        if (Array.isArray(data)) {
+          setShippingOptions(data);
+          if (data.length === 1) setSelectedShipping(data[0]);
+        }
       } catch { /* ignora */ } finally { setLoadingFrete(false); }
     }
   }
@@ -163,7 +166,10 @@ export default function CheckoutPage() {
           body: JSON.stringify({ cep: address.zipCode, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
         });
         const data = await res.json();
-        if (Array.isArray(data)) setShippingOptions(data);
+        if (Array.isArray(data)) {
+          setShippingOptions(data);
+          if (data.length === 1) setSelectedShipping(data[0]);
+        }
       } catch { /* ignora */ } finally { setLoadingFrete(false); }
     }
   }
