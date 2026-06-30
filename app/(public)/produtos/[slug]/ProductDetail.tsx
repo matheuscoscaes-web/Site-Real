@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
+import { useWishlistStore } from "@/store/wishlistStore";
 import { formatCurrency } from "@/lib/utils";
 import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check } from "lucide-react";
 import { Product, ProductImage, ProductVariant } from "@/types";
@@ -24,6 +25,7 @@ function parseImages(raw: string): ProductImage[] {
 
 export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const addItem = useCartStore((s) => s.addItem);
+  const { toggle: toggleWishlist, isLiked } = useWishlistStore();
 
   const images = parseImages(product.images);
   const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])];
@@ -34,7 +36,8 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const [selectedSize, setSelectedSize] = useState(sizes[0] || "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-  const [liked, setLiked] = useState(false);
+
+  const liked = isLiked(product.id);
 
   function handleColorSelect(color: string) {
     setSelectedColor(color);
@@ -76,7 +79,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
             priority
           />
           <button
-            onClick={() => setLiked(!liked)}
+            onClick={() => toggleWishlist({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0]?.url || "" })}
             className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
           >
             <Heart size={18} className={liked ? "fill-brand-700 text-brand-700" : "text-gray-400"} />

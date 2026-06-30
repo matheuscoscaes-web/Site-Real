@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
+import { useWishlistStore } from "@/store/wishlistStore";
 import {
   ShoppingBag, Search, User, Menu, X, Heart, ChevronDown, LogOut, Package, Settings,
 } from "lucide-react";
@@ -20,8 +21,10 @@ const navLinks = [
 export function Header() {
   const { data: session } = useSession();
   const totalItems = useCartStore((s) => s.totalItems);
+  const wishlist = useWishlistStore((s) => s.items);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [wishlistOpen, setWishlistOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
@@ -83,9 +86,46 @@ export function Header() {
             </button>
 
             {/* Favoritos */}
-            <button className="p-2 text-gray-600 hover:text-brand-700 transition-colors hidden md:flex" aria-label="Favoritos">
-              <Heart size={20} />
-            </button>
+            <div className="relative hidden md:block">
+              <button
+                onClick={() => { setWishlistOpen(!wishlistOpen); setUserMenuOpen(false); }}
+                className="p-2 text-gray-600 hover:text-brand-700 transition-colors relative"
+                aria-label="Favoritos"
+              >
+                <Heart size={20} className={wishlist.length > 0 ? "fill-brand-700 text-brand-700" : ""} />
+                {wishlist.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-brand-700 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {wishlist.length > 9 ? "9+" : wishlist.length}
+                  </span>
+                )}
+              </button>
+
+              {wishlistOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-50">
+                  <p className="px-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">Favoritos</p>
+                  {wishlist.length === 0 ? (
+                    <p className="px-4 py-4 text-sm text-gray-400 text-center">Nenhum favorito ainda.</p>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                      {wishlist.map((item) => (
+                        <Link
+                          key={item.productId}
+                          href={`/produtos/${item.slug}`}
+                          onClick={() => setWishlistOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-brand-50 transition-colors"
+                        >
+                          <img src={item.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
+                            <p className="text-xs text-brand-700 font-bold">{new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.price)}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Usuário */}
             <div className="relative">
