@@ -252,7 +252,18 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
         </div>
 
         {/* Share */}
-        <button className="flex items-center gap-2 text-sm text-gray-400 hover:text-brand-700 transition-colors mt-4">
+        <button
+          onClick={async () => {
+            const url = window.location.href;
+            if (navigator.share) {
+              await navigator.share({ title: product.name, url });
+            } else {
+              await navigator.clipboard.writeText(url);
+              alert("Link copiado!");
+            }
+          }}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-brand-700 transition-colors mt-4"
+        >
           <Share2 size={16} /> Compartilhar
         </button>
       </div>
