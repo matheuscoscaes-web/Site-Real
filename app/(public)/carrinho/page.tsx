@@ -37,7 +37,7 @@ export default function CarrinhoPage() {
     setFreteOptions([]);
     setSelectedFrete(null);
     try {
-      const options = await calcularFrete(cep, sub);
+      const options = await calcularFrete(cep, items.reduce((s, i) => s + i.quantity, 0));
       setFreteOptions(options);
       setSelectedFrete(options[0]);
     } catch {
@@ -223,17 +223,17 @@ export default function CarrinhoPage() {
             {freteOptions.length > 0 && (
               <div className="space-y-2">
                 {freteOptions.map((opt) => (
-                  <label key={opt.code} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedFrete?.code === opt.code ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <label key={opt.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedFrete?.id === opt.id ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-gray-300"}`}>
                     <div className="flex items-center gap-3">
                       <input
                         type="radio"
                         name="frete"
-                        checked={selectedFrete?.code === opt.code}
+                        checked={selectedFrete?.id === opt.id}
                         onChange={() => setSelectedFrete(opt)}
                         className="accent-brand-700"
                       />
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">{opt.name}</p>
+                        <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
                         <p className="text-xs text-gray-500">{opt.days} dias úteis</p>
                       </div>
                     </div>

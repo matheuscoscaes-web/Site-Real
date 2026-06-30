@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { address, paymentMethod, items, subtotal, shipping, couponCode } = body;
+  const { address, paymentMethod, items, subtotal, shipping, couponCode, shippingServiceId, shippingService, shippingCarrier } = body;
 
   // Primeira compra
   const orderCount = await prisma.order.count({
@@ -89,6 +89,9 @@ export async function POST(request: NextRequest) {
       vendorId,
       resellerId,
       commissionValue,
+      shippingServiceId: shippingServiceId ?? null,
+      shippingService: shippingService ?? null,
+      shippingCarrier: shippingCarrier ?? null,
       items: {
         create: items.map((item: { productId: string; quantity: number; price: number; color?: string; size?: string }) => ({
           productId: item.productId,

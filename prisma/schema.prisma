@@ -195,22 +195,26 @@ model Address {
 }
 
 model Order {
-  id              String   @id @default(cuid())
-  userId          String
-  addressId       String
-  status          String   @default("PENDING")
-  paymentMethod   String
-  subtotal        Float
-  shipping        Float
-  total           Float
-  notes           String?
-  couponCode      String?
-  couponDiscount  Float?
-  vendorId        String?
-  resellerId      String?
-  commissionValue Float?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String
+  addressId         String
+  status            String   @default("PENDING")
+  paymentMethod     String
+  subtotal          Float
+  shipping          Float
+  total             Float
+  notes             String?
+  couponCode        String?
+  couponDiscount    Float?
+  vendorId          String?
+  resellerId        String?
+  commissionValue   Float?
+  shippingService   String?
+  shippingCarrier   String?
+  shippingServiceId Int?
+  melhorEnvioId     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   user     User      @relation(fields: [userId], references: [id])
   address  Address   @relation(fields: [addressId], references: [id])

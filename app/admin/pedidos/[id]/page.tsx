@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { UpdateStatusButton } from "./UpdateStatusButton";
+import { MelhorEnvioButton } from "./MelhorEnvioButton";
 
 const STATUS_OPTIONS = ["PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
@@ -133,6 +134,21 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-bold text-gray-900 mb-3">Pagamento</h2>
             <p className="text-sm text-gray-700">{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}</p>
+          </div>
+
+          {/* Envio */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h2 className="font-bold text-gray-900 mb-3">Envio</h2>
+            {order.shippingService ? (
+              <p className="text-sm text-gray-700 mb-4">
+                {order.shippingCarrier} — {order.shippingService}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-400 mb-4">Serviço não informado</p>
+            )}
+            {order.shippingServiceId && (
+              <MelhorEnvioButton orderId={order.id} melhorEnvioId={order.melhorEnvioId ?? null} />
+            )}
           </div>
         </div>
       </div>
