@@ -43,13 +43,15 @@ export async function calcularFrete(cep: string, totalItems: number = 1): Promis
 
   const data = await res.json();
 
+  const ALLOWED = ["PAC", "SEDEX"];
+
   return (data as Record<string, unknown>[])
-    .filter((s) => !s.error)
+    .filter((s) => !s.error && ALLOWED.includes(s.name as string))
     .map((s) => ({
       id: s.id as number,
       name: s.name as string,
       company: (s.company as { name: string }).name,
-      price: parseFloat(s.price as string),
+      price: parseFloat(s.price as string) + 7,
       days: s.delivery_time as number,
     }))
     .sort((a, b) => a.price - b.price);
