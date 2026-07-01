@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { slugify, CATEGORIES, COLORS, SIZES } from "@/lib/utils";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
-  ChevronUp, ChevronDown, Tag, Package, Info, Star, Upload,
+  ChevronUp, ChevronDown, Package, Info, Star, Upload,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -70,9 +70,33 @@ export function ProductForm({ product }: { product?: ProductData }) {
     } catch { return [{ url: "", color: "" }]; }
   }
 
-  const initialVariants: Variant[] = product?.variants && product.variants.length > 0
-    ? product.variants.map((v) => ({ color: v.color ?? "", size: v.size ?? "", stock: v.stock }))
-    : [{ color: "", size: "", stock: 0 }];
+  // Cada linha junta foto + cor + tamanho + estoque, pra não repetir a cor em dois lugares
+  type Row = { url: string; color: string; size: string; stock: number };
+  function buildInitialRows(): Row[] {
+    const images = parseFormImages(product?.images);
+    const variants = product?.variants ?? [];
+
+    if (variants.length > 0) {
+      const used = new Set<number>();
+      const rows: Row[] = variants.map((v) => {
+        const color = v.color ?? "";
+        const imgIdx = images.findIndex((img, idx) => !used.has(idx) && color && img.color === color);
+        let url = "";
+        if (imgIdx !== -1) { url = images[imgIdx].url; used.add(imgIdx); }
+        return { url, color, size: v.size ?? "", stock: v.stock ?? 0 };
+      });
+      images.forEach((img, idx) => {
+        if (!used.has(idx)) rows.push({ url: img.url, color: img.color, size: "", stock: 0 });
+      });
+      return rows;
+    }
+
+    if (images.length > 0) {
+      return images.map((img) => ({ url: img.url, color: img.color, size: "", stock: 0 }));
+    }
+
+    return [{ url: "", color: "", size: "", stock: product?.stock ?? 0 }];
+  }
 
   const [form, setForm] = useState({
     name: product?.name || "",
@@ -85,8 +109,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     featured: product?.featured ?? false,
   });
 
-  const [images, setImages] = useState<ProductImg[]>(parseFormImages(product?.images));
-  const [variants, setVariants] = useState<Variant[]>(initialVariants);
+  const [rows, setRows] = useState<Row[]>(buildInitialRows());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -108,18 +131,18 @@ export function ProductForm({ product }: { product?: ProductData }) {
     }));
   }
 
-  // Imagens
-  function addImage() { setImages((p) => [...p, { url: "", color: "" }]); }
-  function updateImage(i: number, field: "url" | "color", val: string) {
-    setImages((p) => p.map((img, idx) => idx === i ? { ...img, [field]: val } : img));
+  // Linhas (foto + cor + tamanho + estoque)
+  function addRow() { setRows((p) => [...p, { url: "", color: "", size: "", stock: 0 }]); }
+  function updateRow(i: number, field: keyof Row, val: string | number) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
   }
-  function removeImage(i: number) { setImages((p) => p.filter((_, idx) => idx !== i)); }
-  function moveImage(i: number, dir: -1 | 1) {
-    const arr = [...images];
+  function removeRow(i: number) { setRows((p) => p.filter((_, idx) => idx !== i)); }
+  function moveRow(i: number, dir: -1 | 1) {
+    const arr = [...rows];
     const j = i + dir;
     if (j < 0 || j >= arr.length) return;
     [arr[i], arr[j]] = [arr[j], arr[i]];
-    setImages(arr);
+    setRows(arr);
   }
 
   // Upload de arquivo
@@ -134,20 +157,13 @@ export function ProductForm({ product }: { product?: ProductData }) {
     const data = await res.json();
     setUploadingIndex(null);
     if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
-    updateImage(index, "url", data.url);
+    updateRow(index, "url", data.url);
     e.target.value = "";
   }
 
-  // Variantes
-  function addVariant() { setVariants((p) => [...p, { color: "", size: "", stock: 0 }]); }
-  function updateVariant(i: number, field: keyof Variant, val: string | number) {
-    setVariants((p) => p.map((v, idx) => idx === i ? { ...v, [field]: val } : v));
-  }
-  function removeVariant(i: number) { setVariants((p) => p.filter((_, idx) => idx !== i)); }
-
-  // Calcula estoque total a partir das variantes
-  function syncStockFromVariants() {
-    const total = variants.reduce((s, v) => s + (v.stock || 0), 0);
+  // Calcula estoque total a partir das linhas de cor/estoque
+  function syncStockFromRows() {
+    const total = rows.reduce((s, r) => s + (r.stock || 0), 0);
     setForm((p) => ({ ...p, stock: total.toString() }));
   }
 
@@ -156,8 +172,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setError("");
     setSuccess("");
 
-    const validImages = images.filter((img) => img.url.trim());
-    if (validImages.length === 0) {
+    const validRows = rows.filter((r) => r.url.trim());
+    if (validRows.length === 0) {
       setError("Adicione pelo menos uma imagem.");
       return;
     }
@@ -172,8 +188,10 @@ export function ProductForm({ product }: { product?: ProductData }) {
       ...form,
       price: parseFloat(form.price),
       stock: parseInt(form.stock) || 0,
-      images: JSON.stringify(validImages),
-      variants: variants.filter((v) => v.color || v.size),
+      images: JSON.stringify(validRows.map((r) => ({ url: r.url, color: r.color }))),
+      variants: rows
+        .filter((r) => r.color || r.size)
+        .map((r) => ({ color: r.color || null, size: r.size || null, stock: r.stock || 0 })),
     };
 
     const url = isEdit ? `/api/produtos/${product!.id}` : "/api/produtos";
@@ -197,7 +215,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setTimeout(() => router.push("/admin/produtos"), 1200);
   }
 
-  const validImages = images.filter((img) => img.url.trim());
+  const validRows = rows.filter((r) => r.url.trim());
 
   return (
     <form onSubmit={handleSubmit}>
@@ -261,23 +279,23 @@ export function ProductForm({ product }: { product?: ProductData }) {
             </div>
           </Section>
 
-          {/* FOTOS */}
-          <Section title="Fotos do Produto" icon={ImageIcon}>
+          {/* FOTOS, COR E ESTOQUE */}
+          <Section title="Fotos, Cor e Estoque" icon={ImageIcon}>
             <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Envie um arquivo do seu computador ou cole uma URL. A primeira foto é a principal.
+              Cada linha é uma cor: envie a foto dessa cor e informe o estoque dela. A cor só precisa ser digitada aqui — não repita em outro lugar. A primeira linha é a foto principal.
             </p>
             {uploadError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
             )}
 
             {/* Preview das fotos */}
-            {validImages.length > 0 && (
+            {validRows.length > 0 && (
               <div className="flex gap-2 flex-wrap mb-2">
-                {validImages.map((img, i) => (
+                {validRows.map((r, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 flex-shrink-0">
                     <Image
-                      src={img.url}
-                      alt={img.color || `Foto ${i + 1}`}
+                      src={r.url}
+                      alt={r.color || `Foto ${i + 1}`}
                       fill
                       className="object-cover"
                       onError={(e) => { (e.target as HTMLImageElement).src = "https://picsum.photos/200"; }}
@@ -287,9 +305,9 @@ export function ProductForm({ product }: { product?: ProductData }) {
                         Principal
                       </span>
                     )}
-                    {img.color && (
+                    {r.color && (
                       <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 truncate px-1">
-                        {img.color}
+                        {r.color}
                       </span>
                     )}
                   </div>
@@ -298,21 +316,21 @@ export function ProductForm({ product }: { product?: ProductData }) {
             )}
 
             <div className="space-y-2">
-              {images.map((img, i) => (
-                <div key={i} className="flex items-center gap-2">
+              {rows.map((r, i) => (
+                <div key={i} className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                   <div className="flex flex-col gap-0.5">
-                    <button type="button" onClick={() => moveImage(i, -1)} disabled={i === 0} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
+                    <button type="button" onClick={() => moveRow(i, -1)} disabled={i === 0} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
                       <ChevronUp size={14} />
                     </button>
-                    <button type="button" onClick={() => moveImage(i, 1)} disabled={i === images.length - 1} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
+                    <button type="button" onClick={() => moveRow(i, 1)} disabled={i === rows.length - 1} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
                       <ChevronDown size={14} />
                     </button>
                   </div>
 
                   <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                    {img.url ? (
+                    {r.url ? (
                       <Image
-                        src={img.url}
+                        src={r.url}
                         alt=""
                         fill
                         className="object-cover"
@@ -327,8 +345,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
                     <div className="flex gap-2 items-center">
                       <input
                         className="input-field flex-1 text-sm py-2"
-                        value={img.url}
-                        onChange={(e) => updateImage(i, "url", e.target.value)}
+                        value={r.url}
+                        onChange={(e) => updateRow(i, "url", e.target.value)}
                         placeholder="Cole uma URL ou use o botão de upload →"
                       />
                       <label className={`flex-shrink-0 p-2.5 rounded-lg border transition-colors cursor-pointer ${uploadingIndex === i ? "bg-gray-100 border-gray-200" : "bg-brand-50 border-brand-200 hover:bg-brand-100 text-brand-700"}`} title="Fazer upload de imagem">
@@ -336,16 +354,41 @@ export function ProductForm({ product }: { product?: ProductData }) {
                         {uploadingIndex === i ? <Loader2 size={15} className="animate-spin text-gray-400" /> : <Upload size={15} />}
                       </label>
                     </div>
-                    <input
-                      className="input-field text-xs py-1.5 text-gray-600"
-                      value={img.color}
-                      onChange={(e) => updateImage(i, "color", e.target.value)}
-                      placeholder="Cor desta foto (ex: Preto, Caramelo, Rosé)"
-                    />
+
+                    <div className="flex gap-1.5">
+                      <div className="flex-1">
+                        <input
+                          list={`cores-${i}`}
+                          className="input-field text-xs py-1.5 text-gray-600"
+                          value={r.color}
+                          onChange={(e) => updateRow(i, "color", e.target.value)}
+                          placeholder="Cor (ex: Preto, Caramelo, Rosé)"
+                        />
+                        <datalist id={`cores-${i}`}>
+                          {COLORS.map((c) => <option key={c} value={c} />)}
+                        </datalist>
+                      </div>
+                      <select
+                        className="input-field text-xs py-1.5 text-gray-600 w-24 flex-shrink-0"
+                        value={r.size}
+                        onChange={(e) => updateRow(i, "size", e.target.value)}
+                      >
+                        <option value="">— Tam. —</option>
+                        {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        title="Estoque desta cor"
+                        className={`input-field text-xs py-1.5 font-bold text-center w-16 flex-shrink-0 ${r.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : r.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
+                        value={r.stock}
+                        onChange={(e) => updateRow(i, "stock", parseInt(e.target.value) || 0)}
+                      />
+                    </div>
                   </div>
 
-                  {images.length > 1 && (
-                    <button type="button" onClick={() => removeImage(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
+                  {rows.length > 1 && (
+                    <button type="button" onClick={() => removeRow(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
                       <X size={16} />
                     </button>
                   )}
@@ -353,93 +396,23 @@ export function ProductForm({ product }: { product?: ProductData }) {
               ))}
             </div>
 
-            <button type="button" onClick={addImage} className="btn-ghost text-brand-700 text-sm w-full justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
-              <Plus size={16} /> Adicionar mais foto
+            <button type="button" onClick={addRow} className="btn-ghost text-brand-700 text-sm w-full justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
+              <Plus size={16} /> Adicionar cor
             </button>
 
-          </Section>
-
-          {/* VARIAÇÕES — COR, TAMANHO E ESTOQUE */}
-          <Section title="Variações — Cor, Tamanho e Estoque" icon={Tag}>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-gray-500">
-                Adicione cada combinação disponível. O estoque total é a soma de todas as variações.
-              </p>
+            <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100">
+              <span className="text-sm font-medium text-brand-800">Total por cor:</span>
+              <span className="text-base font-bold text-brand-700">
+                {rows.reduce((s, r) => s + (r.stock || 0), 0)} unidades
+              </span>
               <button
                 type="button"
-                onClick={syncStockFromVariants}
+                onClick={syncStockFromRows}
                 className="text-xs text-brand-600 hover:underline font-medium"
               >
                 Somar no total
               </button>
             </div>
-
-            <div className="space-y-3">
-              {variants.map((v, i) => (
-                <div key={i} className="grid grid-cols-12 gap-2 items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
-                  {/* Cor */}
-                  <div className="col-span-5">
-                    <label className="text-xs text-gray-500 mb-1 block font-medium">Cor</label>
-                    <input
-                      list={`cores-${i}`}
-                      className="input-field text-sm py-2"
-                      value={v.color ?? ""}
-                      onChange={(e) => updateVariant(i, "color", e.target.value)}
-                      placeholder="Digite ou escolha..."
-                    />
-                    <datalist id={`cores-${i}`}>
-                      {COLORS.map((c) => <option key={c} value={c} />)}
-                    </datalist>
-                  </div>
-
-                  {/* Tamanho */}
-                  <div className="col-span-4">
-                    <label className="text-xs text-gray-500 mb-1 block font-medium">Tamanho</label>
-                    <select
-                      className="input-field text-sm py-2"
-                      value={v.size ?? ""}
-                      onChange={(e) => updateVariant(i, "size", e.target.value)}
-                    >
-                      <option value="">— Sem tam. —</option>
-                      {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Estoque */}
-                  <div className="col-span-2">
-                    <label className="text-xs text-gray-500 mb-1 block font-medium">Estoque</label>
-                    <input
-                      type="number"
-                      min="0"
-                      className={`input-field text-sm py-2 font-bold text-center ${v.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : v.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
-                      value={v.stock}
-                      onChange={(e) => updateVariant(i, "stock", parseInt(e.target.value) || 0)}
-                    />
-                  </div>
-
-                  {/* Remover */}
-                  <div className="col-span-1 flex justify-center pt-5">
-                    {variants.length > 1 && (
-                      <button type="button" onClick={() => removeVariant(i)} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50">
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Estoque total das variações */}
-            <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100">
-              <span className="text-sm font-medium text-brand-800">Total das variações:</span>
-              <span className="text-base font-bold text-brand-700">
-                {variants.reduce((s, v) => s + (v.stock || 0), 0)} unidades
-              </span>
-            </div>
-
-            <button type="button" onClick={addVariant} className="btn-ghost text-brand-700 text-sm w-full justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
-              <Plus size={16} /> Adicionar variação
-            </button>
           </Section>
 
         </div>
