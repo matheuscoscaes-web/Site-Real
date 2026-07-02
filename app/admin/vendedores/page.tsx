@@ -31,7 +31,7 @@ export default async function AdminVendedoresPage() {
           { label: "Vendedores", value: vendors.length, icon: UserCheck, color: "text-brand-600 bg-brand-50" },
           { label: "Revendedores", value: totalResellers, icon: Users, color: "text-purple-600 bg-purple-50" },
           { label: "Cupons ativos", value: vendors.filter((v) => v.active).length, icon: Tag, color: "text-green-600 bg-green-50" },
-          { label: "Comissão média", value: vendors.length ? `${(vendors.reduce((s, v) => s + (50 - (v.discount ?? 0)), 0) / vendors.length).toFixed(1)}%` : "—", icon: Percent, color: "text-orange-600 bg-orange-50" },
+          { label: "Comissão fixa", value: "5%", icon: Percent, color: "text-orange-600 bg-orange-50" },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${s.color}`}>
@@ -80,7 +80,7 @@ export default async function AdminVendedoresPage() {
                   </td>
                   <td className="px-5 py-4 hidden md:table-cell">
                     {v.discount !== null
-                      ? <><p className="text-xs text-gray-400">desconto {v.discount}%</p><p className="text-sm font-bold text-green-600">ganha {50 - v.discount}%</p></>
+                      ? <><p className="text-xs text-gray-400">desconto {v.discount}%</p><p className="text-sm font-bold text-green-600">ganha 5%</p></>
                       : <span className="text-xs text-gray-400">—</span>
                     }
                   </td>

@@ -16,11 +16,6 @@ export async function PATCH(req: Request) {
 
   if (!couponCode) return NextResponse.json({ error: "Código do cupom obrigatório" }, { status: 400 });
 
-  const discountNum = Number(discount);
-  if (isNaN(discountNum) || discountNum < 10 || discountNum > 50) {
-    return NextResponse.json({ error: "Desconto deve ser entre 10% e 50%" }, { status: 400 });
-  }
-
   const code = couponCode.toUpperCase().trim();
 
   // Verifica unicidade do cupom (ignora o próprio registro)
@@ -30,11 +25,17 @@ export async function PATCH(req: Request) {
     const dupR = await prisma.reseller.findUnique({ where: { couponCode: code } });
     if (dupR) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
 
-    const vendor = await prisma.vendor.update({ where: { userId: session.user.id }, data: { couponCode: code, discount: discountNum } });
+    // Desconto do cupom de vendedor é sempre fixo em 50%
+    const vendor = await prisma.vendor.update({ where: { userId: session.user.id }, data: { couponCode: code, discount: 50 } });
     return NextResponse.json(vendor);
   }
 
   // RESELLER
+  const discountNum = Number(discount);
+  if (isNaN(discountNum) || discountNum < 10 || discountNum > 50) {
+    return NextResponse.json({ error: "Desconto deve ser entre 10% e 50%" }, { status: 400 });
+  }
+
   const dup = await prisma.reseller.findFirst({ where: { couponCode: code, NOT: { userId: session.user.id } } });
   if (dup) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
   const dupV = await prisma.vendor.findUnique({ where: { couponCode: code } });

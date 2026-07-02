@@ -142,11 +142,11 @@ export default function MinhaRedePage() {
               </div>
               {!showConfig
                 ? <button onClick={() => setShowConfig(true)} className="btn-primary flex items-center gap-2"><Tag size={16} /> Configurar meu cupom</button>
-                : <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
+                : <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} commissionNote="O vendedor responsável ganha 2,5% fixo por venda com seu cupom" />
               }
             </div>
           ) : showConfig ? (
-            <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
+            <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} commissionNote="O vendedor responsável ganha 2,5% fixo por venda com seu cupom" />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
@@ -243,7 +243,7 @@ export default function MinhaRedePage() {
   if (data.role === "VENDOR") {
     const { vendor } = data;
     const configured = !!vendor.couponCode;
-    const myCommission = configured ? 50 - (vendor.discount ?? 0) : null;
+    const myCommission = configured ? 5 : null;
 
     const directOrders = vendor.orders;
     const allResellerOrders = vendor.resellers.flatMap((r) => r.orders);
@@ -283,7 +283,7 @@ export default function MinhaRedePage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900">Meu Cupom</h2>
                 {configured && !showConfig && (
-                  <button onClick={() => { setConfigForm({ couponCode: vendor.couponCode!, discount: String(vendor.discount) }); setShowConfig(true); setConfigError(""); }}
+                  <button onClick={() => { setConfigForm({ couponCode: vendor.couponCode!, discount: "50" }); setShowConfig(true); setConfigError(""); }}
                     className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
                     <Pencil size={14} /> Editar
                   </button>
@@ -295,12 +295,12 @@ export default function MinhaRedePage() {
                     Configure seu cupom para começar a vender e cadastrar revendedores.
                   </div>
                   {!showConfig
-                    ? <button onClick={() => setShowConfig(true)} className="btn-primary flex items-center gap-2"><Tag size={16} /> Configurar meu cupom</button>
-                    : <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
+                    ? <button onClick={() => { setConfigForm((p) => ({ ...p, discount: "50" })); setShowConfig(true); }} className="btn-primary flex items-center gap-2"><Tag size={16} /> Configurar meu cupom</button>
+                    : <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} commissionNote="Você ganha 5% fixo em vendas diretas com seu cupom" fixedDiscount={50} />
                   }
                 </div>
               ) : showConfig ? (
-                <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
+                <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} commissionNote="Você ganha 5% fixo em vendas diretas com seu cupom" fixedDiscount={50} />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
@@ -356,7 +356,7 @@ export default function MinhaRedePage() {
                                 : <span className="text-xs text-amber-500">Aguardando configurar cupom</span>
                               }
                               {r.discount !== null && <span className="text-xs text-gray-400">{r.discount}% desc.</span>}
-                              <span className="text-xs text-green-600 font-bold">+5% p/ você</span>
+                              <span className="text-xs text-green-600 font-bold">+2,5% p/ você</span>
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
@@ -415,7 +415,7 @@ export default function MinhaRedePage() {
               <StatCard icon={DollarSign} color="green" label="Comissão total" value={formatCurrency(totalCommission)} sub="diretas + revendedores" />
               <StatCard icon={ShoppingBag} color="brand" label="Vendas totais" value={String(allOrders.length)} sub={`${directOrders.length} diretas · ${allResellerOrders.length} via rede`} />
               <StatCard icon={TrendingUp} color="purple" label="Vendas diretas" value={formatCurrency(directCommission)} sub={`${directOrders.length} pedidos · ${vendor.discount}% desc.`} />
-              <StatCard icon={Users} color="orange" label="Via revendedores" value={formatCurrency(resellerCommission)} sub={`${vendor.resellers.length} revendedores · 5% p/ venda`} />
+              <StatCard icon={Users} color="orange" label="Via revendedores" value={formatCurrency(resellerCommission)} sub={`${vendor.resellers.length} revendedores · 2,5% p/ venda`} />
             </div>
 
             {/* Gráfico de barras mensal */}
@@ -585,7 +585,7 @@ export default function MinhaRedePage() {
                       <div className="min-w-0">
                         <p className="font-bold text-gray-900 text-sm truncate">{v.user.name}</p>
                         {v.couponCode
-                          ? <p className="text-xs text-gray-400">Cupom: <span className="font-mono font-bold">{v.couponCode}</span> · {v.discount}% desc → <span className="text-green-600 font-bold">{50 - (v.discount ?? 0)}% comissão</span></p>
+                          ? <p className="text-xs text-gray-400">Cupom: <span className="font-mono font-bold">{v.couponCode}</span> · {v.discount}% desc → <span className="text-green-600 font-bold">5% comissão</span></p>
                           : <p className="text-xs text-amber-500">Sem cupom configurado</p>
                         }
                       </div>
@@ -842,15 +842,16 @@ function MiniMonthly({ title, color, monthly }: { title: string; color: string; 
   );
 }
 
-function ConfigForm({ form, setForm, onSubmit, onCancel, loading, error }: {
+function ConfigForm({ form, setForm, onSubmit, onCancel, loading, error, commissionNote, fixedDiscount }: {
   form: { couponCode: string; discount: string };
   setForm: React.Dispatch<React.SetStateAction<typeof form>>;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   loading: boolean;
   error: string;
+  commissionNote: string;
+  fixedDiscount?: number;
 }) {
-  const commission = Math.max(0, 50 - Number(form.discount || 0));
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</div>}
@@ -858,14 +859,21 @@ function ConfigForm({ form, setForm, onSubmit, onCancel, loading, error }: {
         <label className="label">Código do cupom *</label>
         <input className="input-field uppercase font-mono" value={form.couponCode} onChange={(e) => setForm((p) => ({ ...p, couponCode: e.target.value.toUpperCase() }))} required placeholder="Ex: JOAO10" />
       </div>
-      <div>
-        <label className="label">Desconto ao cliente (10%–50%)</label>
-        <input className="input-field" type="number" min="10" max="50" step="1" value={form.discount} onChange={(e) => setForm((p) => ({ ...p, discount: e.target.value }))} required />
-        <div className="mt-2 flex items-center justify-between text-xs rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5">
-          <span className="text-gray-500">Cliente economiza <strong>{form.discount || 0}%</strong></span>
-          <span className={`font-bold ${commission > 0 ? "text-green-600" : "text-gray-400"}`}>Você ganha <strong>{commission}%</strong></span>
+      {fixedDiscount !== undefined ? (
+        <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5 text-xs space-y-1">
+          <p className="text-gray-500">Desconto ao cliente: <strong className="text-gray-900">{fixedDiscount}% fixo</strong></p>
+          <p className="font-bold text-green-600">{commissionNote}</p>
         </div>
-      </div>
+      ) : (
+        <div>
+          <label className="label">Desconto ao cliente (10%–50%)</label>
+          <input className="input-field" type="number" min="10" max="50" step="1" value={form.discount} onChange={(e) => setForm((p) => ({ ...p, discount: e.target.value }))} required />
+          <div className="mt-2 flex items-center justify-between text-xs rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5">
+            <span className="text-gray-500">Cliente economiza <strong>{form.discount || 0}%</strong></span>
+            <span className="font-bold text-green-600">{commissionNote}</span>
+          </div>
+        </div>
+      )}
       <div className="flex gap-3 pt-1">
         <button type="button" onClick={onCancel} className="btn-ghost flex-1">Cancelar</button>
         <button type="submit" disabled={loading} className="btn-primary flex-1">

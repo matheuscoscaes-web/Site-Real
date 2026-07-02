@@ -71,7 +71,7 @@ export function VendorForm() {
             </div>
 
             <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 text-xs text-blue-700">
-              O vendedor definirá o próprio código de cupom e desconto ao fazer login.
+              O vendedor definirá o próprio código de cupom ao fazer login. Desconto fixo de 50% para o cliente e comissão fixa de 5% por venda.
             </div>
 
             <div className="flex gap-3 pt-2">

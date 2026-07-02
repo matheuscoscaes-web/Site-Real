@@ -82,7 +82,7 @@ export default async function AdminVendedorDetailPage({ params }: { params: Prom
                   <div>
                     <p className="text-xs text-gray-400">Desconto do cupom ao cliente</p>
                     <p className="font-bold text-gray-700">{vendor.discount}%</p>
-                    <p className="text-xs text-green-600 font-semibold mt-0.5">Vendedor ganha {50 - vendor.discount}%</p>
+                    <p className="text-xs text-green-600 font-semibold mt-0.5">Vendedor ganha 5% fixo por venda</p>
                   </div>
                 </div>
               ) : (
@@ -137,7 +137,7 @@ export default async function AdminVendedorDetailPage({ params }: { params: Prom
                       : <p className="text-xs text-amber-500">Aguardando configurar cupom</p>
                     }
                     {r.discount !== null && <p className="text-xs text-gray-400">desconto {r.discount}%</p>}
-                    <p className="text-xs text-green-600 font-bold">vendedor ganha 5% por venda</p>
+                    <p className="text-xs text-green-600 font-bold">vendedor ganha 2,5% por venda</p>
                     <span className={`badge text-xs block ${r.active ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>
                       {r.active ? "Ativo" : "Inativo"}
                     </span>
