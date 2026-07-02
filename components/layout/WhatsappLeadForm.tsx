@@ -49,7 +49,7 @@ export function WhatsappLeadForm() {
         value={name}
         onChange={(e) => setName(e.target.value)}
         required
-        className="flex-1 px-5 py-3 rounded-full text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white"
+        className="flex-1 px-5 py-3 rounded-full text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-white"
       />
       <input
         type="tel"
@@ -57,7 +57,7 @@ export function WhatsappLeadForm() {
         value={phone}
         onChange={(e) => setPhone(formatPhone(e.target.value))}
         required
-        className="flex-1 px-5 py-3 rounded-full text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white"
+        className="flex-1 px-5 py-3 rounded-full text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-white"
       />
       <button
         type="submit"
