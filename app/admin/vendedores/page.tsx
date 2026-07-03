@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { ChevronRight, Users, Tag, Percent, UserCheck } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { VendorForm } from "./VendorForm";
+
+const CONFIRMED_STATUSES = ["PAID", "PREPARING", "SHIPPED", "DELIVERED"];
 
 export default async function AdminVendedoresPage() {
   const vendors = await prisma.vendor.findMany({
@@ -13,7 +15,18 @@ export default async function AdminVendedoresPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const salesByVendor = await prisma.order.groupBy({
+    by: ["vendorId"],
+    where: { vendorId: { not: null }, status: { in: CONFIRMED_STATUSES } },
+    _count: { _all: true },
+    _sum: { total: true, commissionValue: true },
+  });
+  const salesMap = new Map(
+    salesByVendor.map((s) => [s.vendorId as string, { count: s._count._all, total: s._sum.total ?? 0, commission: s._sum.commissionValue ?? 0 }])
+  );
+
   const totalResellers = vendors.reduce((sum, v) => sum + v.resellers.length, 0);
+  const totalCommission = salesByVendor.reduce((sum, s) => sum + (s._sum.commissionValue ?? 0), 0);
 
   return (
     <div>
@@ -31,7 +44,7 @@ export default async function AdminVendedoresPage() {
           { label: "Vendedores", value: vendors.length, icon: UserCheck, color: "text-brand-600 bg-brand-50" },
           { label: "Revendedores", value: totalResellers, icon: Users, color: "text-purple-600 bg-purple-50" },
           { label: "Cupons ativos", value: vendors.filter((v) => v.active).length, icon: Tag, color: "text-green-600 bg-green-50" },
-          { label: "Comissão fixa", value: "5%", icon: Percent, color: "text-orange-600 bg-orange-50" },
+          { label: "Comissão total paga", value: formatCurrency(totalCommission), icon: Percent, color: "text-orange-600 bg-orange-50" },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${s.color}`}>
@@ -52,6 +65,8 @@ export default async function AdminVendedoresPage() {
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Vendedor</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Cupom</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Comissão</th>
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Vendas</th>
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Comissão ganha</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Revendedores</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Cadastro</th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -61,12 +76,14 @@ export default async function AdminVendedoresPage() {
             <tbody className="divide-y divide-gray-100">
               {vendors.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center">
+                  <td colSpan={9} className="px-5 py-12 text-center">
                     <Users size={40} className="text-gray-200 mx-auto mb-3" />
                     <p className="text-gray-400 text-sm">Nenhum vendedor cadastrado ainda.</p>
                   </td>
                 </tr>
-              ) : vendors.map((v) => (
+              ) : vendors.map((v) => {
+                const sales = salesMap.get(v.id) ?? { count: 0, total: 0, commission: 0 };
+                return (
                 <tr key={v.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4">
                     <p className="font-semibold text-gray-900 text-sm">{v.user.name}</p>
@@ -83,6 +100,13 @@ export default async function AdminVendedoresPage() {
                       ? <><p className="text-xs text-gray-400">desconto {v.discount}%</p><p className="text-sm font-bold text-green-600">ganha 5%</p></>
                       : <span className="text-xs text-gray-400">—</span>
                     }
+                  </td>
+                  <td className="px-5 py-4">
+                    <p className="text-sm font-bold text-gray-900">{sales.count}</p>
+                    <p className="text-xs text-gray-400">{formatCurrency(sales.total)}</p>
+                  </td>
+                  <td className="px-5 py-4 hidden md:table-cell">
+                    <p className="text-sm font-bold text-green-600">{formatCurrency(sales.commission)}</p>
                   </td>
                   <td className="px-5 py-4 hidden md:table-cell">
                     <span className="text-sm text-gray-600">{v.resellers.length}</span>
@@ -101,7 +125,8 @@ export default async function AdminVendedoresPage() {
                     </Link>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
