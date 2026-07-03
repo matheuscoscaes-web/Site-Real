@@ -4,23 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, parseProductImages } from "@/lib/utils";
 import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check } from "lucide-react";
-import { Product, ProductImage, ProductVariant } from "@/types";
+import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
 
 interface ProductWithVariants extends Product {
   variants: ProductVariant[];
-}
-
-function parseImages(raw: string): ProductImage[] {
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((item) =>
-      typeof item === "string" ? { url: item } : { url: item.url || "", color: item.color || null }
-    );
-  } catch { return []; }
 }
 
 export function ProductDetail({ product }: { product: ProductWithVariants }) {
@@ -28,7 +18,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const liked = useWishlistStore((s) => s.items.some((i) => i.productId === product.id));
 
-  const images = parseImages(product.images);
+  const images = parseProductImages(product.images);
   const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])];
   const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean) as string[])];
 

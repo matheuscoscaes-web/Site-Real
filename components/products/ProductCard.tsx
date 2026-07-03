@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Heart, ShoppingBag, Star } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, parseProductImages } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { Product } from "@/types";
@@ -21,8 +21,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const liked = useWishlistStore((s) => s.items.some((i) => i.productId === product.id));
   const [added, setAdded] = useState(false);
 
-  const rawImages = JSON.parse(product.images) as Array<string | { url: string; color?: string }>;
-  const imageUrls = rawImages.map((img) => typeof img === "string" ? img : img.url);
+  const imageUrls = parseProductImages(product.images).map((img) => img.url);
   const mainImage = imageUrls[0];
   const hoverImage = imageUrls[1];
 

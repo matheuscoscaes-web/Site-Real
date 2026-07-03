@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import Image from "next/image";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, parseProductImages } from "@/lib/utils";
 import { Plus, Edit, AlertTriangle } from "lucide-react";
 import { DeleteProductButton } from "./DeleteProductButton";
 import { ToggleActiveButton } from "./ToggleActiveButton";
@@ -101,8 +101,7 @@ export default async function AdminProdutosPage({
                   </td>
                 </tr>
               ) : products.map((product) => {
-                const rawImgs = JSON.parse(product.images) as Array<string | { url: string }>;
-                const imgs = rawImgs.map((img) => typeof img === "string" ? img : img.url);
+                const imgs = parseProductImages(product.images).map((img) => img.url);
                 const isLowStock = product.stock <= 5 && product.active;
                 const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean))];
                 const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))];

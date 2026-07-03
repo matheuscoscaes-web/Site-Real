@@ -1,8 +1,23 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { ProductImage } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/** O campo `images` do produto guarda um JSON que pode misturar strings
+ * (URL pura) e objetos `{ url, color }` — normaliza os dois formatos. */
+export function parseProductImages(raw: string): ProductImage[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) =>
+      typeof item === "string" ? { url: item } : { url: item.url || "", color: item.color || null }
+    );
+  } catch {
+    return [];
+  }
 }
 
 export function formatCurrency(value: number): string {

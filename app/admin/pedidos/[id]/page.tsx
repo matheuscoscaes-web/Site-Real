@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS } from "@/lib/utils";
+import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -53,11 +53,12 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
             </div>
             <div className="divide-y divide-gray-100">
               {order.items.map((item) => {
-                const imgs = JSON.parse(item.product.images) as string[];
+                const imgs = parseProductImages(item.product.images);
+                const img = imgs.find((i) => item.color && i.color === item.color) ?? imgs[0];
                 return (
                   <div key={item.id} className="flex items-center gap-4 p-4">
                     <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
-                      <Image src={imgs[0]} alt={item.product.name} fill className="object-cover" />
+                      {img?.url && <Image src={img.url} alt={item.product.name} fill className="object-cover" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <Link href={`/produtos/${item.product.slug}`} target="_blank" className="font-semibold text-gray-900 hover:text-brand-700 transition-colors text-sm truncate block">
