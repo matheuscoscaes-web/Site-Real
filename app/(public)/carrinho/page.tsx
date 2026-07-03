@@ -189,7 +189,7 @@ export default function CarrinhoPage() {
                     onChange={(e) => { setCupomInput(e.target.value.toUpperCase()); setCupomError(""); }}
                     onKeyDown={(e) => e.key === "Enter" && handleCupom()}
                     placeholder="Digite o cupom"
-                    className="input-field flex-1 text-sm py-2.5 font-mono uppercase"
+                    className="input-field flex-1 min-w-0 text-sm py-2.5 font-mono uppercase"
                   />
                   <button onClick={handleCupom} disabled={cupomLoading} className="btn-primary text-sm px-4 py-2.5 min-w-[90px]">
                     {cupomLoading ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Aplicar"}
@@ -214,7 +214,7 @@ export default function CarrinhoPage() {
                   setCep(v.length > 5 ? `${v.slice(0, 5)}-${v.slice(5)}` : v);
                 }}
                 placeholder="00000-000"
-                className="input-field flex-1 text-sm py-2.5"
+                className="input-field flex-1 min-w-0 text-sm py-2.5"
                 maxLength={9}
               />
               <button

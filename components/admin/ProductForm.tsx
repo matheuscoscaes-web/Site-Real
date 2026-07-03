@@ -344,7 +344,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
                   <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                     <div className="flex gap-2 items-center">
                       <input
-                        className="input-field flex-1 text-sm py-2"
+                        className="input-field flex-1 min-w-0 text-sm py-2"
                         value={r.url}
                         onChange={(e) => updateRow(i, "url", e.target.value)}
                         placeholder="Cole uma URL ou use o botão de upload →"
@@ -356,7 +356,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
                     </div>
 
                     <div className="flex gap-1.5">
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <input
                           list={`cores-${i}`}
                           className="input-field text-xs py-1.5 text-gray-600"

@@ -568,7 +568,7 @@ export default function CheckoutPage() {
                   ) : (
                     <div className="flex gap-2">
                       <input
-                        className="input-field flex-1 uppercase font-mono"
+                        className="input-field flex-1 min-w-0 uppercase font-mono"
                         placeholder="Ex: JOAO10"
                         value={coupon.input}
                         onChange={(e) => setCoupon((p) => ({ ...p, input: e.target.value.toUpperCase(), error: "" }))}
