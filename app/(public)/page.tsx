@@ -60,10 +60,10 @@ async function getCategories() {
 }
 
 const benefits = [
-  { icon: Truck, title: "Entrega Rápida", desc: "Envio para todo o Brasil via SEDEX e PAC. Frete grátis acima de R$ 299,90." },
+  { icon: Truck, title: "Entrega Rápida", desc: "Envio para todo o Brasil via SEDEX e PAC." },
   { icon: Shield, title: "Compra Segura", desc: "Site 100% seguro com SSL e proteção de dados. Parcele sem juros." },
   { icon: RefreshCw, title: "Troca Fácil", desc: "30 dias para troca ou devolução, sem burocracia e sem custo." },
-  { icon: Headphones, title: "Atendimento VIP", desc: "Equipe dedicada via WhatsApp, e-mail e chat para te ajudar." },
+  { icon: Headphones, title: "Atendimento VIP", desc: "Equipe dedicada via WhatsApp e e-mail para te ajudar." },
 ];
 
 const testimonials = [
