@@ -213,6 +213,7 @@ model Order {
   shippingCarrier   String?
   shippingServiceId Int?
   melhorEnvioId     String?
+  mpPaymentId       String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

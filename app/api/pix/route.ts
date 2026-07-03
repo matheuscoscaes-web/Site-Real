@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   if (orderId) {
     await prisma.order.update({
       where: { id: orderId },
-      data: { status: "PENDING" },
+      data: { status: "PENDING", mpPaymentId: result.id ? String(result.id) : null },
     });
   }
 

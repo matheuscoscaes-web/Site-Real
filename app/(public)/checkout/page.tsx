@@ -128,6 +128,23 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, []);
 
+  // Confere o pagamento periodicamente enquanto o QR Code do PIX estiver na tela,
+  // pra confirmar o pedido mesmo se o webhook do Mercado Pago não avisar a tempo.
+  useEffect(() => {
+    if (!pixDireto || !currentOrderId) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/pedidos/${currentOrderId}/verificar-pagamento`, { method: "POST" });
+        const data = await res.json();
+        if (data.status === "PAID") {
+          clearCart();
+          router.push(`/checkout/sucesso?pedido=${currentOrderId}`);
+        }
+      } catch { /* tenta de novo no próximo ciclo */ }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [pixDireto, currentOrderId, clearCart, router]);
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -693,8 +710,8 @@ export default function CheckoutPage() {
                       <button onClick={() => copyPix(pixDireto.qrCode)} className="btn-outline gap-2">
                         {copied ? <><CheckCheck size={16} /> Copiado!</> : <><Copy size={16} /> Copiar código PIX</>}
                       </button>
-                      <p className="text-xs text-gray-400 mt-2">
-                        O pagamento é confirmado automaticamente. Após pagar, clique abaixo para acompanhar seu pedido.
+                      <p className="text-xs text-gray-400 mt-2 flex items-center justify-center gap-1.5">
+                        <Loader2 size={12} className="animate-spin" /> Verificando pagamento automaticamente...
                       </p>
                       <button onClick={() => { clearCart(); router.push(`/checkout/sucesso?pedido=${currentOrderId}`); }} className="btn-primary w-full mt-2">
                         Já paguei — ver meu pedido
