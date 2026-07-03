@@ -6,20 +6,23 @@ initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!, { locale: "pt-BR" });
 
 interface Props {
   amount: number;
+  installments?: number;
   onSubmit: (formData: Record<string, unknown>) => Promise<void>;
   onError?: (error: unknown) => void;
 }
 
-export function MercadoPagoBrick({ amount, onSubmit, onError }: Props) {
+export function MercadoPagoBrick({ amount, installments, onSubmit, onError }: Props) {
   return (
     <Payment
+      key={installments ?? "default"}
       initialization={{ amount }}
       customization={{
         paymentMethods: {
           creditCard: "all",
           debitCard: "all",
           ticket: "all",
-          maxInstallments: 6,
+          minInstallments: installments ?? 1,
+          maxInstallments: installments ?? 6,
         },
         visual: {
           style: {

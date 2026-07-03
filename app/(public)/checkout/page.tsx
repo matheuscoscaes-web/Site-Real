@@ -732,11 +732,12 @@ export default function CheckoutPage() {
                       ))}
                     </div>
                     <p className="text-xs text-gray-400 mt-2">
-                      Escolha sua preferência — a opção final é confirmada no formulário do cartão abaixo, conforme as parcelas liberadas pelo seu banco.
+                      O formulário abaixo já abre com {preferredInstallments}x selecionado. Se o seu banco não liberar essa quantidade de parcelas para o cartão, o próprio formulário avisa.
                     </p>
                   </div>
                   <MercadoPagoBrick
                     amount={total}
+                    installments={preferredInstallments}
                     onSubmit={handlePaymentSubmit}
                     onError={() => setErro("Erro no componente de pagamento. Tente recarregar a página.")}
                   />
