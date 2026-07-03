@@ -218,17 +218,17 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
           <button
             onClick={handleAddToCart}
             disabled={product.stock === 0}
-            className={`btn-primary w-full text-base py-4 ${added ? "bg-green-600 hover:bg-green-700" : ""}`}
+            className={`btn-primary w-full text-sm sm:text-base py-4 ${added ? "bg-green-600 hover:bg-green-700" : ""}`}
           >
             {added ? (
               <><Check size={20} /> Adicionado ao carrinho!</>
             ) : product.stock === 0 ? (
               "Produto esgotado"
             ) : (
-              <><ShoppingBag size={20} /> Adicionar ao carrinho — {formatCurrency(product.price * quantity)}</>
+              <><ShoppingBag size={18} className="shrink-0" /> Adicionar ao carrinho — {formatCurrency(product.price * quantity)}</>
             )}
           </button>
-          <a href="/carrinho" className="btn-outline w-full text-base py-4">
+          <a href="/carrinho" className="btn-outline w-full text-sm sm:text-base py-4">
             Ir para o carrinho
           </a>
         </div>

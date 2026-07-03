@@ -75,7 +75,9 @@ export default async function PedidosPage() {
 
                 {/* Endereço */}
                 <p className="text-xs text-gray-400 mt-3">
-                  Entrega: {order.address.city}/{order.address.state}
+                  {order.shippingCarrier === "Loja"
+                    ? "Retirada na loja"
+                    : `Entrega: ${order.address.city}/${order.address.state}`}
                 </p>
 
                 {/* Avaliação — só aparece após entrega e se ainda houver produtos não avaliados */}

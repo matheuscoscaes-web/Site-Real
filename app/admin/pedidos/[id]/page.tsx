@@ -120,14 +120,22 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
 
           {/* Endereço */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h2 className="font-bold text-gray-900 mb-3">Endereço de entrega</h2>
-            <p className="text-sm text-gray-700">
-              {order.address.street}, {order.address.number}
-              {order.address.complement && `, ${order.address.complement}`}
-              <br />{order.address.district}
-              <br />{order.address.city} / {order.address.state}
-              <br />CEP {order.address.zipCode}
-            </p>
+            <h2 className="font-bold text-gray-900 mb-3">
+              {order.shippingCarrier === "Loja" ? "Retirada na loja" : "Endereço de entrega"}
+            </h2>
+            {order.shippingCarrier === "Loja" ? (
+              <p className="text-sm text-gray-700">
+                {order.address.street}, {order.address.number}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-700">
+                {order.address.street}, {order.address.number}
+                {order.address.complement && `, ${order.address.complement}`}
+                <br />{order.address.district}
+                <br />{order.address.city} / {order.address.state}
+                <br />CEP {order.address.zipCode}
+              </p>
+            )}
           </div>
 
           {/* Pagamento */}

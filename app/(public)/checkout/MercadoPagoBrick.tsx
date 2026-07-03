@@ -19,7 +19,7 @@ export function MercadoPagoBrick({ amount, onSubmit, onError }: Props) {
           creditCard: "all",
           debitCard: "all",
           ticket: "all",
-          maxInstallments: 12,
+          maxInstallments: 6,
         },
         visual: {
           style: {

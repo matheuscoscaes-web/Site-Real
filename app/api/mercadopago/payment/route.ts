@@ -14,20 +14,27 @@ export async function POST(request: NextRequest) {
 
   const payment = new Payment(client);
 
-  const result = await payment.create({
-    body: {
-      ...formData,
-      transaction_amount: Number(total),
-      description: "Hearts Couro",
-      external_reference: orderId,
-      notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,
-      payer: {
-        email: session.user.email,
-        ...(formData.payer ?? {}),
+  let result;
+  try {
+    result = await payment.create({
+      body: {
+        ...formData,
+        transaction_amount: Number(total),
+        description: "Hearts Couro",
+        external_reference: orderId,
+        notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,
+        payer: {
+          email: session.user.email,
+          ...(formData.payer ?? {}),
+        },
       },
-    },
-    requestOptions: { idempotencyKey: orderId },
-  });
+      requestOptions: { idempotencyKey: orderId },
+    });
+  } catch (err) {
+    console.error("Erro ao criar pagamento no Mercado Pago:", err);
+    const message = err instanceof Error ? err.message : "Erro desconhecido";
+    return NextResponse.json({ error: `Erro ao processar pagamento: ${message}` }, { status: 500 });
+  }
 
   const statusMap: Record<string, string> = {
     approved: "PAID",

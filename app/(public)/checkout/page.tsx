@@ -23,6 +23,17 @@ interface Address {
   district: string; city: string; state: string; zipCode: string;
 }
 
+const STORE_PICKUP_ADDRESS: Address = {
+  name: "Retirada na loja",
+  street: "Rua Desembargador Omar Dutra",
+  number: "60",
+  complement: "",
+  district: "",
+  city: "",
+  state: "",
+  zipCode: "",
+};
+
 interface SavedAddress extends Address {
   id: string;
   isDefault: boolean;
@@ -46,6 +57,7 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCartStore();
 
   const [step, setStep] = useState(1);
+  const [deliveryType, setDeliveryType] = useState<"ENTREGA" | "RETIRADA">("ENTREGA");
   const [coupon, setCoupon] = useState({ code: "", input: "", discount: 0, loading: false, error: "", applied: false });
   const [address, setAddress] = useState<Address>({ name: "Casa", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
   const [loadingCep, setLoadingCep] = useState(false);
@@ -63,13 +75,15 @@ export default function CheckoutPage() {
   const [paymentTab, setPaymentTab] = useState<"PIX" | "CARD">("PIX");
   const [pixDireto, setPixDireto] = useState<{ qrCode: string; qrBase64: string } | null>(null);
   const [loadingPixDireto, setLoadingPixDireto] = useState(false);
+  const [pixCpf, setPixCpf] = useState("");
+  const [pixCpfError, setPixCpfError] = useState("");
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new" | null>(null);
 
   const sub = subtotal();
   const firstDiscount = isFirstPurchase ? sub * 0.4 : 0;
   const couponAmount = !isFirstPurchase ? (sub * coupon.discount) / 100 : 0;
-  const effectiveShipping = isFirstPurchase ? 0 : (selectedShipping?.price ?? 0);
+  const effectiveShipping = deliveryType === "RETIRADA" || isFirstPurchase ? 0 : (selectedShipping?.price ?? 0);
   const total = sub - firstDiscount - couponAmount + effectiveShipping;
 
   useEffect(() => {
@@ -187,13 +201,15 @@ export default function CheckoutPage() {
   }
 
   async function handleGoToPayment() {
-    if (!address.street || !address.number || !address.city || !address.state || !address.zipCode) {
-      alert("Preencha todos os campos obrigatórios.");
-      return;
-    }
-    if (!isFirstPurchase && !selectedShipping) {
-      alert("Selecione uma opção de frete.");
-      return;
+    if (deliveryType === "ENTREGA") {
+      if (!address.street || !address.number || !address.city || !address.state || !address.zipCode) {
+        alert("Preencha todos os campos obrigatórios.");
+        return;
+      }
+      if (!isFirstPurchase && !selectedShipping) {
+        alert("Selecione uma opção de frete.");
+        return;
+      }
     }
     if (!session) return;
 
@@ -205,16 +221,16 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          address,
+          address: deliveryType === "RETIRADA" ? STORE_PICKUP_ADDRESS : address,
           paymentMethod: "MERCADOPAGO",
           items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: i.price, color: i.color, size: i.size })),
           subtotal: sub,
           shipping: effectiveShipping,
           total,
           couponCode: coupon.applied ? coupon.code : null,
-          shippingServiceId: selectedShipping?.id ?? null,
-          shippingService: selectedShipping?.name ?? null,
-          shippingCarrier: selectedShipping?.company ?? null,
+          shippingServiceId: deliveryType === "RETIRADA" ? null : (selectedShipping?.id ?? null),
+          shippingService: deliveryType === "RETIRADA" ? "Retirada no balcão" : (selectedShipping?.name ?? null),
+          shippingCarrier: deliveryType === "RETIRADA" ? "Loja" : (selectedShipping?.company ?? null),
         }),
       });
 
@@ -256,6 +272,8 @@ export default function CheckoutPage() {
       } else if (data.status === "in_process") {
         clearCart();
         router.push(`/checkout/sucesso?pedido=${currentOrderId}`);
+      } else if (data.error) {
+        setErro(data.error);
       } else {
         setErro("Pagamento não aprovado. Verifique os dados e tente com outro cartão ou método.");
       }
@@ -266,12 +284,19 @@ export default function CheckoutPage() {
 
   async function gerarPixDireto() {
     if (!currentOrderId) return;
+    const cpfDigits = pixCpf.replace(/\D/g, "");
+    if (cpfDigits.length !== 11) {
+      setPixCpfError("Digite um CPF válido (11 dígitos).");
+      return;
+    }
+    setPixCpfError("");
     setLoadingPixDireto(true);
+    setErro("");
     try {
       const res = await fetch("/api/pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ valor: total, orderId: currentOrderId }),
+        body: JSON.stringify({ valor: total, orderId: currentOrderId, cpf: cpfDigits }),
       });
       const data = await res.json();
       if (data.qrCode) setPixDireto(data);
@@ -454,52 +479,73 @@ export default function CheckoutPage() {
               {!isFirstPurchase && (
                 <div className="mb-6 border-t border-gray-100 pt-5">
                   <p className="label mb-3 flex items-center gap-2">
-                    <Truck size={15} className="text-brand-700" /> Opções de frete
+                    <Truck size={15} className="text-brand-700" /> Opções de entrega
                   </p>
 
-                  {loadingFrete && (
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Loader2 size={15} className="animate-spin" /> Calculando frete...
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <label
+                      className={`flex items-center justify-between gap-3 border-2 rounded-xl px-4 py-3 cursor-pointer transition-all ${
+                        deliveryType === "RETIRADA"
+                          ? "border-brand-700 bg-brand-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="frete"
+                          checked={deliveryType === "RETIRADA"}
+                          onChange={() => { setDeliveryType("RETIRADA"); setSelectedShipping(null); }}
+                          className="accent-brand-700"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">Retirar na loja</p>
+                          <p className="text-xs text-gray-400">Rua Desembargador Omar Dutra, 60</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-green-600 flex-shrink-0">Grátis</span>
+                    </label>
 
-                  {!loadingFrete && shippingOptions.length === 0 && address.zipCode.replace(/\D/g, "").length === 8 && (
-                    <p className="text-sm text-red-500">Nenhuma opção de frete disponível para este CEP.</p>
-                  )}
+                    {loadingFrete && (
+                      <div className="flex items-center gap-2 text-sm text-gray-400 px-1 py-1">
+                        <Loader2 size={15} className="animate-spin" /> Calculando frete...
+                      </div>
+                    )}
 
-                  {!loadingFrete && shippingOptions.length === 0 && address.zipCode.replace(/\D/g, "").length < 8 && (
-                    <p className="text-sm text-gray-400">Digite o CEP acima para ver as opções de frete.</p>
-                  )}
+                    {!loadingFrete && shippingOptions.length === 0 && address.zipCode.replace(/\D/g, "").length === 8 && (
+                      <p className="text-sm text-red-500 px-1">Nenhuma opção de frete disponível para este CEP.</p>
+                    )}
 
-                  {!loadingFrete && shippingOptions.length > 0 && (
-                    <div className="space-y-2">
-                      {shippingOptions.map((opt) => (
-                        <label
-                          key={opt.id}
-                          className={`flex items-center justify-between gap-3 border-2 rounded-xl px-4 py-3 cursor-pointer transition-all ${
-                            selectedShipping?.id === opt.id
-                              ? "border-brand-700 bg-brand-50"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="radio"
-                              name="frete"
-                              checked={selectedShipping?.id === opt.id}
-                              onChange={() => setSelectedShipping(opt)}
-                              className="accent-brand-700"
-                            />
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
-                              <p className="text-xs text-gray-400">Prazo: até {opt.days} {opt.days === 1 ? "dia útil" : "dias úteis"}</p>
-                            </div>
+                    {!loadingFrete && shippingOptions.length === 0 && address.zipCode.replace(/\D/g, "").length < 8 && (
+                      <p className="text-sm text-gray-400 px-1">Digite o CEP acima para ver as opções de PAC e SEDEX.</p>
+                    )}
+
+                    {!loadingFrete && shippingOptions.map((opt) => (
+                      <label
+                        key={opt.id}
+                        className={`flex items-center justify-between gap-3 border-2 rounded-xl px-4 py-3 cursor-pointer transition-all ${
+                          deliveryType === "ENTREGA" && selectedShipping?.id === opt.id
+                            ? "border-brand-700 bg-brand-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="frete"
+                            checked={deliveryType === "ENTREGA" && selectedShipping?.id === opt.id}
+                            onChange={() => { setDeliveryType("ENTREGA"); setSelectedShipping(opt); }}
+                            className="accent-brand-700"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
+                            <p className="text-xs text-gray-400">Prazo: até {opt.days} {opt.days === 1 ? "dia útil" : "dias úteis"}</p>
                           </div>
-                          <span className="text-sm font-bold text-gray-900 flex-shrink-0">{formatCurrency(opt.price)}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                        </div>
+                        <span className="text-sm font-bold text-gray-900 flex-shrink-0">{formatCurrency(opt.price)}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -552,9 +598,18 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-bold text-gray-900 mb-1">Forma de pagamento</h2>
 
               <div className="p-4 bg-gray-50 rounded-xl mb-5 text-sm text-gray-700">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Endereço de entrega</p>
-                {address.street}, {address.number}{address.complement && `, ${address.complement}`} — {address.district}
-                <br />{address.city}/{address.state} — CEP {address.zipCode}
+                {deliveryType === "RETIRADA" ? (
+                  <>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Retirada na loja</p>
+                    Rua Desembargador Omar Dutra, 60
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Endereço de entrega</p>
+                    {address.street}, {address.number}{address.complement && `, ${address.complement}`} — {address.district}
+                    <br />{address.city}/{address.state} — CEP {address.zipCode}
+                  </>
+                )}
                 <button onClick={() => setStep(1)} className="block text-xs text-brand-600 underline mt-1">Alterar</button>
               </div>
 
@@ -586,6 +641,28 @@ export default function CheckoutPage() {
                       <p className="text-sm text-gray-600">
                         Pague <span className="font-bold text-gray-900">{formatCurrency(total)}</span> via PIX e envie o comprovante no WhatsApp para confirmar seu pedido.
                       </p>
+                      <div className="text-left max-w-xs mx-auto">
+                        <label className="label">CPF do titular *</label>
+                        <input
+                          className="input-field"
+                          value={pixCpf}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/\D/g, "").slice(0, 11);
+                            const formatted = v.length > 9
+                              ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
+                              : v.length > 6
+                              ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
+                              : v.length > 3
+                              ? `${v.slice(0, 3)}.${v.slice(3)}`
+                              : v;
+                            setPixCpf(formatted);
+                            setPixCpfError("");
+                          }}
+                          placeholder="000.000.000-00"
+                          maxLength={14}
+                        />
+                        {pixCpfError && <p className="text-xs text-red-600 mt-1">{pixCpfError}</p>}
+                      </div>
                       <button
                         onClick={gerarPixDireto}
                         disabled={loadingPixDireto}
@@ -628,11 +705,24 @@ export default function CheckoutPage() {
 
               {/* Cartão / Boleto via Mercado Pago */}
               {paymentTab === "CARD" && (
-                <MercadoPagoBrick
-                  amount={total}
-                  onSubmit={handlePaymentSubmit}
-                  onError={() => setErro("Erro no componente de pagamento. Tente recarregar a página.")}
-                />
+                <>
+                  <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Parcelamento no cartão — em até 6x sem juros</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm text-gray-700">
+                      {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <div key={n} className="flex justify-between">
+                          <span>{n}x</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(total / n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <MercadoPagoBrick
+                    amount={total}
+                    onSubmit={handlePaymentSubmit}
+                    onError={() => setErro("Erro no componente de pagamento. Tente recarregar a página.")}
+                  />
+                </>
               )}
             </div>
           )}
@@ -758,9 +848,13 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-gray-600">
-                  <span>Frete{selectedShipping ? ` (${selectedShipping.company} ${selectedShipping.name})` : ""}</span>
-                  <span className={isFirstPurchase ? "text-green-600 font-medium" : ""}>
-                    {isFirstPurchase
+                  <span>
+                    {deliveryType === "RETIRADA"
+                      ? "Retirada na loja"
+                      : `Frete${selectedShipping ? ` (${selectedShipping.company} ${selectedShipping.name})` : ""}`}
+                  </span>
+                  <span className={isFirstPurchase || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
+                    {isFirstPurchase || deliveryType === "RETIRADA"
                       ? "Grátis"
                       : selectedShipping
                       ? formatCurrency(selectedShipping.price)
