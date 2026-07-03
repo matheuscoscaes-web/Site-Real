@@ -24,6 +24,8 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const imageUrls = parseProductImages(product.images).map((img) => img.url);
   const mainImage = imageUrls[0];
   const hoverImage = imageUrls[1];
+  const colorCount = new Set((product.variants ?? []).map((v) => v.color).filter(Boolean)).size;
+  const hasMultipleColors = colorCount > 1;
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
@@ -82,17 +84,26 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
           {/* Add to cart overlay */}
           {product.stock > 0 && (
-            <button
-              onClick={handleAddToCart}
-              className={`absolute bottom-3 left-3 right-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
-                added
-                  ? "bg-green-500 text-white translate-y-0 opacity-100"
-                  : "bg-white text-brand-700 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-brand-700 hover:text-white"
-              }`}
-            >
-              <ShoppingBag size={15} />
-              {added ? "Adicionado!" : "Adicionar ao carrinho"}
-            </button>
+            hasMultipleColors ? (
+              <span
+                className="absolute bottom-3 left-3 right-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-white text-brand-700 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-brand-700 hover:text-white"
+              >
+                <ShoppingBag size={15} />
+                Ver cores disponíveis
+              </span>
+            ) : (
+              <button
+                onClick={handleAddToCart}
+                className={`absolute bottom-3 left-3 right-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
+                  added
+                    ? "bg-green-500 text-white translate-y-0 opacity-100"
+                    : "bg-white text-brand-700 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-brand-700 hover:text-white"
+                }`}
+              >
+                <ShoppingBag size={15} />
+                {added ? "Adicionado!" : "Adicionar ao carrinho"}
+              </button>
+            )
           )}
         </div>
 

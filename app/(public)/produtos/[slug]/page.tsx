@@ -23,6 +23,7 @@ async function getRelated(category: string, id: string) {
   return prisma.product.findMany({
     where: { category, active: true, id: { not: id } },
     take: 4,
+    include: { variants: true },
   });
 }
 

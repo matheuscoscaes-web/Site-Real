@@ -50,7 +50,7 @@ const getProducts = unstable_cache(
     if (params.ordem === "preco_desc") orderBy = { price: "desc" };
     if (params.ordem === "nome") orderBy = { name: "asc" };
 
-    return prisma.product.findMany({ where, orderBy });
+    return prisma.product.findMany({ where, orderBy, include: { variants: true } });
   },
   ["products-list"],
   { revalidate: 60, tags: ["products"] }

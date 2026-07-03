@@ -14,6 +14,7 @@ async function getFeaturedProducts() {
     where: { featured: true, active: true },
     take: 8,
     orderBy: { createdAt: "desc" },
+    include: { variants: true },
   });
 
   if (featured.length > 0) return featured;
@@ -23,6 +24,7 @@ async function getFeaturedProducts() {
     where: { active: true },
     take: 8,
     orderBy: { createdAt: "desc" },
+    include: { variants: true },
   });
 }
 
