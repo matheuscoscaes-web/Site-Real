@@ -77,6 +77,7 @@ export default function CheckoutPage() {
   const [loadingPixDireto, setLoadingPixDireto] = useState(false);
   const [pixCpf, setPixCpf] = useState("");
   const [pixCpfError, setPixCpfError] = useState("");
+  const [preferredInstallments, setPreferredInstallments] = useState(1);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new" | null>(null);
 
@@ -708,14 +709,31 @@ export default function CheckoutPage() {
                 <>
                   <div className="mb-4 p-4 bg-gray-50 rounded-xl">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Parcelamento no cartão — em até 6x sem juros</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm text-gray-700">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {[1, 2, 3, 4, 5, 6].map((n) => (
-                        <div key={n} className="flex justify-between">
-                          <span>{n}x</span>
+                        <label
+                          key={n}
+                          className={`flex items-center justify-between gap-2 border-2 rounded-lg px-3 py-2 cursor-pointer transition-all text-sm ${
+                            preferredInstallments === n ? "border-brand-700 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <input
+                              type="radio"
+                              name="preferredInstallments"
+                              checked={preferredInstallments === n}
+                              onChange={() => setPreferredInstallments(n)}
+                              className="accent-brand-700"
+                            />
+                            {n}x
+                          </span>
                           <span className="font-semibold text-gray-900">{formatCurrency(total / n)}</span>
-                        </div>
+                        </label>
                       ))}
                     </div>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Escolha sua preferência — a opção final é confirmada no formulário do cartão abaixo, conforme as parcelas liberadas pelo seu banco.
+                    </p>
                   </div>
                   <MercadoPagoBrick
                     amount={total}
