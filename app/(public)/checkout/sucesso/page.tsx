@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { CheckCircle, Package, ArrowRight, Mail } from "lucide-react";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, PAYMENT_LABELS } from "@/lib/utils";
+import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS } from "@/lib/utils";
 
 export default async function SucessoPage({
   searchParams,
@@ -45,13 +45,16 @@ export default async function SucessoPage({
         </p>
       </div>
 
-      {/* Confirmação por e-mail simulada */}
+      {/* Confirmação e próximos passos */}
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
         <Mail size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-blue-800">Confirmação enviada!</p>
+          <p className="text-sm font-semibold text-blue-800">Compra atualizada!</p>
           <p className="text-sm text-blue-600">
-            Um e-mail de confirmação foi enviado para <strong>{order.user.email}</strong> com todos os detalhes do seu pedido.
+            {order.status === "PAID"
+              ? <>Seu pagamento foi confirmado e enviamos um e-mail para <strong>{order.user.email}</strong> com os detalhes.</>
+              : <>Assim que o pagamento for confirmado, você recebe um e-mail em <strong>{order.user.email}</strong>.</>
+            } Quando o pedido for postado, avisamos por e-mail de novo — mas você também pode acompanhar tudo a qualquer momento pelo site, em "Meus Pedidos".
           </p>
         </div>
       </div>
@@ -72,7 +75,7 @@ export default async function SucessoPage({
         <div className="p-5 border-b border-gray-100">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</span>
-            <span className="badge bg-yellow-100 text-yellow-800 font-bold">
+            <span className={`badge font-bold ${ORDER_STATUS_COLORS[order.status]}`}>
               {ORDER_STATUS_LABELS[order.status]}
             </span>
           </div>
@@ -122,24 +125,6 @@ export default async function SucessoPage({
           </div>
         </div>
       </div>
-
-      {/* PIX simulado */}
-      {order.paymentMethod === "PIX" && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center mb-6">
-          <p className="font-bold text-green-800 text-lg mb-2">Pague via PIX</p>
-          <div className="w-40 h-40 bg-white border-2 border-green-300 rounded-xl mx-auto flex items-center justify-center mb-3">
-            <div className="text-center">
-              <Package size={32} className="text-green-400 mx-auto mb-1" />
-              <p className="text-xs text-gray-400">QR Code</p>
-              <p className="text-xs text-gray-400">Simulado</p>
-            </div>
-          </div>
-          <p className="text-sm text-green-700 font-mono bg-green-100 px-3 py-1.5 rounded-lg">
-            00020126580014BR.GOV.BCB.PIX0136...{order.id.slice(-8)}
-          </p>
-          <p className="text-xs text-green-600 mt-2">Válido por 30 minutos</p>
-        </div>
-      )}
 
       {/* Ações */}
       <div className="flex flex-col sm:flex-row gap-3">

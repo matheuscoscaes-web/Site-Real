@@ -11,7 +11,7 @@ export default async function PedidosPage() {
   if (!session) return null;
 
   const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, status: { not: "PENDING" } },
     orderBy: { createdAt: "desc" },
     include: {
       items: { include: { product: true } },

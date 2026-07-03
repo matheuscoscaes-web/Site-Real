@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { updateOrderStatus } from "@/lib/orders";
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
@@ -34,10 +35,7 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     const payment = new Payment(client);
     const paymentData = await payment.get({ id: order.mpPaymentId });
     const newStatus = STATUS_MAP[paymentData.status ?? ""] ?? order.status;
-
-    if (newStatus !== order.status) {
-      await prisma.order.update({ where: { id }, data: { status: newStatus } });
-    }
+    await updateOrderStatus(id, newStatus);
 
     return NextResponse.json({ status: newStatus, checked: true });
   } catch (err) {

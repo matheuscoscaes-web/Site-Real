@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { prisma } from "@/lib/prisma";
+import { updateOrderStatus } from "@/lib/orders";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN!,
@@ -40,8 +41,9 @@ async function handleNotification(request: NextRequest, body: Record<string, unk
 
   await prisma.order.update({
     where: { id: orderId },
-    data: { status: newStatus, mpPaymentId: String(dataId) },
+    data: { mpPaymentId: String(dataId) },
   });
+  await updateOrderStatus(orderId, newStatus);
 
   console.log(`Webhook Mercado Pago: pedido ${orderId} atualizado para ${newStatus} (pagamento ${dataId})`);
 
