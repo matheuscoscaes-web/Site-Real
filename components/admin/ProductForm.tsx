@@ -355,11 +355,11 @@ export function ProductForm({ product }: { product?: ProductData }) {
                       </label>
                     </div>
 
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-col sm:flex-row gap-1.5">
                       <div className="flex-1 min-w-0">
                         <input
                           list={`cores-${i}`}
-                          className="input-field text-xs py-1.5 text-gray-600"
+                          className="input-field w-full text-xs py-1.5 text-gray-600"
                           value={r.color}
                           onChange={(e) => updateRow(i, "color", e.target.value)}
                           placeholder="Cor (ex: Preto, Caramelo, Rosé)"
@@ -368,22 +368,24 @@ export function ProductForm({ product }: { product?: ProductData }) {
                           {COLORS.map((c) => <option key={c} value={c} />)}
                         </datalist>
                       </div>
-                      <select
-                        className="input-field text-xs py-1.5 text-gray-600 w-24 flex-shrink-0"
-                        value={r.size}
-                        onChange={(e) => updateRow(i, "size", e.target.value)}
-                      >
-                        <option value="">— Tam. —</option>
-                        {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                      <input
-                        type="number"
-                        min="0"
-                        title="Estoque desta cor"
-                        className={`input-field text-xs py-1.5 font-bold text-center w-16 flex-shrink-0 ${r.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : r.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
-                        value={r.stock}
-                        onChange={(e) => updateRow(i, "stock", parseInt(e.target.value) || 0)}
-                      />
+                      <div className="flex gap-1.5">
+                        <select
+                          className="input-field text-xs py-1.5 text-gray-600 flex-1 min-w-0 sm:w-24 sm:flex-none"
+                          value={r.size}
+                          onChange={(e) => updateRow(i, "size", e.target.value)}
+                        >
+                          <option value="">— Tam. —</option>
+                          {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <input
+                          type="number"
+                          min="0"
+                          title="Estoque desta cor"
+                          className={`input-field text-xs py-1.5 font-bold text-center flex-1 min-w-0 sm:w-16 sm:flex-none ${r.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : r.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
+                          value={r.stock}
+                          onChange={(e) => updateRow(i, "stock", parseInt(e.target.value) || 0)}
+                        />
+                      </div>
                     </div>
                   </div>
 
