@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { WhatsappFloatButton } from "@/components/layout/WhatsappFloatButton";
 import { User, Package, MapPin, Settings, ChevronRight, Network } from "lucide-react";
 
 const baseNavItems = [
@@ -57,6 +58,7 @@ export default async function ContaLayout({ children }: { children: React.ReactN
         </div>
       </main>
       <Footer />
+      <WhatsappFloatButton />
     </>
   );
 }
