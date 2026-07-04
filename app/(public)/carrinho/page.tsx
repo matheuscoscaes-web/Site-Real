@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
@@ -11,6 +12,7 @@ import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } 
 
 export default function CarrinhoPage() {
   const router = useRouter();
+  const { status } = useSession();
   const { items, removeItem, updateQuantity, subtotal } = useCartStore();
   const [cep, setCep] = useState("");
   const [freteOptions, setFreteOptions] = useState<FreteOption[]>([]);
@@ -21,11 +23,21 @@ export default function CarrinhoPage() {
   const [cupomLoading, setCupomLoading] = useState(false);
   const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discount: number; ownerName: string } | null>(null);
   const [cupomError, setCupomError] = useState("");
+  const [isFirstPurchase, setIsFirstPurchase] = useState(false);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/pedidos/primeiro-desconto")
+      .then((r) => r.json())
+      .then((d: { isFirstPurchase: boolean }) => setIsFirstPurchase(d.isFirstPurchase))
+      .catch(() => {});
+  }, [status]);
 
   const sub = subtotal();
-  const freteTotal = selectedFrete?.price ?? 0;
-  const desconto = cupomAplicado ? sub * cupomAplicado.discount / 100 : 0;
-  const total = sub - desconto + freteTotal;
+  const firstDiscount = isFirstPurchase ? sub * 0.4 : 0;
+  const freteTotal = isFirstPurchase ? 0 : (selectedFrete?.price ?? 0);
+  const desconto = !isFirstPurchase && cupomAplicado ? sub * cupomAplicado.discount / 100 : 0;
+  const total = sub - firstDiscount - desconto + freteTotal;
 
   async function handleCalcularFrete() {
     if (cep.replace(/\D/g, "").length !== 8) {
@@ -90,10 +102,20 @@ export default function CarrinhoPage() {
 
   return (
     <div className="container-main py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8" style={{ fontFamily: "Playfair Display, serif" }}>
+      <h1 className="text-3xl font-bold text-gray-900 mb-4" style={{ fontFamily: "Playfair Display, serif" }}>
         Meu Carrinho
         <span className="text-base font-normal text-gray-400 ml-3">({items.length} {items.length === 1 ? "item" : "itens"})</span>
       </h1>
+
+      {isFirstPurchase && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <p className="font-bold text-green-800 text-sm">Desconto de primeira compra aplicado!</p>
+            <p className="text-xs text-green-700 mt-0.5">40% de desconto + frete grátis neste pedido.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Itens */}
@@ -166,91 +188,100 @@ export default function CarrinhoPage() {
         {/* Resumo */}
         <div className="space-y-4">
           {/* Cupom */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <Tag size={18} className="text-brand-700" /> Cupom de desconto
-            </h3>
-            {cupomAplicado ? (
-              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                <div>
-                  <p className="font-mono font-bold text-green-700 text-sm">{cupomAplicado.code}</p>
-                  <p className="text-xs text-green-600">{cupomAplicado.discount}% de desconto — economia de {formatCurrency(desconto)}</p>
-                </div>
-                <button onClick={() => setCupomAplicado(null)} className="text-gray-400 hover:text-red-500 ml-3">
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={cupomInput}
-                    onChange={(e) => { setCupomInput(e.target.value.toUpperCase()); setCupomError(""); }}
-                    onKeyDown={(e) => e.key === "Enter" && handleCupom()}
-                    placeholder="Digite o cupom"
-                    className="input-field flex-1 min-w-0 text-sm py-2.5 font-mono uppercase"
-                  />
-                  <button onClick={handleCupom} disabled={cupomLoading} className="btn-primary text-sm px-4 py-2.5 min-w-[90px]">
-                    {cupomLoading ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Aplicar"}
+          {!isFirstPurchase && (
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <Tag size={18} className="text-brand-700" /> Cupom de desconto
+              </h3>
+              {cupomAplicado ? (
+                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="font-mono font-bold text-green-700 text-sm">{cupomAplicado.code}</p>
+                    <p className="text-xs text-green-600">{cupomAplicado.discount}% de desconto — economia de {formatCurrency(desconto)}</p>
+                  </div>
+                  <button onClick={() => setCupomAplicado(null)} className="text-gray-400 hover:text-red-500 ml-3">
+                    <X size={16} />
                   </button>
                 </div>
-                {cupomError && <p className="text-xs mt-2 font-medium text-red-500">{cupomError}</p>}
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={cupomInput}
+                      onChange={(e) => { setCupomInput(e.target.value.toUpperCase()); setCupomError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleCupom()}
+                      placeholder="Digite o cupom"
+                      className="input-field flex-1 min-w-0 text-sm py-2.5 font-mono uppercase"
+                    />
+                    <button onClick={handleCupom} disabled={cupomLoading} className="btn-primary text-sm px-4 py-2.5 min-w-[90px]">
+                      {cupomLoading ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Aplicar"}
+                    </button>
+                  </div>
+                  {cupomError && <p className="text-xs mt-2 font-medium text-red-500">{cupomError}</p>}
+                </>
+              )}
+            </div>
+          )}
 
           {/* Frete */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <Truck size={18} className="text-brand-700" /> Calcular frete
-            </h3>
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={cep}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, "").slice(0, 8);
-                  setCep(v.length > 5 ? `${v.slice(0, 5)}-${v.slice(5)}` : v);
-                }}
-                placeholder="00000-000"
-                className="input-field flex-1 min-w-0 text-sm py-2.5"
-                maxLength={9}
-              />
-              <button
-                onClick={handleCalcularFrete}
-                disabled={loadingFrete}
-                className="btn-primary text-sm px-4 py-2.5 min-w-[90px]"
-              >
-                {loadingFrete ? "..." : "Calcular"}
-              </button>
+          {isFirstPurchase ? (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center gap-3">
+              <Truck size={18} className="text-green-700 flex-shrink-0" />
+              <p className="text-sm font-semibold text-green-800">Frete grátis na sua primeira compra!</p>
             </div>
-            {freteError && <p className="text-xs text-red-500 mb-2">{freteError}</p>}
-            {freteOptions.length > 0 && (
-              <div className="space-y-2">
-                {freteOptions.map((opt) => (
-                  <label key={opt.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedFrete?.id === opt.id ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-gray-300"}`}>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="frete"
-                        checked={selectedFrete?.id === opt.id}
-                        onChange={() => setSelectedFrete(opt)}
-                        className="accent-brand-700"
-                      />
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
-                        <p className="text-xs text-gray-500">{opt.days} dias úteis</p>
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold text-gray-900">
-                      {opt.price === 0 ? "Grátis" : formatCurrency(opt.price)}
-                    </span>
-                  </label>
-                ))}
+          ) : (
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <Truck size={18} className="text-brand-700" /> Calcular frete
+              </h3>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={cep}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                    setCep(v.length > 5 ? `${v.slice(0, 5)}-${v.slice(5)}` : v);
+                  }}
+                  placeholder="00000-000"
+                  className="input-field flex-1 min-w-0 text-sm py-2.5"
+                  maxLength={9}
+                />
+                <button
+                  onClick={handleCalcularFrete}
+                  disabled={loadingFrete}
+                  className="btn-primary text-sm px-4 py-2.5 min-w-[90px]"
+                >
+                  {loadingFrete ? "..." : "Calcular"}
+                </button>
               </div>
-            )}
-          </div>
+              {freteError && <p className="text-xs text-red-500 mb-2">{freteError}</p>}
+              {freteOptions.length > 0 && (
+                <div className="space-y-2">
+                  {freteOptions.map((opt) => (
+                    <label key={opt.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedFrete?.id === opt.id ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="frete"
+                          checked={selectedFrete?.id === opt.id}
+                          onChange={() => setSelectedFrete(opt)}
+                          className="accent-brand-700"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
+                          <p className="text-xs text-gray-500">{opt.days} dias úteis</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-gray-900">
+                        {opt.price === 0 ? "Grátis" : formatCurrency(opt.price)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Total */}
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
@@ -260,7 +291,13 @@ export default function CarrinhoPage() {
                 <span>Subtotal ({items.reduce((s, i) => s + i.quantity, 0)} itens)</span>
                 <span>{formatCurrency(sub)}</span>
               </div>
-              {desconto > 0 && (
+              {isFirstPurchase && (
+                <div className="flex justify-between text-green-600 font-medium">
+                  <span>Desconto 1ª compra (40%)</span>
+                  <span>-{formatCurrency(firstDiscount)}</span>
+                </div>
+              )}
+              {desconto > 0 && !isFirstPurchase && (
                 <div className="flex justify-between text-green-600 font-medium">
                   <span>Desconto (cupom)</span>
                   <span>-{formatCurrency(desconto)}</span>
@@ -268,7 +305,13 @@ export default function CarrinhoPage() {
               )}
               <div className="flex justify-between text-gray-600">
                 <span>Frete</span>
-                <span>{selectedFrete ? (selectedFrete.price === 0 ? "Grátis" : formatCurrency(selectedFrete.price)) : "Calculando..."}</span>
+                <span className={isFirstPurchase ? "text-green-600 font-medium" : ""}>
+                  {isFirstPurchase
+                    ? "Grátis"
+                    : selectedFrete
+                    ? (selectedFrete.price === 0 ? "Grátis" : formatCurrency(selectedFrete.price))
+                    : "Calculando..."}
+                </span>
               </div>
               <div className="border-t border-gray-100 pt-3 mt-2">
                 <div className="flex justify-between font-bold text-gray-900 text-base">
