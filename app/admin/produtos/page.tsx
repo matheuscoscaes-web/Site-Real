@@ -33,7 +33,7 @@ export default async function AdminProdutosPage({
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -43,7 +43,7 @@ export default async function AdminProdutosPage({
             {totalLowStock > 0 && <span className="text-orange-600"> • {totalLowStock} com estoque baixo</span>}
           </p>
         </div>
-        <Link href="/admin/produtos/novo" className="btn-primary">
+        <Link href="/admin/produtos/novo" className="btn-primary w-fit">
           <Plus size={18} /> Novo produto
         </Link>
       </div>
