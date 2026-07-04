@@ -1,7 +1,6 @@
-export const dynamic = "force-dynamic";
-
 import Link from "next/link";
 import Image from "next/image";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/products/ProductCard";
 import {
@@ -9,57 +8,65 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
-async function getFeaturedProducts() {
-  const featured = await prisma.product.findMany({
-    where: { featured: true, active: true },
-    take: 8,
-    orderBy: { createdAt: "desc" },
-    include: { variants: true },
-  });
+const getFeaturedProducts = unstable_cache(
+  async () => {
+    const featured = await prisma.product.findMany({
+      where: { featured: true, active: true },
+      take: 8,
+      orderBy: { createdAt: "desc" },
+      include: { variants: true },
+    });
 
-  if (featured.length > 0) return featured;
+    if (featured.length > 0) return featured;
 
-  // fallback: produtos mais recentes se não houver destaques
-  return prisma.product.findMany({
-    where: { active: true },
-    take: 8,
-    orderBy: { createdAt: "desc" },
-    include: { variants: true },
-  });
-}
+    // fallback: produtos mais recentes se não houver destaques
+    return prisma.product.findMany({
+      where: { active: true },
+      take: 8,
+      orderBy: { createdAt: "desc" },
+      include: { variants: true },
+    });
+  },
+  ["home-featured-products"],
+  { revalidate: 60, tags: ["products"] }
+);
 
-async function getCategories() {
-  const [bolsas, vestuario, acessorios] = await Promise.all([
-    prisma.product.count({ where: { active: true, OR: [{ category: "Bolsas" }, { name: { startsWith: "Bolsa", mode: "insensitive" } }] } }),
-    prisma.product.count({ where: { active: true, category: "Mochilas" } }),
-    prisma.product.count({ where: { active: true, category: "Bolsa Tira-Colo" } }),
-  ]);
+const getCategories = unstable_cache(
+  async () => {
+    const [bolsas, vestuario, acessorios] = await Promise.all([
+      prisma.product.count({ where: { active: true, OR: [{ category: "Bolsas" }, { name: { startsWith: "Bolsa", mode: "insensitive" } }] } }),
+      prisma.product.count({ where: { active: true, category: "Mochilas" } }),
+      prisma.product.count({ where: { active: true, category: "Bolsa Tira-Colo" } }),
+    ]);
 
-  return [
-    {
-      name: "Bolsas",
-      href: "/produtos?categoria=Bolsas",
-      image: "/imagens/foto-entrada.png",
-      count: `${bolsas} produto${bolsas !== 1 ? "s" : ""}`,
-      gradient: "from-brand-900/70",
-    },
-    {
-      name: "Mochilas",
-      href: "/produtos?categoria=Mochilas",
-      image: "/imagens/mochila.png",
-      count: `${vestuario} produto${vestuario !== 1 ? "s" : ""}`,
-      gradient: "from-purple-900/70",
-      objectPosition: "center 30%",
-    },
-    {
-      name: "Bolsa Tira-Colo",
-      href: "/produtos?categoria=Bolsa Tira-Colo",
-      image: "/imagens/bolsatira-colo.png",
-      count: `${acessorios} produto${acessorios !== 1 ? "s" : ""}`,
-      gradient: "from-amber-900/70",
-    },
-  ];
-}
+    return [
+      {
+        name: "Bolsas",
+        href: "/produtos?categoria=Bolsas",
+        image: "/imagens/foto-entrada.png",
+        count: `${bolsas} produto${bolsas !== 1 ? "s" : ""}`,
+        gradient: "from-brand-900/70",
+      },
+      {
+        name: "Mochilas",
+        href: "/produtos?categoria=Mochilas",
+        image: "/imagens/mochila.png",
+        count: `${vestuario} produto${vestuario !== 1 ? "s" : ""}`,
+        gradient: "from-purple-900/70",
+        objectPosition: "center 30%",
+      },
+      {
+        name: "Bolsa Tira-Colo",
+        href: "/produtos?categoria=Bolsa Tira-Colo",
+        image: "/imagens/bolsatira-colo.png",
+        count: `${acessorios} produto${acessorios !== 1 ? "s" : ""}`,
+        gradient: "from-amber-900/70",
+      },
+    ];
+  },
+  ["home-categories"],
+  { revalidate: 60, tags: ["products"] }
+);
 
 const benefits = [
   { icon: Truck, title: "Entrega Rápida", desc: "Envio para todo o Brasil via SEDEX e PAC." },
