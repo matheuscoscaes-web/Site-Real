@@ -8,7 +8,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const count = await prisma.order.count({
-    where: { userId: session.user.id, status: { not: "CANCELLED" } },
+    where: { userId: session.user.id, status: { notIn: ["PENDING", "CANCELLED"] } },
   });
 
   return NextResponse.json({ isFirstPurchase: count === 0 });

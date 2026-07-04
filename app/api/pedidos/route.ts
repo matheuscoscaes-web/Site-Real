@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   // Primeira compra
   const orderCount = await prisma.order.count({
-    where: { userId: session.user.id, status: { not: "CANCELLED" } },
+    where: { userId: session.user.id, status: { notIn: ["PENDING", "CANCELLED"] } },
   });
   const isFirstPurchase = orderCount === 0;
 
