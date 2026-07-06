@@ -27,9 +27,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const { notes } = await request.json();
 
-  const user = await prisma.user.update({ where: { id }, data: body });
+  const user = await prisma.user.update({ where: { id }, data: { notes } });
   const { password: _pw2, ...safe } = user;
   return NextResponse.json(safe);
 }

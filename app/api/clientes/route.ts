@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -20,6 +21,11 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request.headers);
+  if (!rateLimit(`cadastro:${ip}`, 10, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Muitas tentativas. Tente novamente mais tarde." }, { status: 429 });
+  }
+
   const body = await request.json();
   const { name, email, phone, password } = body;
 

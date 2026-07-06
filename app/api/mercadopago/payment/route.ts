@@ -11,7 +11,14 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const { formData, orderId, total } = await request.json();
+  const { formData, orderId } = await request.json();
+
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+  if (order.userId !== session.user.id) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  if (order.status !== "PENDING" && order.status !== "CANCELLED") {
+    return NextResponse.json({ error: "Pedido não está mais pendente de pagamento" }, { status: 409 });
+  }
 
   const payment = new Payment(client);
 
@@ -20,7 +27,7 @@ export async function POST(request: NextRequest) {
     result = await payment.create({
       body: {
         ...formData,
-        transaction_amount: Number(total),
+        transaction_amount: order.total,
         description: "Hearts Couro",
         external_reference: orderId,
         notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,

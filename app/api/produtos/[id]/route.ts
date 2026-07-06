@@ -13,6 +13,11 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const product = await prisma.product.findUnique({ where: { id }, include: { variants: true } });
   if (!product) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
+
+  if (!product.active && !(await requireAdmin())) {
+    return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
+  }
+
   return NextResponse.json(product);
 }
 

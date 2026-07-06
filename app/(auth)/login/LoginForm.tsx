@@ -29,7 +29,11 @@ export function LoginForm() {
     });
 
     if (result?.error) {
-      setError("E-mail ou senha incorretos. Tente novamente.");
+      setError(
+        result.error.includes("Muitas tentativas")
+          ? result.error
+          : "E-mail ou senha incorretos. Tente novamente."
+      );
       setLoading(false);
     } else {
       router.push(redirect);

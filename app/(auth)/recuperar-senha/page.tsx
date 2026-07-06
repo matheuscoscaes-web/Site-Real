@@ -8,14 +8,28 @@ export default function RecuperarSenhaPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     setLoading(true);
-    // Simulação — para integração real, chamar API de envio de e-mail
-    await new Promise((r) => setTimeout(r, 1500));
-    setSent(true);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/auth/recuperar-senha", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.status === 429) {
+        setError("Muitas tentativas. Tente novamente mais tarde.");
+        return;
+      }
+      setSent(true);
+    } catch {
+      setError("Erro ao enviar. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -56,6 +70,11 @@ export default function RecuperarSenhaPage() {
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+                    {error}
+                  </div>
+                )}
                 <div>
                   <label className="label">E-mail cadastrado</label>
                   <input

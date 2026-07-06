@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const { orderId, items, email } = await request.json();
+  const { orderId } = await request.json();
+
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+  if (order.userId !== session.user.id) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  if (order.status !== "PENDING" && order.status !== "CANCELLED") {
+    return NextResponse.json({ error: "Pedido não está mais pendente de pagamento" }, { status: 409 });
+  }
 
   const client = new MercadoPagoConfig({
     accessToken: process.env.MP_ACCESS_TOKEN!,
@@ -19,14 +27,14 @@ export async function POST(request: NextRequest) {
 
   const result = await preference.create({
     body: {
-      items: items.map((item: { title: string; quantity: number; unit_price: number }) => ({
+      items: [{
         id: orderId,
-        title: item.title,
-        quantity: Number(item.quantity),
-        unit_price: Number(item.unit_price),
+        title: "Hearts Couro",
+        quantity: 1,
+        unit_price: order.total,
         currency_id: "BRL",
-      })),
-      payer: { email },
+      }],
+      payer: { email: session.user.email },
       back_urls: {
         success: `${baseUrl}/checkout/sucesso?pedido=${orderId}`,
         failure: `${baseUrl}/checkout?erro=pagamento`,

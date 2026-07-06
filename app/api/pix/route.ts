@@ -10,7 +10,14 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const { valor, orderId, cpf } = await request.json();
+  const { orderId, cpf } = await request.json();
+
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+  if (order.userId !== session.user.id) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  if (order.status !== "PENDING" && order.status !== "CANCELLED") {
+    return NextResponse.json({ error: "Pedido não está mais pendente de pagamento" }, { status: 409 });
+  }
 
   const payment = new Payment(client);
 
@@ -19,7 +26,7 @@ export async function POST(request: NextRequest) {
     result = await payment.create({
       body: {
         payment_method_id: "pix",
-        transaction_amount: Number(valor),
+        transaction_amount: order.total,
         description: "Hearts Couro",
         external_reference: orderId,
         notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,
@@ -36,12 +43,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Erro ao gerar PIX: ${message}` }, { status: 500 });
   }
 
-  if (orderId) {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "PENDING", mpPaymentId: result.id ? String(result.id) : null },
-    });
-  }
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { status: "PENDING", mpPaymentId: result.id ? String(result.id) : null },
+  });
 
   const qrCode = result.point_of_interaction?.transaction_data?.qr_code ?? null;
   const qrBase64 = result.point_of_interaction?.transaction_data?.qr_code_base64 ?? null;
