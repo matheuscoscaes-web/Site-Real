@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { WELCOME_COUPON_CODE, WELCOME_COUPON_DISCOUNT } from "@/app/api/cupom/route";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -31,44 +32,50 @@ export async function POST(request: NextRequest) {
   });
   const isFirstPurchase = orderCount === 0;
 
-  // Cupom de vendedor/revendedor
+  // Cupom (boas-vindas ou vendedor/revendedor)
   let couponDiscount = 0;
+  let freeShipping = false;
   let vendorId: string | null = null;
   let resellerId: string | null = null;
   let commissionValue: number | null = null;
   let appliedCoupon: string | null = null;
 
-  if (couponCode && !isFirstPurchase) {
+  if (couponCode) {
     const code = couponCode.toUpperCase().trim();
 
-    const vendor = await prisma.vendor.findUnique({ where: { couponCode: code } });
-    if (vendor && vendor.active && vendor.discount !== null) {
-      couponDiscount = vendor.discount;
-      vendorId = vendor.id;
+    if (code === WELCOME_COUPON_CODE && isFirstPurchase) {
+      couponDiscount = WELCOME_COUPON_DISCOUNT;
+      freeShipping = true;
       appliedCoupon = code;
-      // Venda direta do vendedor: comissão fixa de 5%
-      commissionValue = subtotal * 0.05;
     } else {
-      const reseller = await prisma.reseller.findUnique({
-        where: { couponCode: code },
-        include: { vendor: true },
-      });
-      if (reseller && reseller.active && reseller.discount !== null) {
-        couponDiscount = reseller.discount;
-        resellerId = reseller.id;
-        vendorId = reseller.vendor.id;
+      const vendor = await prisma.vendor.findUnique({ where: { couponCode: code } });
+      if (vendor && vendor.active && vendor.discount !== null) {
+        couponDiscount = vendor.discount;
+        vendorId = vendor.id;
         appliedCoupon = code;
-        // Venda de revendedor cadastrado: vendedor ganha comissão fixa de 2,5%
-        commissionValue = subtotal * 0.025;
+        // Venda direta do vendedor: comissão fixa de 5%
+        commissionValue = subtotal * 0.05;
+      } else {
+        const reseller = await prisma.reseller.findUnique({
+          where: { couponCode: code },
+          include: { vendor: true },
+        });
+        if (reseller && reseller.active && reseller.discount !== null) {
+          couponDiscount = reseller.discount;
+          resellerId = reseller.id;
+          vendorId = reseller.vendor.id;
+          appliedCoupon = code;
+          // Venda de revendedor cadastrado: vendedor ganha comissão fixa de 2,5%
+          commissionValue = subtotal * 0.025;
+        }
       }
     }
   }
 
   // Cálculo do total
-  const firstDiscount = isFirstPurchase ? subtotal * 0.4 : 0;
   const couponAmount = subtotal * couponDiscount / 100;
-  const finalShipping = isFirstPurchase ? 0 : shipping;
-  const finalTotal = subtotal - firstDiscount - couponAmount + finalShipping;
+  const finalShipping = freeShipping ? 0 : shipping;
+  const finalTotal = subtotal - couponAmount + finalShipping;
 
   // Cria endereço
   const savedAddress = await prisma.address.create({

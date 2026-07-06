@@ -19,7 +19,7 @@ export default function FretePage() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">Primeira compra</h2>
           <div className="p-5 bg-brand-50 rounded-2xl border border-brand-100">
             <p className="text-brand-800 font-semibold">40% de desconto + frete grátis na primeira compra</p>
-            <p className="text-brand-700 text-sm mt-1">O desconto é aplicado automaticamente no checkout para novos clientes.</p>
+            <p className="text-brand-700 text-sm mt-1">Use o cupom de boas-vindas <span className="font-mono font-bold">BEMVINDO</span> no carrinho ou checkout para novos clientes.</p>
           </div>
         </section>
 

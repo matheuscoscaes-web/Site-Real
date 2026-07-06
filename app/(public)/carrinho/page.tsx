@@ -21,7 +21,7 @@ export default function CarrinhoPage() {
   const [freteError, setFreteError] = useState("");
   const [cupomInput, setCupomInput] = useState("");
   const [cupomLoading, setCupomLoading] = useState(false);
-  const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discount: number; ownerName: string } | null>(null);
+  const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discount: number; ownerName: string; freeShipping?: boolean } | null>(null);
   const [cupomError, setCupomError] = useState("");
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
 
@@ -34,10 +34,9 @@ export default function CarrinhoPage() {
   }, [status]);
 
   const sub = subtotal();
-  const firstDiscount = isFirstPurchase ? sub * 0.4 : 0;
-  const freteTotal = isFirstPurchase ? 0 : (selectedFrete?.price ?? 0);
-  const desconto = !isFirstPurchase && cupomAplicado ? sub * cupomAplicado.discount / 100 : 0;
-  const total = sub - firstDiscount - desconto + freteTotal;
+  const freteTotal = cupomAplicado?.freeShipping ? 0 : (selectedFrete?.price ?? 0);
+  const desconto = cupomAplicado ? sub * cupomAplicado.discount / 100 : 0;
+  const total = sub - desconto + freteTotal;
 
   async function handleCalcularFrete() {
     if (cep.replace(/\D/g, "").length !== 8) {
@@ -73,7 +72,7 @@ export default function CarrinhoPage() {
     const data = await res.json();
     setCupomLoading(false);
     if (data.valid) {
-      setCupomAplicado({ code: cupomInput.trim().toUpperCase(), discount: data.discount, ownerName: data.ownerName });
+      setCupomAplicado({ code: cupomInput.trim().toUpperCase(), discount: data.discount, ownerName: data.ownerName, freeShipping: !!data.freeShipping });
       setCupomInput("");
     } else {
       setCupomError(data.error || "Cupom inválido ou expirado.");
@@ -107,12 +106,14 @@ export default function CarrinhoPage() {
         <span className="text-base font-normal text-gray-400 ml-3">({items.length} {items.length === 1 ? "item" : "itens"})</span>
       </h1>
 
-      {isFirstPurchase && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
-          <span className="text-2xl">🎉</span>
+      {isFirstPurchase && !cupomAplicado && (
+        <div className="bg-brand-50 border border-brand-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
+          <span className="text-2xl">🎁</span>
           <div>
-            <p className="font-bold text-green-800 text-sm">Desconto de primeira compra aplicado!</p>
-            <p className="text-xs text-green-700 mt-0.5">40% de desconto + frete grátis neste pedido.</p>
+            <p className="font-bold text-brand-800 text-sm">Você tem um cupom de boas-vindas!</p>
+            <p className="text-xs text-brand-700 mt-0.5">
+              Use o código <span className="font-mono font-bold">BEMVINDO</span> no campo de cupom ao lado e ganhe 40% de desconto + frete grátis.
+            </p>
           </div>
         </div>
       )}
@@ -188,47 +189,48 @@ export default function CarrinhoPage() {
         {/* Resumo */}
         <div className="space-y-4">
           {/* Cupom */}
-          {!isFirstPurchase && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Tag size={18} className="text-brand-700" /> Cupom de desconto
-              </h3>
-              {cupomAplicado ? (
-                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="font-mono font-bold text-green-700 text-sm">{cupomAplicado.code}</p>
-                    <p className="text-xs text-green-600">{cupomAplicado.discount}% de desconto — economia de {formatCurrency(desconto)}</p>
-                  </div>
-                  <button onClick={() => setCupomAplicado(null)} className="text-gray-400 hover:text-red-500 ml-3">
-                    <X size={16} />
+          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <Tag size={18} className="text-brand-700" /> Cupom de desconto
+            </h3>
+            {cupomAplicado ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <div>
+                  <p className="font-mono font-bold text-green-700 text-sm">{cupomAplicado.code}</p>
+                  <p className="text-xs text-green-600">
+                    {cupomAplicado.discount}% de desconto — economia de {formatCurrency(desconto)}
+                    {cupomAplicado.freeShipping && " + frete grátis"}
+                  </p>
+                </div>
+                <button onClick={() => setCupomAplicado(null)} className="text-gray-400 hover:text-red-500 ml-3">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={cupomInput}
+                    onChange={(e) => { setCupomInput(e.target.value.toUpperCase()); setCupomError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleCupom()}
+                    placeholder="Digite o cupom"
+                    className="input-field flex-1 min-w-0 text-sm py-2.5 font-mono uppercase"
+                  />
+                  <button onClick={handleCupom} disabled={cupomLoading} className="btn-primary text-sm px-4 py-2.5 min-w-[90px]">
+                    {cupomLoading ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Aplicar"}
                   </button>
                 </div>
-              ) : (
-                <>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={cupomInput}
-                      onChange={(e) => { setCupomInput(e.target.value.toUpperCase()); setCupomError(""); }}
-                      onKeyDown={(e) => e.key === "Enter" && handleCupom()}
-                      placeholder="Digite o cupom"
-                      className="input-field flex-1 min-w-0 text-sm py-2.5 font-mono uppercase"
-                    />
-                    <button onClick={handleCupom} disabled={cupomLoading} className="btn-primary text-sm px-4 py-2.5 min-w-[90px]">
-                      {cupomLoading ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Aplicar"}
-                    </button>
-                  </div>
-                  {cupomError && <p className="text-xs mt-2 font-medium text-red-500">{cupomError}</p>}
-                </>
-              )}
-            </div>
-          )}
+                {cupomError && <p className="text-xs mt-2 font-medium text-red-500">{cupomError}</p>}
+              </>
+            )}
+          </div>
 
           {/* Frete */}
-          {isFirstPurchase ? (
+          {cupomAplicado?.freeShipping ? (
             <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center gap-3">
               <Truck size={18} className="text-green-700 flex-shrink-0" />
-              <p className="text-sm font-semibold text-green-800">Frete grátis na sua primeira compra!</p>
+              <p className="text-sm font-semibold text-green-800">Frete grátis com o cupom {cupomAplicado.code}!</p>
             </div>
           ) : (
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
@@ -291,13 +293,7 @@ export default function CarrinhoPage() {
                 <span>Subtotal ({items.reduce((s, i) => s + i.quantity, 0)} itens)</span>
                 <span>{formatCurrency(sub)}</span>
               </div>
-              {isFirstPurchase && (
-                <div className="flex justify-between text-green-600 font-medium">
-                  <span>Desconto 1ª compra (40%)</span>
-                  <span>-{formatCurrency(firstDiscount)}</span>
-                </div>
-              )}
-              {desconto > 0 && !isFirstPurchase && (
+              {desconto > 0 && (
                 <div className="flex justify-between text-green-600 font-medium">
                   <span>Desconto (cupom)</span>
                   <span>-{formatCurrency(desconto)}</span>
@@ -305,8 +301,8 @@ export default function CarrinhoPage() {
               )}
               <div className="flex justify-between text-gray-600">
                 <span>Frete</span>
-                <span className={isFirstPurchase ? "text-green-600 font-medium" : ""}>
-                  {isFirstPurchase
+                <span className={cupomAplicado?.freeShipping ? "text-green-600 font-medium" : ""}>
+                  {cupomAplicado?.freeShipping
                     ? "Grátis"
                     : selectedFrete
                     ? (selectedFrete.price === 0 ? "Grátis" : formatCurrency(selectedFrete.price))

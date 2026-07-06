@@ -58,7 +58,7 @@ export default function CheckoutPage() {
 
   const [step, setStep] = useState(1);
   const [deliveryType, setDeliveryType] = useState<"ENTREGA" | "RETIRADA">("ENTREGA");
-  const [coupon, setCoupon] = useState({ code: "", input: "", discount: 0, loading: false, error: "", applied: false });
+  const [coupon, setCoupon] = useState({ code: "", input: "", discount: 0, loading: false, error: "", applied: false, freeShipping: false });
   const [address, setAddress] = useState<Address>({ name: "Casa", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
   const [loadingCep, setLoadingCep] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<FreteOption[]>([]);
@@ -82,10 +82,9 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new" | null>(null);
 
   const sub = subtotal();
-  const firstDiscount = isFirstPurchase ? sub * 0.4 : 0;
-  const couponAmount = !isFirstPurchase ? (sub * coupon.discount) / 100 : 0;
-  const effectiveShipping = deliveryType === "RETIRADA" || isFirstPurchase ? 0 : (selectedShipping?.price ?? 0);
-  const total = sub - firstDiscount - couponAmount + effectiveShipping;
+  const couponAmount = coupon.applied ? (sub * coupon.discount) / 100 : 0;
+  const effectiveShipping = deliveryType === "RETIRADA" || coupon.freeShipping ? 0 : (selectedShipping?.price ?? 0);
+  const total = sub - couponAmount + effectiveShipping;
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login?redirect=/checkout");
@@ -122,7 +121,7 @@ export default function CheckoutPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data.valid) {
-          setCoupon((p) => ({ ...p, applied: true, code: code.toUpperCase(), discount: data.discount, error: "" }));
+          setCoupon((p) => ({ ...p, applied: true, code: code.toUpperCase(), discount: data.discount, freeShipping: !!data.freeShipping, error: "" }));
         }
       })
       .catch(() => {});
@@ -158,7 +157,7 @@ export default function CheckoutPage() {
     const addr = savedAddresses.find((a) => a.id === id);
     if (!addr) return;
     setAddress({ name: addr.name, street: addr.street, number: addr.number, complement: addr.complement ?? "", district: addr.district, city: addr.city, state: addr.state, zipCode: addr.zipCode });
-    if (!isFirstPurchase && addr.zipCode) {
+    if (addr.zipCode) {
       setLoadingFrete(true);
       setShippingOptions([]);
       setSelectedShipping(null);
@@ -187,23 +186,21 @@ export default function CheckoutPage() {
       setAddress((p) => ({ ...p, street: data.street || p.street, district: data.district || p.district, city: data.city || p.city, state: data.state || p.state }));
     } catch { /* mantém */ } finally { setLoadingCep(false); }
 
-    if (!isFirstPurchase) {
-      setLoadingFrete(true);
-      setShippingOptions([]);
-      setSelectedShipping(null);
-      try {
-        const res = await fetch("/api/frete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cep: address.zipCode, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
-        });
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setShippingOptions(data);
-          if (data.length === 1) setSelectedShipping(data[0]);
-        }
-      } catch { /* ignora */ } finally { setLoadingFrete(false); }
-    }
+    setLoadingFrete(true);
+    setShippingOptions([]);
+    setSelectedShipping(null);
+    try {
+      const res = await fetch("/api/frete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cep: address.zipCode, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setShippingOptions(data);
+        if (data.length === 1) setSelectedShipping(data[0]);
+      }
+    } catch { /* ignora */ } finally { setLoadingFrete(false); }
   }
 
   async function applyCoupon() {
@@ -212,9 +209,9 @@ export default function CheckoutPage() {
     const res = await fetch(`/api/cupom?code=${encodeURIComponent(coupon.input.trim())}`);
     const data = await res.json();
     if (data.valid) {
-      setCoupon((p) => ({ ...p, loading: false, applied: true, code: coupon.input.trim().toUpperCase(), discount: data.discount, error: "" }));
+      setCoupon((p) => ({ ...p, loading: false, applied: true, code: coupon.input.trim().toUpperCase(), discount: data.discount, freeShipping: !!data.freeShipping, error: "" }));
     } else {
-      setCoupon((p) => ({ ...p, loading: false, error: data.error || "Cupom inválido", applied: false, discount: 0 }));
+      setCoupon((p) => ({ ...p, loading: false, error: data.error || "Cupom inválido", applied: false, discount: 0, freeShipping: false }));
     }
   }
 
@@ -224,7 +221,7 @@ export default function CheckoutPage() {
         alert("Preencha todos os campos obrigatórios.");
         return;
       }
-      if (!isFirstPurchase && !selectedShipping) {
+      if (!coupon.freeShipping && !selectedShipping) {
         alert("Selecione uma opção de frete.");
         return;
       }
@@ -365,12 +362,14 @@ export default function CheckoutPage() {
         ))}
       </div>
 
-      {isFirstPurchase && step === 1 && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
-          <span className="text-2xl">🎉</span>
+      {isFirstPurchase && step === 1 && !coupon.applied && (
+        <div className="bg-brand-50 border border-brand-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
+          <span className="text-2xl">🎁</span>
           <div>
-            <p className="font-bold text-green-800 text-sm">Desconto de primeira compra aplicado!</p>
-            <p className="text-xs text-green-700 mt-0.5">40% de desconto + frete grátis neste pedido.</p>
+            <p className="font-bold text-brand-800 text-sm">Você tem um cupom de boas-vindas!</p>
+            <p className="text-xs text-brand-700 mt-0.5">
+              Use o código <span className="font-mono font-bold">BEMVINDO</span> no campo de cupom abaixo e ganhe 40% de desconto + frete grátis.
+            </p>
           </div>
         </div>
       )}
@@ -494,7 +493,7 @@ export default function CheckoutPage() {
               )}
 
               {/* Frete */}
-              {!isFirstPurchase && (
+              {!coupon.freeShipping && (
                 <div className="mb-6 border-t border-gray-100 pt-5">
                   <p className="label mb-3 flex items-center gap-2">
                     <Truck size={15} className="text-brand-700" /> Opções de entrega
@@ -568,37 +567,37 @@ export default function CheckoutPage() {
               )}
 
               {/* Cupom */}
-              {!isFirstPurchase && (
-                <div className="mb-6 border-t border-gray-100 pt-5">
-                  <p className="label mb-1.5">Cupom de desconto</p>
-                  {coupon.applied ? (
-                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Tag size={16} className="text-green-600" />
-                        <span className="font-mono font-bold text-green-700">{coupon.code}</span>
-                        <span className="text-sm text-green-600">— {coupon.discount}% de desconto</span>
-                      </div>
-                      <button onClick={() => setCoupon({ code: "", input: "", discount: 0, loading: false, error: "", applied: false })} className="text-gray-400 hover:text-red-500">
-                        <X size={16} />
-                      </button>
+              <div className="mb-6 border-t border-gray-100 pt-5">
+                <p className="label mb-1.5">Cupom de desconto</p>
+                {coupon.applied ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Tag size={16} className="text-green-600" />
+                      <span className="font-mono font-bold text-green-700">{coupon.code}</span>
+                      <span className="text-sm text-green-600">
+                        — {coupon.discount}% de desconto{coupon.freeShipping && " + frete grátis"}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        className="input-field flex-1 min-w-0 uppercase font-mono"
-                        placeholder="Ex: JOAO10"
-                        value={coupon.input}
-                        onChange={(e) => setCoupon((p) => ({ ...p, input: e.target.value.toUpperCase(), error: "" }))}
-                        onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
-                      />
-                      <button onClick={applyCoupon} disabled={coupon.loading} className="btn-outline px-4 flex-shrink-0">
-                        {coupon.loading ? <Loader2 size={16} className="animate-spin" /> : "Aplicar"}
-                      </button>
-                    </div>
-                  )}
-                  {coupon.error && <p className="text-xs text-red-600 mt-1.5">{coupon.error}</p>}
-                </div>
-              )}
+                    <button onClick={() => setCoupon({ code: "", input: "", discount: 0, loading: false, error: "", applied: false, freeShipping: false })} className="text-gray-400 hover:text-red-500">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      className="input-field flex-1 min-w-0 uppercase font-mono"
+                      placeholder="Ex: JOAO10"
+                      value={coupon.input}
+                      onChange={(e) => setCoupon((p) => ({ ...p, input: e.target.value.toUpperCase(), error: "" }))}
+                      onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
+                    />
+                    <button onClick={applyCoupon} disabled={coupon.loading} className="btn-outline px-4 flex-shrink-0">
+                      {coupon.loading ? <Loader2 size={16} className="animate-spin" /> : "Aplicar"}
+                    </button>
+                  </div>
+                )}
+                {coupon.error && <p className="text-xs text-red-600 mt-1.5">{coupon.error}</p>}
+              </div>
 
               <button
                 onClick={handleGoToPayment}
@@ -871,13 +870,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span><span>{formatCurrency(sub)}</span>
                 </div>
-                {isFirstPurchase && (
-                  <div className="flex justify-between text-green-600 font-medium">
-                    <span>Desconto 1ª compra (40%)</span>
-                    <span>-{formatCurrency(firstDiscount)}</span>
-                  </div>
-                )}
-                {coupon.applied && !isFirstPurchase && (
+                {coupon.applied && (
                   <div className="flex justify-between text-green-600 font-medium">
                     <span>Cupom {coupon.code} ({coupon.discount}%)</span>
                     <span>-{formatCurrency(couponAmount)}</span>
@@ -889,8 +882,8 @@ export default function CheckoutPage() {
                       ? "Retirada na loja"
                       : `Frete${selectedShipping ? ` (${selectedShipping.company} ${selectedShipping.name})` : ""}`}
                   </span>
-                  <span className={isFirstPurchase || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
-                    {isFirstPurchase || deliveryType === "RETIRADA"
+                  <span className={coupon.freeShipping || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
+                    {coupon.freeShipping || deliveryType === "RETIRADA"
                       ? "Grátis"
                       : selectedShipping
                       ? formatCurrency(selectedShipping.price)

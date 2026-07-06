@@ -62,7 +62,7 @@ export default function CadastroPage() {
       redirect: false,
     });
 
-    router.push("/conta");
+    router.push("/");
     router.refresh();
   }
 
