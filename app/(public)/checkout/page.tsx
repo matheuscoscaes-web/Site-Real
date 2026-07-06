@@ -444,6 +444,31 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* CPF do destinatário (sempre visível, independe do endereço escolhido) */}
+              <div className="mb-6">
+                <label className="label">CPF do destinatário *</label>
+                <input
+                  className="input-field max-w-xs"
+                  value={address.cpf}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 11);
+                    const formatted = v.length > 9
+                      ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
+                      : v.length > 6
+                      ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
+                      : v.length > 3
+                      ? `${v.slice(0, 3)}.${v.slice(3)}`
+                      : v;
+                    setAddress((p) => ({ ...p, cpf: formatted }));
+                    setCpfError("");
+                  }}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                />
+                {cpfError && <p className="text-xs text-red-600 mt-1">{cpfError}</p>}
+                <p className="text-xs text-gray-400 mt-1">Necessário para emitir a etiqueta de envio.</p>
+              </div>
+
               {/* Formulário (sempre visível para edição) */}
               {(selectedAddressId === "new" || savedAddresses.length === 0) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -467,29 +492,6 @@ export default function CheckoutPage() {
                 <div>
                   <label className="label">Identificação</label>
                   <input className="input-field" value={address.name} onChange={(e) => setAddress((p) => ({ ...p, name: e.target.value }))} placeholder="Casa, Trabalho..." />
-                </div>
-                <div>
-                  <label className="label">CPF do destinatário *</label>
-                  <input
-                    className="input-field"
-                    value={address.cpf}
-                    onChange={(e) => {
-                      const v = e.target.value.replace(/\D/g, "").slice(0, 11);
-                      const formatted = v.length > 9
-                        ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
-                        : v.length > 6
-                        ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
-                        : v.length > 3
-                        ? `${v.slice(0, 3)}.${v.slice(3)}`
-                        : v;
-                      setAddress((p) => ({ ...p, cpf: formatted }));
-                      setCpfError("");
-                    }}
-                    placeholder="000.000.000-00"
-                    maxLength={14}
-                  />
-                  {cpfError && <p className="text-xs text-red-600 mt-1">{cpfError}</p>}
-                  <p className="text-xs text-gray-400 mt-1">Necessário para emitir a etiqueta de envio.</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="label">Rua / Logradouro *</label>
