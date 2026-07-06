@@ -9,7 +9,7 @@ import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/conta";
+  const redirect = searchParams.get("redirect") || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -109,7 +109,7 @@ export function LoginForm() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Não tem conta?{" "}
-            <Link href={`/cadastro${redirect !== "/conta" ? `?redirect=${redirect}` : ""}`} className="text-brand-700 font-semibold hover:underline">
+            <Link href={`/cadastro${redirect !== "/" ? `?redirect=${redirect}` : ""}`} className="text-brand-700 font-semibold hover:underline">
               Criar conta grátis
             </Link>
           </p>
