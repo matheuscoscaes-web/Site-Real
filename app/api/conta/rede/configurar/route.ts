@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { WELCOME_COUPON_CODE } from "@/app/api/cupom/route";
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
@@ -17,6 +18,10 @@ export async function PATCH(req: Request) {
   if (!couponCode) return NextResponse.json({ error: "Código do cupom obrigatório" }, { status: 400 });
 
   const code = couponCode.toUpperCase().trim();
+
+  if (code === WELCOME_COUPON_CODE) {
+    return NextResponse.json({ error: "Esse código é reservado para o cupom de boas-vindas" }, { status: 409 });
+  }
 
   // Verifica unicidade do cupom (ignora o próprio registro)
   if (role === "VENDOR") {

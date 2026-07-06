@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { WELCOME_COUPON_CODE } from "@/app/api/cupom/route";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -19,10 +20,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
   }
 
+  let code: string | undefined;
+  if (body.couponCode !== undefined) {
+    code = body.couponCode.toUpperCase().trim();
+    if (code === WELCOME_COUPON_CODE) {
+      return NextResponse.json({ error: "Esse código é reservado para o cupom de boas-vindas" }, { status: 409 });
+    }
+    const dup = await prisma.vendor.findFirst({ where: { couponCode: code, NOT: { id } } });
+    if (dup) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
+    const dupR = await prisma.reseller.findUnique({ where: { couponCode: code } });
+    if (dupR) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
+  }
+
   const vendor = await prisma.vendor.update({
     where: { id },
     data: {
-      ...(body.couponCode !== undefined && { couponCode: body.couponCode.toUpperCase() }),
+      ...(code !== undefined && { couponCode: code }),
       ...(body.discount !== undefined && { discount: Number(body.discount) }),
       ...(body.active !== undefined && { active: body.active }),
     },
