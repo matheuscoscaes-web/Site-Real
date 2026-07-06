@@ -179,6 +179,7 @@ model Address {
   id         String  @id @default(cuid())
   userId     String
   name       String
+  cpf        String?
   street     String
   number     String
   complement String?

@@ -19,12 +19,13 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { name, street, number, complement, district, city, state, zipCode } = body;
+  const { name, cpf, street, number, complement, district, city, state, zipCode } = body;
 
   const address = await prisma.address.create({
     data: {
       userId: session.user.id,
       name: name || "Casa",
+      cpf: cpf || null,
       street,
       number,
       complement: complement || "",

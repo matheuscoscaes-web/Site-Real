@@ -19,12 +19,13 @@ const MercadoPagoBrick = dynamic(
 );
 
 interface Address {
-  name: string; street: string; number: string; complement: string;
+  name: string; cpf: string; street: string; number: string; complement: string;
   district: string; city: string; state: string; zipCode: string;
 }
 
 const STORE_PICKUP_ADDRESS: Address = {
   name: "Retirada na loja",
+  cpf: "",
   street: "Rua Desembargador Omar Dutra",
   number: "60",
   complement: "",
@@ -59,7 +60,8 @@ export default function CheckoutPage() {
   const [step, setStep] = useState(1);
   const [deliveryType, setDeliveryType] = useState<"ENTREGA" | "RETIRADA">("ENTREGA");
   const [coupon, setCoupon] = useState({ code: "", input: "", discount: 0, loading: false, error: "", applied: false, freeShipping: false });
-  const [address, setAddress] = useState<Address>({ name: "Casa", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
+  const [address, setAddress] = useState<Address>({ name: "Casa", cpf: "", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
+  const [cpfError, setCpfError] = useState("");
   const [loadingCep, setLoadingCep] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<FreteOption[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<FreteOption | null>(null);
@@ -108,7 +110,7 @@ export default function CheckoutPage() {
         setSavedAddresses(data);
         const def = data.find((a) => a.isDefault) ?? data[0];
         setSelectedAddressId(def.id);
-        setAddress({ name: def.name, street: def.street, number: def.number, complement: def.complement ?? "", district: def.district, city: def.city, state: def.state, zipCode: def.zipCode });
+        setAddress({ name: def.name, cpf: def.cpf ?? "", street: def.street, number: def.number, complement: def.complement ?? "", district: def.district, city: def.city, state: def.state, zipCode: def.zipCode });
       })
       .catch(() => {});
   }, [status]);
@@ -156,7 +158,8 @@ export default function CheckoutPage() {
     setSelectedAddressId(id);
     const addr = savedAddresses.find((a) => a.id === id);
     if (!addr) return;
-    setAddress({ name: addr.name, street: addr.street, number: addr.number, complement: addr.complement ?? "", district: addr.district, city: addr.city, state: addr.state, zipCode: addr.zipCode });
+    setAddress({ name: addr.name, cpf: addr.cpf ?? "", street: addr.street, number: addr.number, complement: addr.complement ?? "", district: addr.district, city: addr.city, state: addr.state, zipCode: addr.zipCode });
+    setCpfError("");
     if (addr.zipCode) {
       setLoadingFrete(true);
       setShippingOptions([]);
@@ -219,6 +222,11 @@ export default function CheckoutPage() {
     if (deliveryType === "ENTREGA") {
       if (!address.street || !address.number || !address.city || !address.state || !address.zipCode) {
         alert("Preencha todos os campos obrigatórios.");
+        return;
+      }
+      const cpfDigits = address.cpf.replace(/\D/g, "");
+      if (cpfDigits.length !== 11) {
+        setCpfError("Digite um CPF válido (11 dígitos).");
         return;
       }
       if (!coupon.freeShipping && !selectedShipping) {
@@ -427,7 +435,7 @@ export default function CheckoutPage() {
                         type="radio"
                         name="savedAddress"
                         checked={selectedAddressId === "new"}
-                        onChange={() => { setSelectedAddressId("new"); setAddress({ name: "Casa", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" }); setShippingOptions([]); setSelectedShipping(null); }}
+                        onChange={() => { setSelectedAddressId("new"); setAddress({ name: "Casa", cpf: "", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" }); setCpfError(""); setShippingOptions([]); setSelectedShipping(null); }}
                         className="accent-brand-700"
                       />
                       <span className="text-sm font-semibold text-gray-700">Usar outro endereço</span>
@@ -459,6 +467,29 @@ export default function CheckoutPage() {
                 <div>
                   <label className="label">Identificação</label>
                   <input className="input-field" value={address.name} onChange={(e) => setAddress((p) => ({ ...p, name: e.target.value }))} placeholder="Casa, Trabalho..." />
+                </div>
+                <div>
+                  <label className="label">CPF do destinatário *</label>
+                  <input
+                    className="input-field"
+                    value={address.cpf}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      const formatted = v.length > 9
+                        ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
+                        : v.length > 6
+                        ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
+                        : v.length > 3
+                        ? `${v.slice(0, 3)}.${v.slice(3)}`
+                        : v;
+                      setAddress((p) => ({ ...p, cpf: formatted }));
+                      setCpfError("");
+                    }}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                  />
+                  {cpfError && <p className="text-xs text-red-600 mt-1">{cpfError}</p>}
+                  <p className="text-xs text-gray-400 mt-1">Necessário para emitir a etiqueta de envio.</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="label">Rua / Logradouro *</label>

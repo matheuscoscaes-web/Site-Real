@@ -130,13 +130,20 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
                 {order.address.street}, {order.address.number}
               </p>
             ) : (
-              <p className="text-sm text-gray-700">
-                {order.address.street}, {order.address.number}
-                {order.address.complement && `, ${order.address.complement}`}
-                <br />{order.address.district}
-                <br />{order.address.city} / {order.address.state}
-                <br />CEP {order.address.zipCode}
-              </p>
+              <>
+                <p className="text-sm text-gray-700">
+                  {order.address.street}, {order.address.number}
+                  {order.address.complement && `, ${order.address.complement}`}
+                  <br />{order.address.district}
+                  <br />{order.address.city} / {order.address.state}
+                  <br />CEP {order.address.zipCode}
+                </p>
+                {order.address.cpf && (
+                  <p className="text-sm font-semibold text-gray-900 mt-2 pt-2 border-t border-gray-100">
+                    CPF: <span className="font-mono">{order.address.cpf}</span>
+                  </p>
+                )}
+              </>
             )}
           </div>
 

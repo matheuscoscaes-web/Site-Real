@@ -7,6 +7,7 @@ import { buscarEnderecoPorCEP } from "@/lib/frete";
 interface Address {
   id: string;
   name: string;
+  cpf?: string;
   street: string;
   number: string;
   complement?: string;
@@ -19,6 +20,7 @@ interface Address {
 
 const EMPTY_FORM = {
   name: "Casa",
+  cpf: "",
   zipCode: "",
   street: "",
   number: "",
@@ -119,6 +121,27 @@ export default function EnderecosPage() {
             <div>
               <label className="label">Identificação *</label>
               <input className="input-field" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Casa, Trabalho..." />
+            </div>
+
+            <div>
+              <label className="label">CPF do destinatário</label>
+              <input
+                className="input-field"
+                value={form.cpf}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 11);
+                  const formatted = v.length > 9
+                    ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
+                    : v.length > 6
+                    ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
+                    : v.length > 3
+                    ? `${v.slice(0, 3)}.${v.slice(3)}`
+                    : v;
+                  setForm((p) => ({ ...p, cpf: formatted }));
+                }}
+                placeholder="000.000.000-00"
+                maxLength={14}
+              />
             </div>
 
             <div>
