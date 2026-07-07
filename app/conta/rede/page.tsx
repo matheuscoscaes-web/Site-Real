@@ -27,7 +27,7 @@ type VendorData = {
   id: string; couponCode: string | null; discount: number | null; active: boolean;
   resellers: Reseller[];
   orders: OrderSummary[];
-  user: { name: string; email: string };
+  user: { id: string; name: string; email: string };
 };
 
 type RedeData =
@@ -62,6 +62,7 @@ export default function MinhaRedePage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"rede" | "crm">("rede");
   const [showForm, setShowForm] = useState(false);
+  const [showOwnForm, setShowOwnForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [selectedVendorId, setSelectedVendorId] = useState("");
@@ -85,6 +86,14 @@ export default function MinhaRedePage() {
     const res = await fetch("/api/conta/rede/revendedores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setSubmitting(false);
     if (res.ok) { setShowForm(false); setForm({ name: "", email: "", password: "", phone: "" }); await loadData(); }
+    else { const d = await res.json(); setFormError(d.error || "Erro ao cadastrar"); }
+  }
+
+  async function handleSubmitOwnReseller(e: React.FormEvent, ownVendorId: string) {
+    e.preventDefault(); setFormError(""); setSubmitting(true);
+    const res = await fetch("/api/conta/rede/revendedores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, vendorId: ownVendorId }) });
+    setSubmitting(false);
+    if (res.ok) { setShowOwnForm(false); setForm({ name: "", email: "", password: "", phone: "" }); await loadData(); }
     else { const d = await res.json(); setFormError(d.error || "Erro ao cadastrar"); }
   }
 
@@ -524,6 +533,11 @@ export default function MinhaRedePage() {
   // ── ADMIN ─────────────────────────────────────────────────────
   if (data.role === "ADMIN") {
     const { vendors } = data;
+    const ownVendor = vendors.find((v) => v.user.id === session?.user?.id);
+    const ownConfigured = !!ownVendor?.couponCode;
+    const ownDirectCommission = (ownVendor?.orders ?? []).reduce((s, o) => s + (o.commissionValue ?? 0), 0);
+    const ownResellerCommission = (ownVendor?.resellers ?? []).flatMap((r) => r.orders).reduce((s, o) => s + (o.commissionValue ?? 0), 0);
+    const ownTotalCommission = ownDirectCommission + ownResellerCommission;
 
     const allVendorOrders = vendors.flatMap((v) =>
       v.orders.map((o) => ({ ...o, vendorName: v.user.name, resellerName: null as string | null, couponOwner: o.couponCode ?? "—", type: "direct" as const }))
@@ -563,6 +577,81 @@ export default function MinhaRedePage() {
         {/* ── ABA REDE ── */}
         {tab !== "crm" && (
           <>
+            {/* Meu Cupom (Admin) */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Meu Cupom (Admin)</h2>
+                {ownConfigured && !showConfig && (
+                  <button onClick={() => { setConfigForm({ couponCode: ownVendor!.couponCode!, discount: "50" }); setShowConfig(true); setConfigError(""); }}
+                    className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
+                    <Pencil size={14} /> Editar
+                  </button>
+                )}
+              </div>
+              {!ownConfigured ? (
+                <div>
+                  <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-sm text-amber-700 mb-4">
+                    Configure seu cupom para vender diretamente e cadastrar revendedores próprios, com comissão contando para você.
+                  </div>
+                  {!showConfig
+                    ? <button onClick={() => { setConfigForm((p) => ({ ...p, discount: "50" })); setShowConfig(true); }} className="btn-primary flex items-center gap-2"><Tag size={16} /> Configurar meu cupom</button>
+                    : <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} commissionNote="Você ganha 5% fixo em vendas diretas com seu cupom" fixedDiscount={50} />
+                  }
+                </div>
+              ) : showConfig ? (
+                <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} commissionNote="Você ganha 5% fixo em vendas diretas com seu cupom" fixedDiscount={50} />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><Tag size={16} className="text-gray-600" /></div>
+                    <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Código do cupom</p><p className="font-mono font-bold text-gray-900">{ownVendor!.couponCode}</p></div>
+                    <button onClick={() => copyCoupon(ownVendor!.couponCode!)} className="text-gray-400 hover:text-brand-600 flex-shrink-0">
+                      {copied ? <CheckCheck size={16} className="text-green-500" /> : <Copy size={16} />}
+                    </button>
+                  </div>
+                  <div className="rounded-xl border border-gray-100 p-4">
+                    <p className="text-xs text-gray-400 mb-1">Desconto ao cliente</p>
+                    <p className="text-lg font-bold text-gray-700">{ownVendor!.discount}%</p>
+                  </div>
+                  <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+                    <p className="text-xs text-green-600 mb-1">Sua comissão total</p>
+                    <p className="text-lg font-bold text-green-700">{formatCurrency(ownTotalCommission)}</p>
+                  </div>
+                </div>
+              )}
+
+              {ownConfigured && (
+                <div className="mt-5 pt-5 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2"><Users size={16} className="text-purple-600" /> Meus revendedores ({ownVendor!.resellers.length})</h3>
+                    <button onClick={() => setShowOwnForm(true)} className="btn-primary text-sm flex items-center gap-2 py-2"><Plus size={15} /> Novo</button>
+                  </div>
+                  {ownVendor!.resellers.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-6">Nenhum revendedor seu ainda.</p>
+                  ) : (
+                    <div className="divide-y divide-gray-100 -mx-5 sm:-mx-6">
+                      {ownVendor!.resellers.map((r) => {
+                        const rC = r.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
+                        return (
+                          <div key={r.id} className="flex items-center justify-between px-5 sm:px-6 py-3 gap-3">
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 text-sm truncate">{r.user.name}</p>
+                              <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              {r.couponCode ? <p className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded-lg">{r.couponCode}{r.discount !== null ? ` · ${r.discount}%` : ""}</p> : <p className="text-xs text-amber-500">Sem cupom</p>}
+                              <p className="text-xs text-gray-500">{r.orders.length} vendas</p>
+                              <p className="text-xs text-green-600 font-bold">{formatCurrency(rC)} p/ você</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl font-bold text-gray-900">Rede de Vendedores</h2>
@@ -791,6 +880,10 @@ export default function MinhaRedePage() {
               </div>
             }
           />
+        )}
+
+        {showOwnForm && ownVendor && (
+          <ResellerModal form={form} setForm={setForm} onSubmit={(e) => handleSubmitOwnReseller(e, ownVendor.id)} onClose={() => setShowOwnForm(false)} submitting={submitting} error={formError} />
         )}
       </div>
     );

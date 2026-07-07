@@ -9,7 +9,7 @@ export async function PATCH(req: Request) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const role = session.user.role;
-  if (role !== "VENDOR" && role !== "RESELLER") {
+  if (role !== "VENDOR" && role !== "RESELLER" && role !== "ADMIN") {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }
 
@@ -24,14 +24,19 @@ export async function PATCH(req: Request) {
   }
 
   // Verifica unicidade do cupom (ignora o próprio registro)
-  if (role === "VENDOR") {
+  if (role === "VENDOR" || role === "ADMIN") {
     const dup = await prisma.vendor.findFirst({ where: { couponCode: code, NOT: { userId: session.user.id } } });
     if (dup) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
     const dupR = await prisma.reseller.findUnique({ where: { couponCode: code } });
     if (dupR) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
 
     // Desconto do cupom de vendedor é sempre fixo em 50%
-    const vendor = await prisma.vendor.update({ where: { userId: session.user.id }, data: { couponCode: code, discount: 50 } });
+    // upsert: admin pode não ter um registro de Vendor ainda na primeira configuração
+    const vendor = await prisma.vendor.upsert({
+      where: { userId: session.user.id },
+      update: { couponCode: code, discount: 50 },
+      create: { userId: session.user.id, couponCode: code, discount: 50 },
+    });
     return NextResponse.json(vendor);
   }
 
