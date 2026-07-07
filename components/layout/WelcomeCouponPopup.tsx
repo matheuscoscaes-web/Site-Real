@@ -2,23 +2,35 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { X, Copy, CheckCheck, Gift } from "lucide-react";
 
 const COUPON_CODE = "BEMVINDO";
 const DISMISS_KEY = "welcomeCouponDismissed";
+const GUEST_DELAY_MS = 2000;
 
 export function WelcomeCouponPopup() {
   const { status } = useSession();
   const [show, setShow] = useState(false);
+  const [variant, setVariant] = useState<"customer" | "guest">("customer");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status === "loading") return;
     if (localStorage.getItem(DISMISS_KEY)) return;
+
+    if (status === "unauthenticated") {
+      const timer = setTimeout(() => {
+        setVariant("guest");
+        setShow(true);
+      }, GUEST_DELAY_MS);
+      return () => clearTimeout(timer);
+    }
+
     fetch("/api/pedidos/primeiro-desconto")
       .then((r) => r.json())
       .then((d: { isFirstPurchase: boolean }) => {
-        if (d.isFirstPurchase) setShow(true);
+        if (d.isFirstPurchase) { setVariant("customer"); setShow(true); }
       })
       .catch(() => {});
   }, [status]);
@@ -58,10 +70,12 @@ export function WelcomeCouponPopup() {
         </div>
 
         <h2 className="text-xl font-bold text-gray-900 mb-1" style={{ fontFamily: "Playfair Display, serif" }}>
-          Bem-vindo(a) à Hearts Couro!
+          {variant === "guest" ? "Ainda não é cliente?" : "Bem-vindo(a) à Hearts Couro!"}
         </h2>
         <p className="text-sm text-gray-500 mb-5">
-          Use o cupom abaixo na sua primeira compra e ganhe 40% de desconto + frete grátis.
+          {variant === "guest"
+            ? "Crie sua conta e use o cupom abaixo na primeira compra: 40% de desconto + frete grátis."
+            : "Use o cupom abaixo na sua primeira compra e ganhe 40% de desconto + frete grátis."}
         </p>
 
         <div className="flex items-center justify-between bg-brand-50 border-2 border-dashed border-brand-300 rounded-2xl px-4 py-3 mb-5">
@@ -71,9 +85,20 @@ export function WelcomeCouponPopup() {
           </button>
         </div>
 
-        <button onClick={dismiss} className="text-xs text-gray-400 hover:text-gray-600">
-          Continuar navegando
-        </button>
+        {variant === "guest" ? (
+          <div className="flex flex-col gap-2">
+            <Link href="/cadastro" onClick={dismiss} className="btn-primary w-full justify-center">
+              Criar minha conta
+            </Link>
+            <button onClick={dismiss} className="text-xs text-gray-400 hover:text-gray-600">
+              Continuar navegando
+            </button>
+          </div>
+        ) : (
+          <button onClick={dismiss} className="text-xs text-gray-400 hover:text-gray-600">
+            Continuar navegando
+          </button>
+        )}
       </div>
     </div>
   );
