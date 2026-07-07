@@ -21,7 +21,46 @@ export async function POST(request: NextRequest) {
   const file = formData.get("file") as File | null;
 
   if (!file) return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 });
-  if (!file.type.startsWith("image/")) return NextResponse.json({ error: "Apenas imagens são permitidas" }, { status: 400 });
+
+  const isVideo = file.type.startsWith("video/");
+  const isImage = file.type.startsWith("image/");
+  if (!isVideo && !isImage) {
+    return NextResponse.json({ error: "Apenas imagens ou vídeos são permitidos" }, { status: 400 });
+  }
+
+  if (isVideo) {
+    const ALLOWED_VIDEO_TYPES: Record<string, string> = {
+      "video/mp4": "mp4",
+      "video/webm": "webm",
+      "video/quicktime": "mov",
+    };
+    const ext = ALLOWED_VIDEO_TYPES[file.type];
+    if (!ext) return NextResponse.json({ error: "Formato de vídeo não suportado (use MP4, WebM ou MOV)" }, { status: 400 });
+    if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: "Vídeo muito grande (máx 50MB)" }, { status: 400 });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${filename}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        "Content-Type": file.type,
+        "x-upsert": "true",
+      },
+      body: new Uint8Array(buffer),
+    });
+
+    if (!uploadRes.ok) {
+      const err = await uploadRes.text();
+      console.error("Supabase upload error:", err);
+      return NextResponse.json({ error: "Erro ao fazer upload. Verifique as configurações do Supabase." }, { status: 500 });
+    }
+
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${filename}`;
+    return NextResponse.json({ url: publicUrl });
+  }
+
   if (file.size > 10 * 1024 * 1024) return NextResponse.json({ error: "Arquivo muito grande (máx 10MB)" }, { status: 400 });
 
   const rawBuffer = Buffer.from(await file.arrayBuffer());

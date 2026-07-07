@@ -11,6 +11,7 @@ export interface Product {
   price: number;
   category: string;
   images: string;
+  video?: string | null;
   stock: number;
   active: boolean;
   featured: boolean;

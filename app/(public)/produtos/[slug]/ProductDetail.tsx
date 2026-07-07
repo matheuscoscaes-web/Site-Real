@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { formatCurrency, parseProductImages } from "@/lib/utils";
-import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check } from "lucide-react";
+import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check, PlayCircle } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
 
@@ -22,7 +22,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])];
   const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean) as string[])];
 
-  const [selectedImage, setSelectedImage] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<number | "video">(0);
   const [selectedColor, setSelectedColor] = useState(colors[0] || "");
   const [selectedSize, setSelectedSize] = useState(sizes[0] || "");
   const [quantity, setQuantity] = useState(1);
@@ -60,13 +60,17 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
       {/* Galeria */}
       <div className="space-y-3">
         <div className="relative overflow-hidden rounded-2xl bg-gray-50 aspect-square">
-          <Image
-            src={images[selectedImage]?.url || images[0]?.url || ""}
-            alt={product.name}
-            fill
-            className="object-cover"
-            priority
-          />
+          {selectedImage === "video" && product.video ? (
+            <video src={product.video} controls autoPlay className="w-full h-full object-cover" />
+          ) : (
+            <Image
+              src={images[selectedImage as number]?.url || images[0]?.url || ""}
+              alt={product.name}
+              fill
+              className="object-cover"
+              priority
+            />
+          )}
           <button
             onClick={() => toggleWishlist({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0]?.url || "" })}
             className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
@@ -74,7 +78,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
             <Heart size={18} className={liked ? "fill-brand-700 text-brand-700" : "text-gray-400"} />
           </button>
         </div>
-        {images.length > 1 && (
+        {(images.length > 1 || product.video) && (
           <div className="grid grid-cols-4 gap-2">
             {images.map((img, i) => (
               <button
@@ -92,6 +96,17 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
                 )}
               </button>
             ))}
+            {product.video && (
+              <button
+                onClick={() => setSelectedImage("video")}
+                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all bg-black ${
+                  selectedImage === "video" ? "border-brand-600" : "border-transparent hover:border-gray-300"
+                }`}
+              >
+                <video src={product.video} className="w-full h-full object-cover opacity-70" muted />
+                <PlayCircle size={28} className="absolute inset-0 m-auto text-white drop-shadow" />
+              </button>
+            )}
           </div>
         )}
       </div>

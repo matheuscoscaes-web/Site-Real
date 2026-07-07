@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { slugify, CATEGORIES, COLORS, SIZES } from "@/lib/utils";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
-  ChevronUp, ChevronDown, Package, Info, Star, Upload,
+  ChevronUp, ChevronDown, Package, Info, Star, Upload, Video, Images,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -23,6 +23,7 @@ interface ProductData {
   price?: number;
   category?: string;
   images?: string;
+  video?: string | null;
   stock?: number;
   active?: boolean;
   featured?: boolean;
@@ -107,6 +108,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     stock: product?.stock?.toString() || "0",
     active: product?.active ?? true,
     featured: product?.featured ?? false,
+    video: product?.video || "",
   });
 
   const [rows, setRows] = useState<Row[]>(buildInitialRows());
@@ -115,6 +117,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
   const [success, setSuccess] = useState("");
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState("");
+  const [uploadingMulti, setUploadingMulti] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   function set(field: string, value: string | boolean) {
     setForm((p) => ({ ...p, [field]: value }));
@@ -161,6 +165,41 @@ export function ProductForm({ product }: { product?: ProductData }) {
     e.target.value = "";
   }
 
+  // Upload de várias fotos de uma vez (sem cor/tamanho — só fotos extras do produto)
+  async function handleMultiFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadingMulti(true);
+    setUploadError("");
+
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) { setUploadError(data.error || "Erro no upload"); continue; }
+      setRows((p) => [...p, { url: data.url, color: "", size: "", stock: 0 }]);
+    }
+
+    setUploadingMulti(false);
+    e.target.value = "";
+  }
+
+  async function handleVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingVideo(true);
+    setUploadError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const data = await res.json();
+    setUploadingVideo(false);
+    if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
+    set("video", data.url);
+    e.target.value = "";
+  }
+
   // Calcula estoque total a partir das linhas de cor/estoque
   function syncStockFromRows() {
     const total = rows.reduce((s, r) => s + (r.stock || 0), 0);
@@ -188,6 +227,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
       ...form,
       price: parseFloat(form.price),
       stock: parseInt(form.stock) || 0,
+      video: form.video.trim() || null,
       images: JSON.stringify(validRows.map((r) => ({ url: r.url, color: r.color }))),
       variants: rows
         .filter((r) => r.color || r.size)
@@ -398,9 +438,15 @@ export function ProductForm({ product }: { product?: ProductData }) {
               ))}
             </div>
 
-            <button type="button" onClick={addRow} className="btn-ghost text-brand-700 text-sm w-full justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
-              <Plus size={16} /> Adicionar cor
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button type="button" onClick={addRow} className="btn-ghost text-brand-700 text-sm flex-1 justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
+                <Plus size={16} /> Adicionar cor
+              </button>
+              <label className={`btn-ghost text-brand-700 text-sm flex-1 justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50 cursor-pointer ${uploadingMulti ? "opacity-60 pointer-events-none" : ""}`}>
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleMultiFileUpload} disabled={uploadingMulti} />
+                {uploadingMulti ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><Images size={16} /> Adicionar várias fotos</>}
+              </label>
+            </div>
 
             <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100">
               <span className="text-sm font-medium text-brand-800">Total por cor:</span>
@@ -414,6 +460,43 @@ export function ProductForm({ product }: { product?: ProductData }) {
               >
                 Somar no total
               </button>
+            </div>
+          </Section>
+
+          {/* VÍDEO DO PRODUTO */}
+          <Section title="Vídeo do Produto" icon={Video} defaultOpen={false}>
+            <p className="text-xs text-gray-500 -mt-1 mb-2">
+              Opcional. Um vídeo curto mostrando o produto (MP4, WebM ou MOV, máx 50MB).
+            </p>
+            {uploadError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
+            )}
+
+            {form.video && (
+              <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-black max-w-xs">
+                <video src={form.video} controls className="w-full max-h-64" />
+                <button
+                  type="button"
+                  onClick={() => set("video", "")}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                  aria-label="Remover vídeo"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            <div className="flex gap-2 items-center">
+              <input
+                className="input-field flex-1 min-w-0 text-sm py-2"
+                value={form.video}
+                onChange={(e) => set("video", e.target.value)}
+                placeholder="Cole uma URL ou use o botão de upload →"
+              />
+              <label className={`flex-shrink-0 p-2.5 rounded-lg border transition-colors cursor-pointer ${uploadingVideo ? "bg-gray-100 border-gray-200" : "bg-brand-50 border-brand-200 hover:bg-brand-100 text-brand-700"}`} title="Fazer upload de vídeo">
+                <input type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden" onChange={handleVideoUpload} disabled={uploadingVideo} />
+                {uploadingVideo ? <Loader2 size={15} className="animate-spin text-gray-400" /> : <Upload size={15} />}
+              </label>
             </div>
           </Section>
 
