@@ -1,5 +1,16 @@
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
+// Sem isso o Map cresce para sempre (uma entrada por IP único que já passou
+// por aqui) e derruba o processo por falta de memória depois de um tempo.
+const SWEEP_INTERVAL_MS = 10 * 60 * 1000;
+const sweepTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt < now) buckets.delete(key);
+  }
+}, SWEEP_INTERVAL_MS);
+sweepTimer.unref?.();
+
 /**
  * Limitador simples em memória (por instância do processo). Suficiente para
  * conter força bruta/spam num app rodando numa única instância; não é
