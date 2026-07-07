@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// Só conta como venda confirmada quem já teve pagamento aprovado.
+// PENDING (aguardando pagamento) e CANCELLED não geram comissão.
+const CONFIRMED_STATUSES = ["PAID", "PREPARING", "SHIPPED", "DELIVERED"];
+
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -17,7 +21,7 @@ export async function GET() {
           include: {
             user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
             orders: {
-              where: { status: { not: "CANCELLED" } },
+              where: { status: { in: CONFIRMED_STATUSES } },
               orderBy: { createdAt: "desc" },
               select: { id: true, total: true, commissionValue: true, createdAt: true, status: true, couponCode: true },
             },
@@ -26,7 +30,7 @@ export async function GET() {
         },
         // Vendas diretas com cupom do próprio vendedor
         orders: {
-          where: { resellerId: null, status: { not: "CANCELLED" } },
+          where: { resellerId: null, status: { in: CONFIRMED_STATUSES } },
           orderBy: { createdAt: "desc" },
           select: { id: true, total: true, commissionValue: true, createdAt: true, status: true },
         },
@@ -43,7 +47,7 @@ export async function GET() {
           include: {
             user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
             orders: {
-              where: { status: { not: "CANCELLED" } },
+              where: { status: { in: CONFIRMED_STATUSES } },
               orderBy: { createdAt: "desc" },
               select: {
                 id: true, total: true, subtotal: true, shipping: true,
@@ -55,7 +59,7 @@ export async function GET() {
           orderBy: { createdAt: "desc" },
         },
         orders: {
-          where: { resellerId: null, status: { not: "CANCELLED" } },
+          where: { resellerId: null, status: { in: CONFIRMED_STATUSES } },
           orderBy: { createdAt: "desc" },
           select: {
             id: true, total: true, subtotal: true, shipping: true,
@@ -75,7 +79,7 @@ export async function GET() {
       include: {
         vendor: { include: { user: { select: { name: true, email: true } } } },
         orders: {
-          where: { status: { not: "CANCELLED" } },
+          where: { status: { in: CONFIRMED_STATUSES } },
           orderBy: { createdAt: "desc" },
           select: { id: true, total: true, commissionValue: true, createdAt: true, status: true },
         },
