@@ -86,8 +86,10 @@ export default async function AdminVendedoresPage() {
                 return (
                 <tr key={v.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4">
-                    <p className="font-semibold text-gray-900 text-sm">{v.user.name}</p>
-                    <p className="text-xs text-gray-400 truncate max-w-[200px]">{v.user.email}</p>
+                    <Link href={`/admin/vendedores/${v.id}`} className="block">
+                      <p className="font-semibold text-gray-900 text-sm hover:text-brand-600">{v.user.name}</p>
+                      <p className="text-xs text-gray-400 truncate max-w-[200px]">{v.user.email}</p>
+                    </Link>
                   </td>
                   <td className="px-5 py-4 hidden sm:table-cell">
                     {v.couponCode

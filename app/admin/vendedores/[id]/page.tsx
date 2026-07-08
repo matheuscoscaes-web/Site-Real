@@ -5,6 +5,7 @@ import { ArrowLeft, Mail, Phone, Tag, Percent, Users, ShoppingBag } from "lucide
 import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
 import { ResellerForm } from "./ResellerForm";
 import { VendorToggle } from "./VendorToggle";
+import { RemoveVendorButton } from "./RemoveVendorButton";
 
 const CONFIRMED_STATUSES = ["PAID", "PREPARING", "SHIPPED", "DELIVERED"];
 
@@ -128,7 +129,10 @@ export default async function AdminVendedorDetailPage({ params }: { params: Prom
           {/* Ativar/Desativar */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="font-bold text-gray-900 mb-3">Ações</h3>
-            <VendorToggle vendorId={vendor.id} active={vendor.active} />
+            <div className="space-y-2">
+              <VendorToggle vendorId={vendor.id} active={vendor.active} />
+              <RemoveVendorButton vendorId={vendor.id} name={vendor.user.name} />
+            </div>
           </div>
         </div>
 

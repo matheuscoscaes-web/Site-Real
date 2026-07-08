@@ -52,8 +52,24 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
 
-  const vendor = await prisma.vendor.findUnique({ where: { id }, include: { user: true } });
+  const vendor = await prisma.vendor.findUnique({
+    where: { id },
+    include: { user: true, resellers: true, _count: { select: { orders: true } } },
+  });
   if (!vendor) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
+
+  if (vendor.resellers.length > 0) {
+    return NextResponse.json(
+      { error: "Não é possível remover: esse vendedor tem revendedores cadastrados. Remova os revendedores primeiro ou apenas desative o vendedor." },
+      { status: 409 }
+    );
+  }
+  if (vendor._count.orders > 0) {
+    return NextResponse.json(
+      { error: "Não é possível remover: esse vendedor já tem pedidos vinculados (isso apagaria o histórico de vendas). Desative-o em vez de remover." },
+      { status: 409 }
+    );
+  }
 
   await prisma.user.delete({ where: { id: vendor.userId } });
 
