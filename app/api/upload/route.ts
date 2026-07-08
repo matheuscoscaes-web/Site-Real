@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
     if (!ext) return NextResponse.json({ error: "Formato de vídeo não suportado (use MP4, WebM ou MOV)" }, { status: 400 });
     if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: "Vídeo muito grande (máx 50MB)" }, { status: 400 });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${filename}`, {
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": file.type,
         "x-upsert": "true",
       },
-      body: new Uint8Array(buffer),
+      body: file,
     });
 
     if (!uploadRes.ok) {
