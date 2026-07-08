@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { formatCurrency, parseProductImages } from "@/lib/utils";
-import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check, PlayCircle } from "lucide-react";
+import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
 
@@ -28,10 +28,33 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
+  // Fotos da cor escolhida (frente, verso etc.) — se não tiver cor, mostra todas
+  const colorImages = selectedColor ? images.filter((img) => img.color === selectedColor) : images;
+  const displayImages = colorImages.length > 0 ? colorImages : images;
+
   function handleColorSelect(color: string) {
     setSelectedColor(color);
-    const colorImgIdx = images.findIndex((img) => img.color === color);
-    if (colorImgIdx !== -1) setSelectedImage(colorImgIdx);
+    setSelectedImage(0);
+  }
+
+  function nextImage() {
+    setSelectedImage((i) => (i === "video" ? 0 : (i + 1) % displayImages.length));
+  }
+  function prevImage() {
+    setSelectedImage((i) => (i === "video" ? 0 : (i - 1 + displayImages.length) % displayImages.length));
+  }
+
+  const touchStartX = useRef<number | null>(null);
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null || displayImages.length <= 1) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) > 40) {
+      if (delta < 0) nextImage(); else prevImage();
+    }
+    touchStartX.current = null;
   }
 
   function handleAddToCart() {
@@ -59,12 +82,16 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
       {/* Galeria */}
       <div className="space-y-3">
-        <div className="relative overflow-hidden rounded-2xl bg-gray-50 aspect-square">
+        <div
+          className="relative overflow-hidden rounded-2xl bg-gray-50 aspect-square touch-pan-y"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {selectedImage === "video" && product.video ? (
             <video src={product.video} controls autoPlay className="w-full h-full object-cover" />
           ) : (
             <Image
-              src={images[selectedImage as number]?.url || images[0]?.url || ""}
+              src={displayImages[selectedImage as number]?.url || images[0]?.url || ""}
               alt={product.name}
               fill
               className="object-cover"
@@ -77,10 +104,38 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
           >
             <Heart size={18} className={liked ? "fill-brand-700 text-brand-700" : "text-gray-400"} />
           </button>
+          {selectedImage !== "video" && displayImages.length > 1 && (
+            <>
+              <button
+                onClick={prevImage}
+                aria-label="Foto anterior"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
+              >
+                <ChevronLeft size={20} className="text-gray-700" />
+              </button>
+              <button
+                onClick={nextImage}
+                aria-label="Próxima foto"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
+              >
+                <ChevronRight size={20} className="text-gray-700" />
+              </button>
+              <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1.5">
+                {displayImages.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all ${
+                      selectedImage === i ? "w-4 bg-white" : "w-1.5 bg-white/60"
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
-        {(images.length > 1 || product.video) && (
+        {(displayImages.length > 1 || product.video) && (
           <div className="grid grid-cols-4 gap-2">
-            {images.map((img, i) => (
+            {displayImages.map((img, i) => (
               <button
                 key={i}
                 onClick={() => setSelectedImage(i)}
