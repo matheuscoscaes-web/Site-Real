@@ -76,7 +76,7 @@ export async function POST(
       name: order.user.name,
       phone: order.user.phone ?? "",
       email: order.user.email,
-      document: "",
+      document: order.address.cpf?.replace(/\D/g, "") ?? "",
       address: order.address.street,
       number: order.address.number,
       complement: order.address.complement ?? "",
