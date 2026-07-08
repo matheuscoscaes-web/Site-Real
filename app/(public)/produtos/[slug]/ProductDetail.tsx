@@ -113,7 +113,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
 
       {/* Info */}
       <div>
-        <span className="text-xs text-brand-600 font-semibold uppercase tracking-wider">{product.category}</span>
+        <span className="text-xs text-brand-600 font-semibold uppercase tracking-wider">{product.categories.join(" · ")}</span>
         <h1 className="text-3xl font-bold text-gray-900 mt-1 mb-3" style={{ fontFamily: "Playfair Display, serif" }}>
           {product.name}
         </h1>

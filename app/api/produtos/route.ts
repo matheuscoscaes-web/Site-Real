@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("busca");
 
   const where: Record<string, unknown> = { active: true };
-  if (category) where.category = category;
+  if (category) where.categories = { has: category };
   if (search) {
     where.OR = [
       { name: { contains: search } },

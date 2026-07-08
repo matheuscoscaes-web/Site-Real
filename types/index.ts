@@ -9,7 +9,7 @@ export interface Product {
   slug: string;
   description: string;
   price: number;
-  category: string;
+  categories: string[];
   images: string;
   video?: string | null;
   stock: number;

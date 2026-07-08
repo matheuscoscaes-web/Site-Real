@@ -19,9 +19,9 @@ async function getProduct(slug: string) {
   });
 }
 
-async function getRelated(category: string, id: string) {
+async function getRelated(categories: string[], id: string) {
   return prisma.product.findMany({
-    where: { category, active: true, id: { not: id } },
+    where: { categories: { hasSome: categories }, active: true, id: { not: id } },
     take: 4,
     include: { variants: true },
   });
@@ -37,7 +37,7 @@ export default async function ProdutoPage({
 
   if (!product) notFound();
 
-  const related = await getRelated(product.category, product.id);
+  const related = await getRelated(product.categories, product.id);
 
   return (
     <div className="container-main py-8">
@@ -47,8 +47,12 @@ export default async function ProdutoPage({
         <span>/</span>
         <a href="/produtos" className="hover:text-brand-700">Produtos</a>
         <span>/</span>
-        <a href={`/produtos?categoria=${product.category}`} className="hover:text-brand-700">{product.category}</a>
-        <span>/</span>
+        {product.categories.map((c) => (
+          <span key={c} className="flex items-center gap-2">
+            <a href={`/produtos?categoria=${c}`} className="hover:text-brand-700">{c}</a>
+            <span>/</span>
+          </span>
+        ))}
         <span className="text-gray-900 font-medium line-clamp-1">{product.name}</span>
       </nav>
 

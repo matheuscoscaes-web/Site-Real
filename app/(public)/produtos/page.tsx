@@ -24,14 +24,14 @@ const getProducts = unstable_cache(
         { active: true },
         {
           OR: [
-            { category: "Bolsas" },
+            { categories: { has: "Bolsas" } },
             { name: { startsWith: "Bolsa", mode: "insensitive" } },
           ],
         },
       ];
       delete where.active;
     } else if (params.categoria) {
-      where.category = params.categoria;
+      where.categories = { has: params.categoria };
     }
     if (params.busca) {
       where.OR = [

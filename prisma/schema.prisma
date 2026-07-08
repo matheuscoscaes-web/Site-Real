@@ -161,7 +161,7 @@ model Product {
   slug        String   @unique
   description String
   price       Float
-  category    String
+  categories  String[] @default([])
   images      String
   video       String?
   stock       Int      @default(0)

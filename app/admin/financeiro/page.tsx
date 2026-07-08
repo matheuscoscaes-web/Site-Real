@@ -35,13 +35,13 @@ async function getFinanceiroData() {
   });
 
   // Produtos mais vendidos
-  const productSales: Record<string, { name: string; category: string; qty: number; revenue: number }> = {};
+  const productSales: Record<string, { name: string; categories: string[]; qty: number; revenue: number }> = {};
   for (const order of paidOrders) {
     for (const item of order.items) {
       if (!productSales[item.productId]) {
         productSales[item.productId] = {
           name: item.product.name,
-          category: item.product.category,
+          categories: item.product.categories,
           qty: 0,
           revenue: 0,
         };
@@ -52,10 +52,12 @@ async function getFinanceiroData() {
   }
   const topProducts = Object.values(productSales).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
 
-  // Vendas por categoria
+  // Vendas por categoria (produto com mais de uma categoria conta em cada uma)
   const categorySales: Record<string, number> = {};
   for (const p of Object.values(productSales)) {
-    categorySales[p.category] = (categorySales[p.category] || 0) + p.revenue;
+    for (const cat of p.categories) {
+      categorySales[cat] = (categorySales[cat] || 0) + p.revenue;
+    }
   }
   const categoryData = Object.entries(categorySales).map(([name, value]) => ({ name, value }));
 
@@ -148,7 +150,7 @@ export default async function FinanceiroPage() {
                     <p className="text-sm font-medium text-gray-900 max-w-[200px] truncate">{p.name}</p>
                   </td>
                   <td className="px-5 py-3 hidden sm:table-cell">
-                    <span className="badge bg-gray-100 text-gray-600 text-xs">{p.category}</span>
+                    <span className="badge bg-gray-100 text-gray-600 text-xs">{p.categories.join(", ")}</span>
                   </td>
                   <td className="px-5 py-3">
                     <p className="text-sm font-semibold text-gray-900">{p.qty}</p>

@@ -34,9 +34,9 @@ const getFeaturedProducts = unstable_cache(
 const getCategories = unstable_cache(
   async () => {
     const [bolsas, vestuario, acessorios] = await Promise.all([
-      prisma.product.count({ where: { active: true, OR: [{ category: "Bolsas" }, { name: { startsWith: "Bolsa", mode: "insensitive" } }] } }),
-      prisma.product.count({ where: { active: true, category: "Mochilas" } }),
-      prisma.product.count({ where: { active: true, category: "Bolsa Tira-Colo" } }),
+      prisma.product.count({ where: { active: true, OR: [{ categories: { has: "Bolsas" } }, { name: { startsWith: "Bolsa", mode: "insensitive" } }] } }),
+      prisma.product.count({ where: { active: true, categories: { has: "Mochilas" } } }),
+      prisma.product.count({ where: { active: true, categories: { has: "Bolsa Tira-Colo" } } }),
     ]);
 
     return [

@@ -109,7 +109,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
         {/* Info */}
         <div className="mt-3 px-1">
-          <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">{product.category}</p>
+          <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">{product.categories.join(" · ")}</p>
           <h3 className="text-sm font-semibold text-gray-900 group-hover:text-brand-700 transition-colors line-clamp-2 leading-tight mb-2">
             {product.name}
           </h3>

@@ -14,7 +14,7 @@ export default async function AdminProdutosPage({
   const params = await searchParams;
 
   const where: Record<string, unknown> = {};
-  if (params.categoria) where.category = params.categoria;
+  if (params.categoria) where.categories = { has: params.categoria };
   if (params.busca) where.name = { contains: params.busca };
 
   const products = await prisma.product.findMany({
@@ -130,7 +130,11 @@ export default async function AdminProdutosPage({
 
                     {/* Categoria */}
                     <td className="px-4 py-4 hidden md:table-cell">
-                      <span className="badge bg-gray-100 text-gray-600 text-xs">{product.category}</span>
+                      <div className="flex flex-wrap gap-1">
+                        {product.categories.map((c) => (
+                          <span key={c} className="badge bg-gray-100 text-gray-600 text-xs">{c}</span>
+                        ))}
+                      </div>
                     </td>
 
                     {/* Preço */}

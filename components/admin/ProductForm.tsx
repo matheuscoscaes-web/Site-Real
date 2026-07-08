@@ -21,7 +21,7 @@ interface ProductData {
   slug?: string;
   description?: string;
   price?: number;
-  category?: string;
+  categories?: string[];
   images?: string;
   video?: string | null;
   stock?: number;
@@ -104,13 +104,15 @@ export function ProductForm({ product }: { product?: ProductData }) {
     slug: product?.slug || "",
     description: product?.description || "",
     price: product?.price?.toString() || "",
-    category: product?.category || CATEGORIES[0],
     stock: product?.stock?.toString() || "0",
     active: product?.active ?? true,
     featured: product?.featured ?? false,
     video: product?.video || "",
   });
 
+  const [categories, setCategories] = useState<string[]>(
+    product?.categories && product.categories.length > 0 ? product.categories : [CATEGORIES[0]]
+  );
   const [rows, setRows] = useState<Row[]>(buildInitialRows());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -131,8 +133,14 @@ export function ProductForm({ product }: { product?: ProductData }) {
       ...p,
       name,
       ...(!isEdit && { slug: slugify(name) }),
-      ...(autoCategory && !isEdit && { category: autoCategory }),
     }));
+    if (autoCategory && !isEdit) {
+      setCategories((p) => (p.includes(autoCategory) ? p : [...p, autoCategory]));
+    }
+  }
+
+  function toggleCategory(cat: string) {
+    setCategories((p) => (p.includes(cat) ? p.filter((c) => c !== cat) : [...p, cat]));
   }
 
   // Linhas (foto + cor + tamanho + estoque)
@@ -220,11 +228,16 @@ export function ProductForm({ product }: { product?: ProductData }) {
       setError("Informe um preço válido.");
       return;
     }
+    if (categories.length === 0) {
+      setError("Selecione pelo menos uma categoria.");
+      return;
+    }
 
     setLoading(true);
 
     const body = {
       ...form,
+      categories,
       price: parseFloat(form.price),
       stock: parseInt(form.stock) || 0,
       video: form.video.trim() || null,
@@ -312,10 +325,24 @@ export function ProductForm({ product }: { product?: ProductData }) {
             </div>
 
             <div>
-              <label className="label">Categoria *</label>
-              <select className="input-field" value={form.category} onChange={(e) => set("category", e.target.value)}>
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <label className="label">Categorias *</label>
+              <p className="text-xs text-gray-400 -mt-0.5 mb-1.5">Pode marcar mais de uma.</p>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((c) => {
+                  const checked = categories.includes(c);
+                  return (
+                    <label
+                      key={c}
+                      className={`px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer transition-colors ${
+                        checked ? "bg-brand-700 border-brand-700 text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleCategory(c)} />
+                      {c}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </Section>
 
