@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
 import { orderConfirmedEmail, orderShippedEmail } from "./orderEmails";
+import { restoreStockForItems } from "./stock";
 
 const ORDER_EMAIL_INCLUDE = {
   items: { include: { product: true } },
@@ -33,6 +34,11 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
   if (newStatus === "SHIPPED" && current.status !== "SHIPPED") {
     const { subject, html } = orderShippedEmail(updated);
     await sendEmail({ to: updated.user.email, subject, html });
+  }
+
+  // Pedido cancelado/recusado devolve o estoque que foi descontado na criação
+  if (newStatus === "CANCELLED" && current.status !== "CANCELLED") {
+    await restoreStockForItems(updated.items);
   }
 
   return updated;

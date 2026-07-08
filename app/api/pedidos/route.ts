@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { WELCOME_COUPON_CODE, WELCOME_COUPON_DISCOUNT } from "@/app/api/cupom/route";
+import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -77,40 +78,50 @@ export async function POST(request: NextRequest) {
   const finalShipping = freeShipping ? 0 : shipping;
   const finalTotal = subtotal - couponAmount + finalShipping;
 
-  // Cria endereço
-  const savedAddress = await prisma.address.create({
-    data: { userId: session.user.id, ...address, isDefault: false },
-  });
+  try {
+    const order = await prisma.$transaction(async (tx) => {
+      await decrementStockForItems(tx, items);
 
-  const order = await prisma.order.create({
-    data: {
-      userId: session.user.id,
-      addressId: savedAddress.id,
-      paymentMethod,
-      status: "PENDING",
-      subtotal,
-      shipping: finalShipping,
-      total: finalTotal,
-      couponCode: appliedCoupon,
-      couponDiscount: couponDiscount > 0 ? couponDiscount : null,
-      vendorId,
-      resellerId,
-      commissionValue,
-      shippingServiceId: shippingServiceId ?? null,
-      shippingService: shippingService ?? null,
-      shippingCarrier: shippingCarrier ?? null,
-      items: {
-        create: items.map((item: { productId: string; quantity: number; price: number; color?: string; size?: string }) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          color: item.color,
-          size: item.size,
-        })),
-      },
-    },
-    include: { items: true, address: true },
-  });
+      const savedAddress = await tx.address.create({
+        data: { userId: session.user.id, ...address, isDefault: false },
+      });
 
-  return NextResponse.json(order, { status: 201 });
+      return tx.order.create({
+        data: {
+          userId: session.user.id,
+          addressId: savedAddress.id,
+          paymentMethod,
+          status: "PENDING",
+          subtotal,
+          shipping: finalShipping,
+          total: finalTotal,
+          couponCode: appliedCoupon,
+          couponDiscount: couponDiscount > 0 ? couponDiscount : null,
+          vendorId,
+          resellerId,
+          commissionValue,
+          shippingServiceId: shippingServiceId ?? null,
+          shippingService: shippingService ?? null,
+          shippingCarrier: shippingCarrier ?? null,
+          items: {
+            create: items.map((item: { productId: string; quantity: number; price: number; color?: string; size?: string }) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+              color: item.color,
+              size: item.size,
+            })),
+          },
+        },
+        include: { items: true, address: true },
+      });
+    });
+
+    return NextResponse.json(order, { status: 201 });
+  } catch (err) {
+    if (err instanceof InsufficientStockError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    throw err;
+  }
 }

@@ -35,6 +35,12 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   function handleColorSelect(color: string) {
     setSelectedColor(color);
     setSelectedImage(0);
+    setQuantity(1);
+  }
+
+  function handleSizeSelect(size: string) {
+    setSelectedSize(size);
+    setQuantity(1);
   }
 
   function nextImage() {
@@ -77,6 +83,15 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const colorStock = selectedColor
     ? product.variants.filter((v) => v.color === selectedColor).reduce((s, v) => s + v.stock, 0)
     : product.stock;
+
+  // Estoque exato da combinação cor+tamanho escolhida — é o que de fato pode
+  // ser comprado (o colorStock acima soma todos os tamanhos daquela cor).
+  const selectedVariants = product.variants.filter(
+    (v) => (!selectedColor || v.color === selectedColor) && (!selectedSize || v.size === selectedSize)
+  );
+  const availableStock = colors.length === 0 && sizes.length === 0
+    ? product.stock
+    : selectedVariants.reduce((s, v) => s + v.stock, 0);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
@@ -235,7 +250,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
               {sizes.map((size) => (
                 <button
                   key={size}
-                  onClick={() => setSelectedSize(size)}
+                  onClick={() => handleSizeSelect(size)}
                   className={`w-12 h-12 rounded-xl text-sm border-2 transition-all font-medium ${
                     selectedSize === size
                       ? "border-brand-600 bg-brand-50 text-brand-700"
@@ -264,7 +279,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
                 {quantity}
               </span>
               <button
-                onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
                 className="px-4 py-3 hover:bg-gray-50 transition-colors text-gray-600"
               >
                 <Plus size={16} />
@@ -277,12 +292,12 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
         <div className="space-y-3 mb-8">
           <button
             onClick={handleAddToCart}
-            disabled={product.stock === 0}
+            disabled={availableStock === 0}
             className={`btn-primary w-full text-sm sm:text-base py-4 ${added ? "bg-green-600 hover:bg-green-700" : ""}`}
           >
             {added ? (
               <><Check size={20} /> Adicionado ao carrinho!</>
-            ) : product.stock === 0 ? (
+            ) : availableStock === 0 ? (
               "Produto esgotado"
             ) : (
               <><ShoppingBag size={18} className="shrink-0" /> Adicionar ao carrinho — {formatCurrency(product.price * quantity)}</>
