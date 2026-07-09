@@ -32,6 +32,18 @@ export function formatDate(date: Date | string): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(date));
+}
+
+export function formatDateTime(date: Date | string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   }).format(new Date(date));
 }
 
@@ -76,7 +88,12 @@ export const PAYMENT_LABELS: Record<string, string> = {
   BOLETO: "Boleto Bancário",
 };
 
-export const CATEGORIES = ["Bolsas", "Mochilas", "Bolsa Tira-Colo"];
+export const CATEGORIES = ["Bolsas", "Mochilas", "Bolsa Tira-Colo", "Acessórios"];
+
+/** Subcategorias exibidas como seções dentro de uma categoria pai (ex: menu, sidebar de filtros). */
+export const SUBCATEGORIES: Record<string, string[]> = {
+  "Acessórios": ["Carteira Feminina", "Carteira Masculina"],
+};
 export const SIZES = ["PP", "P", "M", "G", "GG", "36", "38", "40", "42", "44"];
 export const COLORS = [
   "Preto", "Branco", "Off-White", "Bege", "Caramel", "Marrom",

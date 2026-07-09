@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages } from "@/lib/utils";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -34,7 +34,7 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pedido #{order.id.slice(-8).toUpperCase()}</h1>
-          <p className="text-sm text-gray-500">{formatDate(order.createdAt)}</p>
+          <p className="text-sm text-gray-500">{formatDateTime(order.createdAt)}</p>
         </div>
         <div className="ml-auto">
           <span className={`badge text-sm px-4 py-1.5 ${ORDER_STATUS_COLORS[order.status]}`}>

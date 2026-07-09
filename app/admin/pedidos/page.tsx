@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 
 const STATUS_LIST = ["", "PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
@@ -155,7 +155,7 @@ export default async function AdminPedidosPage({
                       )}
                     </td>
                     <td className="px-5 py-4 hidden sm:table-cell">
-                      <p className="text-sm text-gray-700">{formatDate(order.createdAt)}</p>
+                      <p className="text-sm text-gray-700">{formatDateTime(order.createdAt)}</p>
                     </td>
                     <td className="px-5 py-4">
                       <span className={`badge text-xs ${ORDER_STATUS_COLORS[order.status]}`}>

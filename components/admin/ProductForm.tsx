@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { slugify, CATEGORIES, COLORS, SIZES } from "@/lib/utils";
+import { slugify, CATEGORIES, SUBCATEGORIES, COLORS, SIZES } from "@/lib/utils";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
   ChevronUp, ChevronDown, Package, Info, Star, Upload, Video, Images,
@@ -59,11 +59,13 @@ export function ProductForm({ product }: { product?: ProductData }) {
   const router = useRouter();
   const isEdit = !!product?.id;
 
-  type ProductImg = { url: string; color: string };
-  function parseFormImages(raw?: string): ProductImg[] {
-    if (!raw) return [{ url: "", color: "" }];
+  // Fotos: cada linha é uma foto (pode repetir a mesma cor em várias linhas —
+  // é assim que um produto tem mais de uma imagem para a mesma cor).
+  type PhotoRow = { url: string; color: string };
+  function buildInitialPhotoRows(): PhotoRow[] {
+    if (!product?.images) return [{ url: "", color: "" }];
     try {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(product.images);
       if (!Array.isArray(parsed) || parsed.length === 0) return [{ url: "", color: "" }];
       return parsed.map((item) =>
         typeof item === "string" ? { url: item, color: "" } : { url: item.url || "", color: item.color || "" }
@@ -71,32 +73,14 @@ export function ProductForm({ product }: { product?: ProductData }) {
     } catch { return [{ url: "", color: "" }]; }
   }
 
-  // Cada linha junta foto + cor + tamanho + estoque, pra não repetir a cor em dois lugares
-  type Row = { url: string; color: string; size: string; stock: number };
-  function buildInitialRows(): Row[] {
-    const images = parseFormImages(product?.images);
+  // Estoque: cada linha é uma combinação única de cor + tamanho, independente das fotos.
+  type StockRow = { color: string; size: string; stock: number };
+  function buildInitialStockRows(): StockRow[] {
     const variants = product?.variants ?? [];
-
     if (variants.length > 0) {
-      const used = new Set<number>();
-      const rows: Row[] = variants.map((v) => {
-        const color = v.color ?? "";
-        const imgIdx = images.findIndex((img, idx) => !used.has(idx) && color && img.color === color);
-        let url = "";
-        if (imgIdx !== -1) { url = images[imgIdx].url; used.add(imgIdx); }
-        return { url, color, size: v.size ?? "", stock: v.stock ?? 0 };
-      });
-      images.forEach((img, idx) => {
-        if (!used.has(idx)) rows.push({ url: img.url, color: img.color, size: "", stock: 0 });
-      });
-      return rows;
+      return variants.map((v) => ({ color: v.color ?? "", size: v.size ?? "", stock: v.stock ?? 0 }));
     }
-
-    if (images.length > 0) {
-      return images.map((img) => ({ url: img.url, color: img.color, size: "", stock: 0 }));
-    }
-
-    return [{ url: "", color: "", size: "", stock: product?.stock ?? 0 }];
+    return [{ color: "", size: "", stock: product?.stock ?? 0 }];
   }
 
   const [form, setForm] = useState({
@@ -113,7 +97,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
   const [categories, setCategories] = useState<string[]>(
     product?.categories && product.categories.length > 0 ? product.categories : [CATEGORIES[0]]
   );
-  const [rows, setRows] = useState<Row[]>(buildInitialRows());
+  const [photoRows, setPhotoRows] = useState<PhotoRow[]>(buildInitialPhotoRows());
+  const [stockRows, setStockRows] = useState<StockRow[]>(buildInitialStockRows());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -143,19 +128,26 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setCategories((p) => (p.includes(cat) ? p.filter((c) => c !== cat) : [...p, cat]));
   }
 
-  // Linhas (foto + cor + tamanho + estoque)
-  function addRow() { setRows((p) => [...p, { url: "", color: "", size: "", stock: 0 }]); }
-  function updateRow(i: number, field: keyof Row, val: string | number) {
-    setRows((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+  // Linhas de foto
+  function addPhotoRow() { setPhotoRows((p) => [...p, { url: "", color: "" }]); }
+  function updatePhotoRow(i: number, field: keyof PhotoRow, val: string) {
+    setPhotoRows((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
   }
-  function removeRow(i: number) { setRows((p) => p.filter((_, idx) => idx !== i)); }
-  function moveRow(i: number, dir: -1 | 1) {
-    const arr = [...rows];
+  function removePhotoRow(i: number) { setPhotoRows((p) => p.filter((_, idx) => idx !== i)); }
+  function movePhotoRow(i: number, dir: -1 | 1) {
+    const arr = [...photoRows];
     const j = i + dir;
     if (j < 0 || j >= arr.length) return;
     [arr[i], arr[j]] = [arr[j], arr[i]];
-    setRows(arr);
+    setPhotoRows(arr);
   }
+
+  // Linhas de cor + tamanho + estoque
+  function addStockRow() { setStockRows((p) => [...p, { color: "", size: "", stock: 0 }]); }
+  function updateStockRow(i: number, field: keyof StockRow, val: string | number) {
+    setStockRows((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+  }
+  function removeStockRow(i: number) { setStockRows((p) => p.filter((_, idx) => idx !== i)); }
 
   // Upload de arquivo
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, index: number) {
@@ -169,11 +161,11 @@ export function ProductForm({ product }: { product?: ProductData }) {
     const data = await res.json();
     setUploadingIndex(null);
     if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
-    updateRow(index, "url", data.url);
+    updatePhotoRow(index, "url", data.url);
     e.target.value = "";
   }
 
-  // Upload de várias fotos de uma vez (sem cor/tamanho — só fotos extras do produto)
+  // Upload de várias fotos de uma vez (sem cor — só fotos extras do produto)
   async function handleMultiFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -186,7 +178,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) { setUploadError(data.error || "Erro no upload"); continue; }
-      setRows((p) => [...p, { url: data.url, color: "", size: "", stock: 0 }]);
+      setPhotoRows((p) => [...p, { url: data.url, color: "" }]);
     }
 
     setUploadingMulti(false);
@@ -210,7 +202,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
 
   // Calcula estoque total a partir das linhas de cor/estoque
   function syncStockFromRows() {
-    const total = rows.reduce((s, r) => s + (r.stock || 0), 0);
+    const total = stockRows.reduce((s, r) => s + (r.stock || 0), 0);
     setForm((p) => ({ ...p, stock: total.toString() }));
   }
 
@@ -219,8 +211,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setError("");
     setSuccess("");
 
-    const validRows = rows.filter((r) => r.url.trim());
-    if (validRows.length === 0) {
+    const validPhotoRows = photoRows.filter((r) => r.url.trim());
+    if (validPhotoRows.length === 0) {
       setError("Adicione pelo menos uma imagem.");
       return;
     }
@@ -241,8 +233,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
       price: parseFloat(form.price),
       stock: parseInt(form.stock) || 0,
       video: form.video.trim() || null,
-      images: JSON.stringify(validRows.map((r) => ({ url: r.url, color: r.color }))),
-      variants: rows
+      images: JSON.stringify(validPhotoRows.map((r) => ({ url: r.url, color: r.color }))),
+      variants: stockRows
         .filter((r) => r.color || r.size)
         .map((r) => ({ color: r.color || null, size: r.size || null, stock: r.stock || 0 })),
     };
@@ -268,7 +260,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setTimeout(() => router.push("/admin/produtos"), 1200);
   }
 
-  const validRows = rows.filter((r) => r.url.trim());
+  const validPhotoRows = photoRows.filter((r) => r.url.trim());
 
   return (
     <form onSubmit={handleSubmit}>
@@ -343,22 +335,45 @@ export function ProductForm({ product }: { product?: ProductData }) {
                   );
                 })}
               </div>
+
+              {/* Subcategorias — só aparecem quando a categoria pai está marcada */}
+              {CATEGORIES.filter((c) => categories.includes(c) && SUBCATEGORIES[c]).map((c) => (
+                <div key={c} className="mt-3 pl-3 border-l-2 border-gray-100">
+                  <p className="text-xs text-gray-400 mb-1.5">Seção de {c}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {SUBCATEGORIES[c].map((sub) => {
+                      const checked = categories.includes(sub);
+                      return (
+                        <label
+                          key={sub}
+                          className={`px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer transition-colors ${
+                            checked ? "bg-brand-700 border-brand-700 text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleCategory(sub)} />
+                          {sub}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </Section>
 
-          {/* FOTOS, COR E ESTOQUE */}
-          <Section title="Fotos, Cor e Estoque" icon={ImageIcon}>
+          {/* FOTOS */}
+          <Section title="Fotos" icon={ImageIcon}>
             <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Cada linha é uma cor: envie a foto dessa cor e informe o estoque dela. A cor só precisa ser digitada aqui — não repita em outro lugar. A primeira linha é a foto principal.
+              Cada linha é uma foto. Marque a cor dela — pode repetir a mesma cor em várias linhas pra dar mais de uma foto pra ela (frente, verso, detalhe...). A primeira linha é a foto principal.
             </p>
             {uploadError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
             )}
 
             {/* Preview das fotos */}
-            {validRows.length > 0 && (
+            {validPhotoRows.length > 0 && (
               <div className="flex gap-2 flex-wrap mb-2">
-                {validRows.map((r, i) => (
+                {validPhotoRows.map((r, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 flex-shrink-0">
                     <Image
                       src={r.url}
@@ -383,13 +398,13 @@ export function ProductForm({ product }: { product?: ProductData }) {
             )}
 
             <div className="space-y-2">
-              {rows.map((r, i) => (
+              {photoRows.map((r, i) => (
                 <div key={i} className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                   <div className="flex flex-col gap-0.5">
-                    <button type="button" onClick={() => moveRow(i, -1)} disabled={i === 0} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
+                    <button type="button" onClick={() => movePhotoRow(i, -1)} disabled={i === 0} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
                       <ChevronUp size={14} />
                     </button>
-                    <button type="button" onClick={() => moveRow(i, 1)} disabled={i === rows.length - 1} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
+                    <button type="button" onClick={() => movePhotoRow(i, 1)} disabled={i === photoRows.length - 1} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
                       <ChevronDown size={14} />
                     </button>
                   </div>
@@ -413,7 +428,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
                       <input
                         className="input-field flex-1 min-w-0 text-sm py-2"
                         value={r.url}
-                        onChange={(e) => updateRow(i, "url", e.target.value)}
+                        onChange={(e) => updatePhotoRow(i, "url", e.target.value)}
                         placeholder="Cole uma URL ou use o botão de upload →"
                       />
                       <label className={`flex-shrink-0 p-2.5 rounded-lg border transition-colors cursor-pointer ${uploadingIndex === i ? "bg-gray-100 border-gray-200" : "bg-brand-50 border-brand-200 hover:bg-brand-100 text-brand-700"}`} title="Fazer upload de imagem">
@@ -422,42 +437,22 @@ export function ProductForm({ product }: { product?: ProductData }) {
                       </label>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-1.5">
-                      <div className="flex-1 min-w-0">
-                        <input
-                          list={`cores-${i}`}
-                          className="input-field w-full text-xs py-1.5 text-gray-600"
-                          value={r.color}
-                          onChange={(e) => updateRow(i, "color", e.target.value)}
-                          placeholder="Cor (ex: Preto, Caramelo, Rosé)"
-                        />
-                        <datalist id={`cores-${i}`}>
-                          {COLORS.map((c) => <option key={c} value={c} />)}
-                        </datalist>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <select
-                          className="input-field text-xs py-1.5 text-gray-600 flex-1 min-w-0 sm:w-24 sm:flex-none"
-                          value={r.size}
-                          onChange={(e) => updateRow(i, "size", e.target.value)}
-                        >
-                          <option value="">— Tam. —</option>
-                          {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <input
-                          type="number"
-                          min="0"
-                          title="Estoque desta cor"
-                          className={`input-field text-xs py-1.5 font-bold text-center flex-1 min-w-0 sm:w-16 sm:flex-none ${r.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : r.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
-                          value={r.stock}
-                          onChange={(e) => updateRow(i, "stock", parseInt(e.target.value) || 0)}
-                        />
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <input
+                        list={`cores-foto-${i}`}
+                        className="input-field w-full text-xs py-1.5 text-gray-600"
+                        value={r.color}
+                        onChange={(e) => updatePhotoRow(i, "color", e.target.value)}
+                        placeholder="Cor desta foto (ex: Preto, Caramelo, Rosé) — opcional"
+                      />
+                      <datalist id={`cores-foto-${i}`}>
+                        {COLORS.map((c) => <option key={c} value={c} />)}
+                      </datalist>
                     </div>
                   </div>
 
-                  {rows.length > 1 && (
-                    <button type="button" onClick={() => removeRow(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
+                  {photoRows.length > 1 && (
+                    <button type="button" onClick={() => removePhotoRow(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
                       <X size={16} />
                     </button>
                   )}
@@ -466,19 +461,71 @@ export function ProductForm({ product }: { product?: ProductData }) {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">
-              <button type="button" onClick={addRow} className="btn-ghost text-brand-700 text-sm flex-1 justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
-                <Plus size={16} /> Adicionar cor
+              <button type="button" onClick={addPhotoRow} className="btn-ghost text-brand-700 text-sm flex-1 justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
+                <Plus size={16} /> Adicionar foto
               </button>
               <label className={`btn-ghost text-brand-700 text-sm flex-1 justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50 cursor-pointer ${uploadingMulti ? "opacity-60 pointer-events-none" : ""}`}>
                 <input type="file" accept="image/*" multiple className="hidden" onChange={handleMultiFileUpload} disabled={uploadingMulti} />
                 {uploadingMulti ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><Images size={16} /> Adicionar várias fotos</>}
               </label>
             </div>
+          </Section>
+
+          {/* COR, TAMANHO E ESTOQUE */}
+          <Section title="Cor, Tamanho e Estoque" icon={Package}>
+            <p className="text-xs text-gray-500 -mt-1 mb-2">
+              Cada linha é uma combinação de cor + tamanho com seu próprio estoque. Se o produto não tem cor/tamanho, deixe uma linha só com o estoque total.
+            </p>
+
+            <div className="space-y-2">
+              {stockRows.map((r, i) => (
+                <div key={i} className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                  <div className="flex-1 min-w-0">
+                    <input
+                      list={`cores-estoque-${i}`}
+                      className="input-field w-full text-xs py-1.5 text-gray-600"
+                      value={r.color}
+                      onChange={(e) => updateStockRow(i, "color", e.target.value)}
+                      placeholder="Cor (ex: Preto, Caramelo, Rosé)"
+                    />
+                    <datalist id={`cores-estoque-${i}`}>
+                      {COLORS.map((c) => <option key={c} value={c} />)}
+                    </datalist>
+                  </div>
+                  <select
+                    className="input-field text-xs py-1.5 text-gray-600 flex-1 min-w-0 sm:w-24 sm:flex-none"
+                    value={r.size}
+                    onChange={(e) => updateStockRow(i, "size", e.target.value)}
+                  >
+                    <option value="">— Tam. —</option>
+                    {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <input
+                    type="number"
+                    min="0"
+                    title="Estoque desta cor/tamanho"
+                    className={`input-field text-xs py-1.5 font-bold text-center flex-1 min-w-0 sm:w-16 sm:flex-none ${r.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : r.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
+                    value={r.stock}
+                    onChange={(e) => updateStockRow(i, "stock", parseInt(e.target.value) || 0)}
+                  />
+
+                  {stockRows.length > 1 && (
+                    <button type="button" onClick={() => removeStockRow(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button type="button" onClick={addStockRow} className="btn-ghost text-brand-700 text-sm w-full justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
+              <Plus size={16} /> Adicionar cor/tamanho
+            </button>
 
             <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100">
-              <span className="text-sm font-medium text-brand-800">Total por cor:</span>
+              <span className="text-sm font-medium text-brand-800">Total:</span>
               <span className="text-base font-bold text-brand-700">
-                {rows.reduce((s, r) => s + (r.stock || 0), 0)} unidades
+                {stockRows.reduce((s, r) => s + (r.stock || 0), 0)} unidades
               </span>
               <button
                 type="button"

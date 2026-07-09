@@ -55,6 +55,8 @@ export function Footer() {
                   { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
                   { label: "Mochilas Feminino", href: "/produtos?categoria=Mochilas" },
                   { label: "Bolsa Tira-Colo", href: "/produtos?categoria=Bolsa Tira-Colo" },
+                  { label: "Carteira Feminina", href: "/produtos?categoria=Carteira Feminina" },
+                  { label: "Carteira Masculina", href: "/produtos?categoria=Carteira Masculina" },
                   { label: "Novidades", href: "/produtos?novidades=true" },
                   { label: "Sale", href: "/produtos?sale=true" },
                 ].map((l) => (

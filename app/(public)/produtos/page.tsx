@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/products/ProductCard";
-import { CATEGORIES } from "@/lib/utils";
+import { CATEGORIES, SUBCATEGORIES } from "@/lib/utils";
 import { Filter } from "lucide-react";
 import { SortSelect } from "./SortSelect";
 import { FilterSidebar } from "./FilterSidebar";
@@ -30,6 +30,9 @@ const getProducts = unstable_cache(
         },
       ];
       delete where.active;
+    } else if (params.categoria && SUBCATEGORIES[params.categoria]) {
+      // Categoria com seções (ex: Acessórios): inclui produtos marcados na categoria pai OU em alguma de suas seções.
+      where.categories = { hasSome: [params.categoria, ...SUBCATEGORIES[params.categoria]] };
     } else if (params.categoria) {
       where.categories = { has: params.categoria };
     }
@@ -86,6 +89,13 @@ export default async function ProdutosPage({
     return `/produtos${query ? "?" + query : ""}`;
   }
 
+  // Categoria pai ativa, mesmo quando o filtro atual é uma de suas seções (ex: "Carteira Feminina" -> "Acessórios")
+  const activeParentCategory = params.categoria
+    ? Object.keys(SUBCATEGORIES).find(
+        (parent) => parent === params.categoria || SUBCATEGORIES[parent].includes(params.categoria!)
+      )
+    : undefined;
+
   return (
     <div className="container-main py-8">
       {/* Breadcrumb */}
@@ -102,9 +112,18 @@ export default async function ProdutosPage({
             ...CATEGORIES.map((cat) => ({
               label: cat,
               href: buildUrl({ categoria: cat }),
-              active: params.categoria === cat,
+              active: params.categoria === cat || activeParentCategory === cat,
             })),
           ]}
+          subcategories={
+            activeParentCategory
+              ? SUBCATEGORIES[activeParentCategory].map((sub) => ({
+                  label: sub,
+                  href: buildUrl({ categoria: sub }),
+                  active: params.categoria === sub,
+                }))
+              : undefined
+          }
           priceRanges={priceRanges.map((range) => ({
             label: range.label,
             href: buildUrl({ preco_min: range.min, preco_max: range.max }),

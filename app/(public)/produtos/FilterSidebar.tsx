@@ -12,11 +12,12 @@ interface FilterLink {
 
 interface FilterSidebarProps {
   categories: FilterLink[];
+  subcategories?: FilterLink[];
   priceRanges: FilterLink[];
   clearHref: string | null;
 }
 
-export function FilterSidebar({ categories, priceRanges, clearHref }: FilterSidebarProps) {
+export function FilterSidebar({ categories, subcategories, priceRanges, clearHref }: FilterSidebarProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -59,6 +60,26 @@ export function FilterSidebar({ categories, priceRanges, clearHref }: FilterSide
             ))}
           </div>
         </div>
+
+        {/* Seções da categoria (ex: Acessórios > Carteira Feminina/Masculina) */}
+        {subcategories && subcategories.length > 0 && (
+          <div className="mb-6">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Seções</p>
+            <div className="space-y-1">
+              {subcategories.map((sub) => (
+                <Link
+                  key={sub.href}
+                  href={sub.href}
+                  className={`block text-sm px-3 py-2 pl-5 rounded-lg transition-colors ${
+                    sub.active ? "bg-brand-50 text-brand-700 font-semibold" : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {sub.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Faixa de Preço */}
         <div className="mb-6">

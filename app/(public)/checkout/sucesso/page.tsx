@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { CheckCircle, Package, ArrowRight, Mail } from "lucide-react";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS } from "@/lib/utils";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS } from "@/lib/utils";
 
 export default async function SucessoPage({
   searchParams,
@@ -68,7 +68,7 @@ export default async function SucessoPage({
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-400 uppercase tracking-wide">Data</p>
-            <p className="font-semibold text-gray-700 text-sm mt-0.5">{formatDate(order.createdAt)}</p>
+            <p className="font-semibold text-gray-700 text-sm mt-0.5">{formatDateTime(order.createdAt)}</p>
           </div>
         </div>
 

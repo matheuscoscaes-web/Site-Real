@@ -6,7 +6,12 @@ import {
   TrendingUp, ShoppingCart, Users, Package, AlertTriangle,
   Plus, ArrowUpRight, Eye, Clock,
 } from "lucide-react";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+
+const BR_TZ = "America/Sao_Paulo";
+function brazilDateKey(date: Date | string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: BR_TZ }).format(new Date(date));
+}
 
 async function getDashboardData() {
   const [orders, users, products, lowStock] = await Promise.all([
@@ -26,11 +31,8 @@ async function getDashboardData() {
   const paid = orders.filter((o) => !["CANCELLED", "PENDING"].includes(o.status));
   const totalRevenue = paid.reduce((s, o) => s + o.total, 0);
   const pending = orders.filter((o) => o.status === "PENDING").length;
-  const todayOrders = orders.filter((o) => {
-    const d = new Date(o.createdAt);
-    const now = new Date();
-    return d.toDateString() === now.toDateString();
-  });
+  const todayKey = brazilDateKey(new Date());
+  const todayOrders = orders.filter((o) => brazilDateKey(o.createdAt) === todayKey);
   const todayRevenue = todayOrders.filter((o) => o.status !== "CANCELLED").reduce((s, o) => s + o.total, 0);
 
   return {
@@ -47,7 +49,7 @@ export default async function AdminHome() {
   const session = await getServerSession(authOptions);
   const d = await getDashboardData();
 
-  const hora = new Date().getHours();
+  const hora = Number(new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", hour12: false, timeZone: BR_TZ }).format(new Date()));
   const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
 
   return (
@@ -150,7 +152,7 @@ export default async function AdminHome() {
                   </span>
                   <div className="text-right">
                     <p className="text-sm font-bold text-gray-900">{formatCurrency(order.total)}</p>
-                    <p className="text-xs text-gray-400">{formatDate(order.createdAt)}</p>
+                    <p className="text-xs text-gray-400">{formatDateTime(order.createdAt)}</p>
                   </div>
                   <Eye size={16} className="text-gray-300 group-hover:text-brand-500 transition-colors" />
                 </div>

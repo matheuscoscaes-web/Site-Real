@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { ShoppingBag, ChevronRight } from "lucide-react";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
 import { AvaliarCompra } from "@/components/reviews/AvaliarCompra";
 
 export default async function PedidosPage() {
@@ -51,7 +51,7 @@ export default async function PedidosPage() {
                         {ORDER_STATUS_LABELS[order.status]}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">{formatDate(order.createdAt)}</p>
+                    <p className="text-sm text-gray-500 mt-1">{formatDateTime(order.createdAt)}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-gray-900">{formatCurrency(order.total)}</p>
