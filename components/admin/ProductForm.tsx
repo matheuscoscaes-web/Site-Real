@@ -218,14 +218,22 @@ export function ProductForm({ product }: { product?: ProductData }) {
     });
   }
 
-  // Sobe um arquivo pro storage e devolve a URL (ou null, já mostrando o erro)
+  // Sobe um arquivo pro storage e devolve a URL (ou null, já mostrando o erro).
+  // Nunca lança exceção — se lançasse, o `await` que chama isso pularia o
+  // setUploadingKey(null) que vem depois e travaria todos os uploads do
+  // formulário (clique ou arraste) até recarregar a página.
   async function uploadFile(file: File): Promise<string | null> {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const data = await res.json();
-    if (!res.ok) { setUploadError(data.error || "Erro no upload"); return null; }
-    return data.url as string;
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setUploadError(data.error || "Erro no upload"); return null; }
+      return data.url as string;
+    } catch {
+      setUploadError("Erro no upload. Verifique sua conexão e tente novamente.");
+      return null;
+    }
   }
 
   // Upload da foto principal de uma linha (pelo seletor de arquivo)
@@ -554,7 +562,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
                     <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
                       <label
                         draggable={!!r.main}
-                        onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSource({ row: i, slot: "main" }); }}
+                        onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "foto"); setDragSource({ row: i, slot: "main" }); }}
                         onDragEnd={() => { setDragSource(null); setDragOverRow(null); }}
                         onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); e.stopPropagation(); } }}
                         onDrop={(e) => {
@@ -588,7 +596,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
                         <div
                           key={j}
                           draggable={!!url}
-                          onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSource({ row: i, slot: j }); }}
+                          onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "foto"); setDragSource({ row: i, slot: j }); }}
                           onDragEnd={() => { setDragSource(null); setDragOverRow(null); }}
                           onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); e.stopPropagation(); } }}
                           onDrop={(e) => {
