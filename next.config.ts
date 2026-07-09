@@ -4,6 +4,10 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp"],
   images: {
+    // As fotos já saem em WebP redimensionado do upload (app/api/upload/route.ts);
+    // reprocessar de novo no servidor a cada visita (sharp, sob demanda) só soma
+    // picos de memória numa instância de 512MB sem ganho real de tamanho.
+    unoptimized: true,
     formats: ["image/webp"],
     minimumCacheTTL: 2592000,
     remotePatterns: [
