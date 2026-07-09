@@ -141,6 +141,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
   const [uploadError, setUploadError] = useState("");
   const [uploadingMulti, setUploadingMulti] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [dragSource, setDragSource] = useState<{ row: number; slot: "main" | number } | null>(null);
+  const [dragOverRow, setDragOverRow] = useState<number | null>(null);
 
   function set(field: string, value: string | boolean) {
     setForm((p) => ({ ...p, [field]: value }));
@@ -191,6 +193,29 @@ export function ProductForm({ product }: { product?: ProductData }) {
   }
   function removeExtraImage(i: number, j: number) {
     setRows((p) => p.map((r, idx) => idx === i ? { ...r, extra: r.extra.filter((_, k) => k !== j) } : r));
+  }
+
+  // Arrastar uma foto (principal ou extra) de uma linha pra outra — move a foto pra cor de destino
+  function movePhotoToRow(source: { row: number; slot: "main" | number }, targetRow: number) {
+    if (source.row === targetRow) return;
+    setRows((prev) => {
+      const arr = prev.map((r) => ({ ...r, extra: [...r.extra] }));
+      const src = arr[source.row];
+      let url: string;
+      if (source.slot === "main") {
+        url = src.main;
+        if (src.extra.length > 0) { src.main = src.extra[0]; src.extra = src.extra.slice(1); }
+        else { src.main = ""; }
+      } else {
+        url = src.extra[source.slot];
+        src.extra = src.extra.filter((_, idx) => idx !== source.slot);
+      }
+      if (!url) return prev;
+      const tgt = arr[targetRow];
+      if (!tgt.main) tgt.main = url;
+      else tgt.extra = [...tgt.extra, url];
+      return arr;
+    });
   }
 
   // Upload da foto principal de uma linha
@@ -431,7 +456,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
           {/* FOTOS, COR E ESTOQUE */}
           <Section title="Fotos, Cor e Estoque" icon={ImageIcon}>
             <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Cada linha é uma cor: foto principal, fotos extras dessa mesma cor (clique no "+" ao lado da foto), tamanho e estoque. A primeira linha é a foto principal do produto.
+              Cada linha é uma cor: foto principal, fotos extras dessa mesma cor (clique no "+" ao lado da foto), tamanho e estoque. A primeira linha é a foto principal do produto. Arraste qualquer foto e solte em outra linha pra mudar ela de cor.
             </p>
             {uploadError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
@@ -466,7 +491,21 @@ export function ProductForm({ product }: { product?: ProductData }) {
 
             <div className="space-y-2">
               {rows.map((r, i) => (
-                <div key={i} className="flex flex-col gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                <div
+                  key={i}
+                  className={`flex flex-col gap-2 p-2.5 rounded-xl border transition-colors ${
+                    dragOverRow === i && dragSource && dragSource.row !== i
+                      ? "bg-brand-50 border-brand-300 border-dashed"
+                      : "bg-gray-50 border-gray-100"
+                  }`}
+                  onDragOver={(e) => { if (dragSource) { e.preventDefault(); setDragOverRow(i); } }}
+                  onDragLeave={() => setDragOverRow((cur) => (cur === i ? null : cur))}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverRow(null);
+                    if (dragSource) { movePhotoToRow(dragSource, i); setDragSource(null); }
+                  }}
+                >
                   <div className="flex items-start gap-2">
                     <div className="flex flex-col gap-0.5 pt-0.5">
                       <button type="button" onClick={() => moveRow(i, -1)} disabled={i === 0} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
@@ -477,9 +516,17 @@ export function ProductForm({ product }: { product?: ProductData }) {
                       </button>
                     </div>
 
-                    {/* Foto principal + fotos extras, lado a lado */}
+                    {/* Foto principal + fotos extras, lado a lado — arraste pra outra linha pra mudar de cor */}
                     <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
-                      <label className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border-2 border-brand-200 cursor-pointer group" title="Foto principal desta cor">
+                      <label
+                        draggable={!!r.main}
+                        onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSource({ row: i, slot: "main" }); }}
+                        onDragEnd={() => { setDragSource(null); setDragOverRow(null); }}
+                        className={`relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border-2 border-brand-200 cursor-pointer group ${
+                          dragSource?.row === i && dragSource.slot === "main" ? "opacity-40" : ""
+                        } ${r.main ? "cursor-grab active:cursor-grabbing" : ""}`}
+                        title={r.main ? "Foto principal desta cor — arraste pra outra cor pra mover" : "Foto principal desta cor"}
+                      >
                         {r.main ? (
                           <Image src={r.main} alt="" fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = ""; }} />
                         ) : (
@@ -496,7 +543,16 @@ export function ProductForm({ product }: { product?: ProductData }) {
                       </label>
 
                       {r.extra.map((url, j) => (
-                        <div key={j} className="relative w-11 h-11 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 group">
+                        <div
+                          key={j}
+                          draggable={!!url}
+                          onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSource({ row: i, slot: j }); }}
+                          onDragEnd={() => { setDragSource(null); setDragOverRow(null); }}
+                          className={`relative w-11 h-11 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 group ${
+                            dragSource?.row === i && dragSource.slot === j ? "opacity-40" : ""
+                          } ${url ? "cursor-grab active:cursor-grabbing" : ""}`}
+                          title={url ? "Arraste pra outra cor pra mover esta foto" : undefined}
+                        >
                           {url ? (
                             <Image src={url} alt="" fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = ""; }} />
                           ) : (
