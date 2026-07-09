@@ -59,28 +59,64 @@ export function ProductForm({ product }: { product?: ProductData }) {
   const router = useRouter();
   const isEdit = !!product?.id;
 
-  // Fotos: cada linha é uma foto (pode repetir a mesma cor em várias linhas —
-  // é assim que um produto tem mais de uma imagem para a mesma cor).
-  type PhotoRow = { url: string; color: string };
-  function buildInitialPhotoRows(): PhotoRow[] {
-    if (!product?.images) return [{ url: "", color: "" }];
+  // Cada linha é uma cor: foto principal + fotos extras (mais de uma imagem
+  // pra mesma cor) + tamanho + estoque, tudo junto.
+  type Row = { color: string; main: string; extra: string[]; size: string; stock: number };
+
+  function parseFormImages(raw?: string): { url: string; color: string }[] {
+    if (!raw) return [];
     try {
-      const parsed = JSON.parse(product.images);
-      if (!Array.isArray(parsed) || parsed.length === 0) return [{ url: "", color: "" }];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
       return parsed.map((item) =>
         typeof item === "string" ? { url: item, color: "" } : { url: item.url || "", color: item.color || "" }
       );
-    } catch { return [{ url: "", color: "" }]; }
+    } catch { return []; }
   }
 
-  // Estoque: cada linha é uma combinação única de cor + tamanho, independente das fotos.
-  type StockRow = { color: string; size: string; stock: number };
-  function buildInitialStockRows(): StockRow[] {
+  function buildInitialRows(): Row[] {
+    const images = parseFormImages(product?.images);
     const variants = product?.variants ?? [];
-    if (variants.length > 0) {
-      return variants.map((v) => ({ color: v.color ?? "", size: v.size ?? "", stock: v.stock ?? 0 }));
+
+    // Agrupa as fotos por cor, preservando a ordem de primeira aparição
+    const groups: { color: string; urls: string[] }[] = [];
+    for (const img of images) {
+      const color = img.color || "";
+      let g = groups.find((g) => g.color === color);
+      if (!g) { g = { color, urls: [] }; groups.push(g); }
+      if (img.url) g.urls.push(img.url);
     }
-    return [{ color: "", size: "", stock: product?.stock ?? 0 }];
+
+    if (variants.length > 0) {
+      const usedColors = new Set<string>();
+      const rows: Row[] = variants.map((v) => {
+        const color = v.color ?? "";
+        let main = "";
+        let extra: string[] = [];
+        if (color && !usedColors.has(color)) {
+          const g = groups.find((g) => g.color === color);
+          if (g && g.urls.length > 0) { [main, ...extra] = g.urls; }
+          usedColors.add(color);
+        }
+        return { color, main, extra, size: v.size ?? "", stock: v.stock ?? 0 };
+      });
+      groups.forEach((g) => {
+        if (!usedColors.has(g.color) && g.urls.length > 0) {
+          const [main, ...extra] = g.urls;
+          rows.push({ color: g.color, main, extra, size: "", stock: 0 });
+        }
+      });
+      return rows;
+    }
+
+    if (groups.length > 0) {
+      return groups.map((g) => {
+        const [main, ...extra] = g.urls;
+        return { color: g.color, main: main || "", extra, size: "", stock: 0 };
+      });
+    }
+
+    return [{ color: "", main: "", extra: [], size: "", stock: product?.stock ?? 0 }];
   }
 
   const [form, setForm] = useState({
@@ -97,12 +133,11 @@ export function ProductForm({ product }: { product?: ProductData }) {
   const [categories, setCategories] = useState<string[]>(
     product?.categories && product.categories.length > 0 ? product.categories : [CATEGORIES[0]]
   );
-  const [photoRows, setPhotoRows] = useState<PhotoRow[]>(buildInitialPhotoRows());
-  const [stockRows, setStockRows] = useState<StockRow[]>(buildInitialStockRows());
+  const [rows, setRows] = useState<Row[]>(buildInitialRows());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
   const [uploadingMulti, setUploadingMulti] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -128,40 +163,67 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setCategories((p) => (p.includes(cat) ? p.filter((c) => c !== cat) : [...p, cat]));
   }
 
-  // Linhas de foto
-  function addPhotoRow() { setPhotoRows((p) => [...p, { url: "", color: "" }]); }
-  function updatePhotoRow(i: number, field: keyof PhotoRow, val: string) {
-    setPhotoRows((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+  // Linhas (cor + fotos + tamanho + estoque)
+  function addRow() { setRows((p) => [...p, { color: "", main: "", extra: [], size: "", stock: 0 }]); }
+  function updateRow(i: number, field: "color" | "size", val: string) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
   }
-  function removePhotoRow(i: number) { setPhotoRows((p) => p.filter((_, idx) => idx !== i)); }
-  function movePhotoRow(i: number, dir: -1 | 1) {
-    const arr = [...photoRows];
+  function updateStock(i: number, val: number) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, stock: val } : r));
+  }
+  function removeRow(i: number) { setRows((p) => p.filter((_, idx) => idx !== i)); }
+  function moveRow(i: number, dir: -1 | 1) {
+    const arr = [...rows];
     const j = i + dir;
     if (j < 0 || j >= arr.length) return;
     [arr[i], arr[j]] = [arr[j], arr[i]];
-    setPhotoRows(arr);
+    setRows(arr);
   }
 
-  // Linhas de cor + tamanho + estoque
-  function addStockRow() { setStockRows((p) => [...p, { color: "", size: "", stock: 0 }]); }
-  function updateStockRow(i: number, field: keyof StockRow, val: string | number) {
-    setStockRows((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+  function setMainImage(i: number, url: string) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, main: url } : r));
   }
-  function removeStockRow(i: number) { setStockRows((p) => p.filter((_, idx) => idx !== i)); }
+  function addExtraSlot(i: number) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, extra: [...r.extra, ""] } : r));
+  }
+  function updateExtraImage(i: number, j: number, url: string) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, extra: r.extra.map((u, k) => k === j ? url : u) } : r));
+  }
+  function removeExtraImage(i: number, j: number) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, extra: r.extra.filter((_, k) => k !== j) } : r));
+  }
 
-  // Upload de arquivo
+  // Upload da foto principal de uma linha
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, index: number) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingIndex(index);
+    const key = `main-${index}`;
+    setUploadingKey(key);
     setUploadError("");
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
     const data = await res.json();
-    setUploadingIndex(null);
+    setUploadingKey(null);
     if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
-    updatePhotoRow(index, "url", data.url);
+    setMainImage(index, data.url);
+    e.target.value = "";
+  }
+
+  // Upload de uma foto extra (adiciona um slot novo na hora do upload)
+  async function handleExtraFileUpload(e: React.ChangeEvent<HTMLInputElement>, rowIndex: number, extraIndex: number) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const key = `extra-${rowIndex}-${extraIndex}`;
+    setUploadingKey(key);
+    setUploadError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const data = await res.json();
+    setUploadingKey(null);
+    if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
+    updateExtraImage(rowIndex, extraIndex, data.url);
     e.target.value = "";
   }
 
@@ -178,7 +240,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) { setUploadError(data.error || "Erro no upload"); continue; }
-      setPhotoRows((p) => [...p, { url: data.url, color: "" }]);
+      setRows((p) => [...p, { color: "", main: data.url, extra: [], size: "", stock: 0 }]);
     }
 
     setUploadingMulti(false);
@@ -202,8 +264,13 @@ export function ProductForm({ product }: { product?: ProductData }) {
 
   // Calcula estoque total a partir das linhas de cor/estoque
   function syncStockFromRows() {
-    const total = stockRows.reduce((s, r) => s + (r.stock || 0), 0);
+    const total = rows.reduce((s, r) => s + (r.stock || 0), 0);
     setForm((p) => ({ ...p, stock: total.toString() }));
+  }
+
+  // Todas as fotos de uma linha (principal + extras), na ordem certa
+  function rowImages(r: Row) {
+    return [r.main, ...r.extra].filter((u) => u.trim());
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -211,8 +278,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setError("");
     setSuccess("");
 
-    const validPhotoRows = photoRows.filter((r) => r.url.trim());
-    if (validPhotoRows.length === 0) {
+    const allImages = rows.flatMap((r) => rowImages(r).map((url) => ({ url, color: r.color })));
+    if (allImages.length === 0) {
       setError("Adicione pelo menos uma imagem.");
       return;
     }
@@ -233,8 +300,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
       price: parseFloat(form.price),
       stock: parseInt(form.stock) || 0,
       video: form.video.trim() || null,
-      images: JSON.stringify(validPhotoRows.map((r) => ({ url: r.url, color: r.color }))),
-      variants: stockRows
+      images: JSON.stringify(allImages),
+      variants: rows
         .filter((r) => r.color || r.size)
         .map((r) => ({ color: r.color || null, size: r.size || null, stock: r.stock || 0 })),
     };
@@ -260,7 +327,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     setTimeout(() => router.push("/admin/produtos"), 1200);
   }
 
-  const validPhotoRows = photoRows.filter((r) => r.url.trim());
+  const previewImages = rows.flatMap((r) => rowImages(r).map((url) => ({ url, color: r.color })));
 
   return (
     <form onSubmit={handleSubmit}>
@@ -361,23 +428,23 @@ export function ProductForm({ product }: { product?: ProductData }) {
             </div>
           </Section>
 
-          {/* FOTOS */}
-          <Section title="Fotos" icon={ImageIcon}>
+          {/* FOTOS, COR E ESTOQUE */}
+          <Section title="Fotos, Cor e Estoque" icon={ImageIcon}>
             <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Cada linha é uma foto. Marque a cor dela — pode repetir a mesma cor em várias linhas pra dar mais de uma foto pra ela (frente, verso, detalhe...). A primeira linha é a foto principal.
+              Cada linha é uma cor: foto principal, fotos extras dessa mesma cor (clique no "+" ao lado da foto), tamanho e estoque. A primeira linha é a foto principal do produto.
             </p>
             {uploadError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
             )}
 
-            {/* Preview das fotos */}
-            {validPhotoRows.length > 0 && (
+            {/* Preview geral das fotos */}
+            {previewImages.length > 0 && (
               <div className="flex gap-2 flex-wrap mb-2">
-                {validPhotoRows.map((r, i) => (
+                {previewImages.map((img, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200 flex-shrink-0">
                     <Image
-                      src={r.url}
-                      alt={r.color || `Foto ${i + 1}`}
+                      src={img.url}
+                      alt={img.color || `Foto ${i + 1}`}
                       fill
                       className="object-cover"
                       onError={(e) => { (e.target as HTMLImageElement).src = "https://picsum.photos/200"; }}
@@ -387,9 +454,9 @@ export function ProductForm({ product }: { product?: ProductData }) {
                         Principal
                       </span>
                     )}
-                    {r.color && (
+                    {img.color && (
                       <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 truncate px-1">
-                        {r.color}
+                        {img.color}
                       </span>
                     )}
                   </div>
@@ -398,134 +465,139 @@ export function ProductForm({ product }: { product?: ProductData }) {
             )}
 
             <div className="space-y-2">
-              {photoRows.map((r, i) => (
-                <div key={i} className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                  <div className="flex flex-col gap-0.5">
-                    <button type="button" onClick={() => movePhotoRow(i, -1)} disabled={i === 0} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
-                      <ChevronUp size={14} />
-                    </button>
-                    <button type="button" onClick={() => movePhotoRow(i, 1)} disabled={i === photoRows.length - 1} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
-                      <ChevronDown size={14} />
-                    </button>
-                  </div>
+              {rows.map((r, i) => (
+                <div key={i} className="flex flex-col gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                  <div className="flex items-start gap-2">
+                    <div className="flex flex-col gap-0.5 pt-0.5">
+                      <button type="button" onClick={() => moveRow(i, -1)} disabled={i === 0} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
+                        <ChevronUp size={14} />
+                      </button>
+                      <button type="button" onClick={() => moveRow(i, 1)} disabled={i === rows.length - 1} className="p-1 text-gray-300 hover:text-gray-600 disabled:opacity-20 transition-colors">
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
 
-                  <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                    {r.url ? (
-                      <Image
-                        src={r.url}
-                        alt=""
-                        fill
-                        className="object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).src = ""; }}
-                      />
-                    ) : (
-                      <ImageIcon size={16} className="text-gray-300 absolute inset-0 m-auto" />
-                    )}
-                  </div>
+                    {/* Foto principal + fotos extras, lado a lado */}
+                    <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+                      <label className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border-2 border-brand-200 cursor-pointer group" title="Foto principal desta cor">
+                        {r.main ? (
+                          <Image src={r.main} alt="" fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = ""; }} />
+                        ) : (
+                          <ImageIcon size={18} className="text-gray-300 absolute inset-0 m-auto" />
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
+                          {uploadingKey === `main-${i}` ? (
+                            <Loader2 size={16} className="animate-spin text-white" />
+                          ) : (
+                            <Upload size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </div>
+                        <input type="file" accept="image/*,image/webp" className="hidden" onChange={(e) => handleFileUpload(e, i)} disabled={uploadingKey !== null} />
+                      </label>
 
-                  <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <div className="flex gap-2 items-center">
-                      <input
-                        className="input-field flex-1 min-w-0 text-sm py-2"
-                        value={r.url}
-                        onChange={(e) => updatePhotoRow(i, "url", e.target.value)}
-                        placeholder="Cole uma URL ou use o botão de upload →"
-                      />
-                      <label className={`flex-shrink-0 p-2.5 rounded-lg border transition-colors cursor-pointer ${uploadingIndex === i ? "bg-gray-100 border-gray-200" : "bg-brand-50 border-brand-200 hover:bg-brand-100 text-brand-700"}`} title="Fazer upload de imagem">
-                        <input type="file" accept="image/*,image/webp" className="hidden" onChange={(e) => handleFileUpload(e, i)} disabled={uploadingIndex !== null} />
-                        {uploadingIndex === i ? <Loader2 size={15} className="animate-spin text-gray-400" /> : <Upload size={15} />}
+                      {r.extra.map((url, j) => (
+                        <div key={j} className="relative w-11 h-11 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 group">
+                          {url ? (
+                            <Image src={url} alt="" fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = ""; }} />
+                          ) : (
+                            <ImageIcon size={14} className="text-gray-300 absolute inset-0 m-auto" />
+                          )}
+                          <label className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center cursor-pointer transition-colors" title="Trocar foto extra">
+                            {uploadingKey === `extra-${i}-${j}` ? (
+                              <Loader2 size={14} className="animate-spin text-white" />
+                            ) : (
+                              <Upload size={12} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            )}
+                            <input type="file" accept="image/*,image/webp" className="hidden" onChange={(e) => handleExtraFileUpload(e, i, j)} disabled={uploadingKey !== null} />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeExtraImage(i, j)}
+                            className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] leading-none"
+                            title="Remover foto extra"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+
+                      <label className="w-11 h-11 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-brand-300 hover:text-brand-500 cursor-pointer flex-shrink-0 transition-colors" title="Adicionar foto extra desta cor">
+                        {uploadingKey === `extra-${i}-${r.extra.length}` ? (
+                          <Loader2 size={14} className="animate-spin text-brand-500" />
+                        ) : (
+                          <Plus size={16} />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*,image/webp"
+                          className="hidden"
+                          disabled={uploadingKey !== null}
+                          onChange={(e) => {
+                            const extraIndex = r.extra.length;
+                            addExtraSlot(i);
+                            handleExtraFileUpload(e, i, extraIndex);
+                          }}
+                        />
                       </label>
                     </div>
 
+                    {rows.length > 1 && (
+                      <button type="button" onClick={() => removeRow(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-1.5 pl-1">
                     <div className="flex-1 min-w-0">
                       <input
-                        list={`cores-foto-${i}`}
+                        list={`cores-${i}`}
                         className="input-field w-full text-xs py-1.5 text-gray-600"
                         value={r.color}
-                        onChange={(e) => updatePhotoRow(i, "color", e.target.value)}
-                        placeholder="Cor desta foto (ex: Preto, Caramelo, Rosé) — opcional"
+                        onChange={(e) => updateRow(i, "color", e.target.value)}
+                        placeholder="Cor (ex: Preto, Caramelo, Rosé)"
                       />
-                      <datalist id={`cores-foto-${i}`}>
+                      <datalist id={`cores-${i}`}>
                         {COLORS.map((c) => <option key={c} value={c} />)}
                       </datalist>
                     </div>
+                    <div className="flex gap-1.5">
+                      <select
+                        className="input-field text-xs py-1.5 text-gray-600 flex-1 min-w-0 sm:w-24 sm:flex-none"
+                        value={r.size}
+                        onChange={(e) => updateRow(i, "size", e.target.value)}
+                      >
+                        <option value="">— Tam. —</option>
+                        {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        title="Estoque desta cor"
+                        className={`input-field text-xs py-1.5 font-bold text-center flex-1 min-w-0 sm:w-16 sm:flex-none ${r.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : r.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
+                        value={r.stock}
+                        onChange={(e) => updateStock(i, parseInt(e.target.value) || 0)}
+                      />
+                    </div>
                   </div>
-
-                  {photoRows.length > 1 && (
-                    <button type="button" onClick={() => removePhotoRow(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
-                      <X size={16} />
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">
-              <button type="button" onClick={addPhotoRow} className="btn-ghost text-brand-700 text-sm flex-1 justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
-                <Plus size={16} /> Adicionar foto
+              <button type="button" onClick={addRow} className="btn-ghost text-brand-700 text-sm flex-1 justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
+                <Plus size={16} /> Adicionar cor
               </button>
               <label className={`btn-ghost text-brand-700 text-sm flex-1 justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50 cursor-pointer ${uploadingMulti ? "opacity-60 pointer-events-none" : ""}`}>
                 <input type="file" accept="image/*" multiple className="hidden" onChange={handleMultiFileUpload} disabled={uploadingMulti} />
                 {uploadingMulti ? <><Loader2 size={16} className="animate-spin" /> Enviando...</> : <><Images size={16} /> Adicionar várias fotos</>}
               </label>
             </div>
-          </Section>
-
-          {/* COR, TAMANHO E ESTOQUE */}
-          <Section title="Cor, Tamanho e Estoque" icon={Package}>
-            <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Cada linha é uma combinação de cor + tamanho com seu próprio estoque. Se o produto não tem cor/tamanho, deixe uma linha só com o estoque total.
-            </p>
-
-            <div className="space-y-2">
-              {stockRows.map((r, i) => (
-                <div key={i} className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                  <div className="flex-1 min-w-0">
-                    <input
-                      list={`cores-estoque-${i}`}
-                      className="input-field w-full text-xs py-1.5 text-gray-600"
-                      value={r.color}
-                      onChange={(e) => updateStockRow(i, "color", e.target.value)}
-                      placeholder="Cor (ex: Preto, Caramelo, Rosé)"
-                    />
-                    <datalist id={`cores-estoque-${i}`}>
-                      {COLORS.map((c) => <option key={c} value={c} />)}
-                    </datalist>
-                  </div>
-                  <select
-                    className="input-field text-xs py-1.5 text-gray-600 flex-1 min-w-0 sm:w-24 sm:flex-none"
-                    value={r.size}
-                    onChange={(e) => updateStockRow(i, "size", e.target.value)}
-                  >
-                    <option value="">— Tam. —</option>
-                    {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <input
-                    type="number"
-                    min="0"
-                    title="Estoque desta cor/tamanho"
-                    className={`input-field text-xs py-1.5 font-bold text-center flex-1 min-w-0 sm:w-16 sm:flex-none ${r.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : r.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
-                    value={r.stock}
-                    onChange={(e) => updateStockRow(i, "stock", parseInt(e.target.value) || 0)}
-                  />
-
-                  {stockRows.length > 1 && (
-                    <button type="button" onClick={() => removeStockRow(i)} className="p-2 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <button type="button" onClick={addStockRow} className="btn-ghost text-brand-700 text-sm w-full justify-center border border-dashed border-brand-200 py-2.5 rounded-xl hover:bg-brand-50">
-              <Plus size={16} /> Adicionar cor/tamanho
-            </button>
 
             <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100">
-              <span className="text-sm font-medium text-brand-800">Total:</span>
+              <span className="text-sm font-medium text-brand-800">Total por cor:</span>
               <span className="text-base font-bold text-brand-700">
-                {stockRows.reduce((s, r) => s + (r.stock || 0), 0)} unidades
+                {rows.reduce((s, r) => s + (r.stock || 0), 0)} unidades
               </span>
               <button
                 type="button"
