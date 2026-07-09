@@ -218,38 +218,68 @@ export function ProductForm({ product }: { product?: ProductData }) {
     });
   }
 
-  // Upload da foto principal de uma linha
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, index: number) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const key = `main-${index}`;
-    setUploadingKey(key);
-    setUploadError("");
+  // Sobe um arquivo pro storage e devolve a URL (ou null, já mostrando o erro)
+  async function uploadFile(file: File): Promise<string | null> {
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/upload", { method: "POST", body: fd });
     const data = await res.json();
+    if (!res.ok) { setUploadError(data.error || "Erro no upload"); return null; }
+    return data.url as string;
+  }
+
+  // Upload da foto principal de uma linha (pelo seletor de arquivo)
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, index: number) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingKey(`main-${index}`);
+    setUploadError("");
+    const url = await uploadFile(file);
     setUploadingKey(null);
-    if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
-    setMainImage(index, data.url);
+    if (url) setMainImage(index, url);
     e.target.value = "";
+  }
+
+  // Solta um arquivo (arrastado do computador) direto na foto principal
+  async function handleMainFileDrop(file: File, index: number) {
+    setUploadingKey(`main-${index}`);
+    setUploadError("");
+    const url = await uploadFile(file);
+    setUploadingKey(null);
+    if (url) setMainImage(index, url);
   }
 
   // Upload de uma foto extra (adiciona um slot novo na hora do upload)
   async function handleExtraFileUpload(e: React.ChangeEvent<HTMLInputElement>, rowIndex: number, extraIndex: number) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const key = `extra-${rowIndex}-${extraIndex}`;
-    setUploadingKey(key);
+    setUploadingKey(`extra-${rowIndex}-${extraIndex}`);
     setUploadError("");
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const data = await res.json();
+    const url = await uploadFile(file);
     setUploadingKey(null);
-    if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
-    updateExtraImage(rowIndex, extraIndex, data.url);
+    if (url) updateExtraImage(rowIndex, extraIndex, url);
     e.target.value = "";
+  }
+
+  // Solta um arquivo (arrastado do computador) direto no "+" de foto extra
+  async function handleExtraFileDrop(file: File, rowIndex: number, extraIndex: number) {
+    setUploadingKey(`extra-${rowIndex}-${extraIndex}`);
+    setUploadError("");
+    const url = await uploadFile(file);
+    setUploadingKey(null);
+    if (url) updateExtraImage(rowIndex, extraIndex, url);
+  }
+
+  // Solta um arquivo em qualquer parte da linha que não seja a foto principal
+  // nem o "+" — vira principal se a cor ainda não tem foto, senão vira extra.
+  async function handleRowFileDrop(file: File, rowIndex: number, hasMain: boolean) {
+    if (!hasMain) {
+      await handleMainFileDrop(file, rowIndex);
+      return;
+    }
+    const extraIndex = rows[rowIndex]?.extra.length ?? 0;
+    addExtraSlot(rowIndex);
+    await handleExtraFileDrop(file, rowIndex, extraIndex);
   }
 
   // Upload de várias fotos de uma vez (sem cor — só fotos extras do produto)
@@ -498,11 +528,15 @@ export function ProductForm({ product }: { product?: ProductData }) {
                       ? "bg-brand-50 border-brand-300 border-dashed"
                       : "bg-gray-50 border-gray-100"
                   }`}
-                  onDragOver={(e) => { if (dragSource) { e.preventDefault(); setDragOverRow(i); } }}
+                  onDragOver={(e) => {
+                    if (dragSource || e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragOverRow(i); }
+                  }}
                   onDragLeave={() => setDragOverRow((cur) => (cur === i ? null : cur))}
                   onDrop={(e) => {
                     e.preventDefault();
                     setDragOverRow(null);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) { handleRowFileDrop(file, i, !!r.main); return; }
                     if (dragSource) { movePhotoToRow(dragSource, i); setDragSource(null); }
                   }}
                 >
@@ -522,10 +556,18 @@ export function ProductForm({ product }: { product?: ProductData }) {
                         draggable={!!r.main}
                         onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSource({ row: i, slot: "main" }); }}
                         onDragEnd={() => { setDragSource(null); setDragOverRow(null); }}
+                        onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); e.stopPropagation(); } }}
+                        onDrop={(e) => {
+                          const file = e.dataTransfer.files?.[0];
+                          if (!file) return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleMainFileDrop(file, i);
+                        }}
                         className={`relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border-2 border-brand-200 cursor-pointer group ${
                           dragSource?.row === i && dragSource.slot === "main" ? "opacity-40" : ""
                         } ${r.main ? "cursor-grab active:cursor-grabbing" : ""}`}
-                        title={r.main ? "Foto principal desta cor — arraste pra outra cor pra mover" : "Foto principal desta cor"}
+                        title={r.main ? "Foto principal desta cor — arraste pra outra cor pra mover, ou solte um arquivo aqui pra trocar" : "Foto principal desta cor — solte um arquivo aqui"}
                       >
                         {r.main ? (
                           <Image src={r.main} alt="" fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = ""; }} />
@@ -548,6 +590,14 @@ export function ProductForm({ product }: { product?: ProductData }) {
                           draggable={!!url}
                           onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDragSource({ row: i, slot: j }); }}
                           onDragEnd={() => { setDragSource(null); setDragOverRow(null); }}
+                          onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); e.stopPropagation(); } }}
+                          onDrop={(e) => {
+                            const file = e.dataTransfer.files?.[0];
+                            if (!file) return;
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleExtraFileDrop(file, i, j);
+                          }}
                           className={`relative w-11 h-11 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 group ${
                             dragSource?.row === i && dragSource.slot === j ? "opacity-40" : ""
                           } ${url ? "cursor-grab active:cursor-grabbing" : ""}`}
@@ -577,7 +627,24 @@ export function ProductForm({ product }: { product?: ProductData }) {
                         </div>
                       ))}
 
-                      <label className="w-11 h-11 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-brand-300 hover:text-brand-500 cursor-pointer flex-shrink-0 transition-colors" title="Adicionar foto extra desta cor">
+                      <label
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDragOverRow(null);
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) {
+                            const extraIndex = r.extra.length;
+                            addExtraSlot(i);
+                            handleExtraFileDrop(file, i, extraIndex);
+                            return;
+                          }
+                          if (dragSource) { movePhotoToRow(dragSource, i); setDragSource(null); }
+                        }}
+                        className="w-11 h-11 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-brand-300 hover:text-brand-500 cursor-pointer flex-shrink-0 transition-colors"
+                        title="Adicionar foto extra desta cor — clique ou arraste um arquivo/foto aqui"
+                      >
                         {uploadingKey === `extra-${i}-${r.extra.length}` ? (
                           <Loader2 size={14} className="animate-spin text-brand-500" />
                         ) : (
