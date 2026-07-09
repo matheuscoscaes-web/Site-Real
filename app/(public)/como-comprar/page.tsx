@@ -28,7 +28,7 @@ export default function ComoComprarPage() {
     {
       number: "06",
       title: "Escolha o pagamento",
-      description: "Aceitamos cartão de crédito (em até 6x sem juros), PIX (5% de desconto) e boleto bancário.",
+      description: "Aceitamos cartão de crédito (em até 10x sem juros), PIX (5% de desconto) e boleto bancário.",
     },
     {
       number: "07",

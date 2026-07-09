@@ -125,7 +125,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-gray-900">{formatCurrency(product.price)}</span>
             <span className="text-xs text-gray-400">
-              ou 6x de {formatCurrency(product.price / 6)}
+              ou 10x de {formatCurrency(product.price / 10)}
             </span>
           </div>
           {product.price >= 299.9 && (
