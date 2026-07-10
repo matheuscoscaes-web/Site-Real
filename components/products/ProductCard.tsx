@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Heart, ShoppingBag, Star } from "lucide-react";
-import { formatCurrency, parseProductImages } from "@/lib/utils";
+import { formatCurrency, parseProductImages, isCupomElegivel } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { Product } from "@/types";
@@ -36,6 +36,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
       image: mainImage,
       quantity: 1,
       slug: product.slug,
+      cupomElegivel: isCupomElegivel(product.categories, product.permiteCupom),
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);

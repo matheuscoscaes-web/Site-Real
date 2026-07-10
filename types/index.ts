@@ -15,6 +15,7 @@ export interface Product {
   stock: number;
   active: boolean;
   featured: boolean;
+  permiteCupom: boolean;
   createdAt: Date;
   updatedAt: Date;
   variants?: ProductVariant[];
@@ -38,6 +39,7 @@ export interface CartItem {
   color?: string;
   size?: string;
   slug: string;
+  cupomElegivel: boolean;
 }
 
 export interface Address {

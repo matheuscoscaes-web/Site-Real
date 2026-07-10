@@ -90,6 +90,14 @@ export const PAYMENT_LABELS: Record<string, string> = {
 
 export const CATEGORIES = ["Bolsas", "Mochilas", "Bolsa Tira-Colo", "Acessórios"];
 
+/** Categoria que nunca recebe desconto de cupom, independente do produto. */
+export const COUPON_EXCLUDED_CATEGORY = "Acessórios";
+
+/** Um produto só participa de desconto de cupom se permitir e não estiver na categoria excluída. */
+export function isCupomElegivel(categories: string[], permiteCupom?: boolean | null): boolean {
+  return permiteCupom !== false && !categories.includes(COUPON_EXCLUDED_CATEGORY);
+}
+
 /** Subcategorias exibidas como seções dentro de uma categoria pai (ex: menu, sidebar de filtros). */
 export const SUBCATEGORIES: Record<string, string[]> = {
   "Acessórios": ["Carteira Feminina", "Carteira Masculina"],

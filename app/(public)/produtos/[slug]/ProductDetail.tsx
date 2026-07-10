@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
-import { formatCurrency, parseProductImages } from "@/lib/utils";
+import { formatCurrency, parseProductImages, isCupomElegivel } from "@/lib/utils";
 import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
@@ -73,6 +73,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
       color: selectedColor || undefined,
       size: selectedSize || undefined,
       slug: product.slug,
+      cupomElegivel: isCupomElegivel(product.categories, product.permiteCupom),
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 3000);

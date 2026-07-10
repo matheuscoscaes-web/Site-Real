@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { slugify, CATEGORIES, SUBCATEGORIES, COLORS, SIZES } from "@/lib/utils";
+import { slugify, CATEGORIES, SUBCATEGORIES, COLORS, SIZES, COUPON_EXCLUDED_CATEGORY } from "@/lib/utils";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
   ChevronUp, ChevronDown, Package, Info, Star, Upload, Video, Images,
@@ -27,6 +27,7 @@ interface ProductData {
   stock?: number;
   active?: boolean;
   featured?: boolean;
+  permiteCupom?: boolean;
   variants?: Variant[];
 }
 
@@ -127,6 +128,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     stock: product?.stock?.toString() || "0",
     active: product?.active ?? true,
     featured: product?.featured ?? false,
+    permiteCupom: product?.permiteCupom ?? true,
     video: product?.video || "",
   });
 
@@ -823,6 +825,29 @@ export function ProductForm({ product }: { product?: ProductData }) {
                   <Star size={12} className="text-amber-500" /> Destaque
                 </p>
                 <p className="text-xs text-gray-400">Aparece na página inicial</p>
+              </div>
+            </label>
+
+            <label className={`flex items-center gap-3 p-3 rounded-xl border border-gray-100 mt-3 transition-colors ${categories.includes(COUPON_EXCLUDED_CATEGORY) ? "opacity-50" : "hover:bg-gray-50 cursor-pointer"}`}>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={form.permiteCupom && !categories.includes(COUPON_EXCLUDED_CATEGORY)}
+                  disabled={categories.includes(COUPON_EXCLUDED_CATEGORY)}
+                  onChange={(e) => set("permiteCupom", e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={`w-10 h-6 rounded-full transition-colors ${form.permiteCupom && !categories.includes(COUPON_EXCLUDED_CATEGORY) ? "bg-brand-600" : "bg-gray-300"}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${form.permiteCupom && !categories.includes(COUPON_EXCLUDED_CATEGORY) ? "left-5" : "left-1"}`} />
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Permite cupom de desconto</p>
+                <p className="text-xs text-gray-400">
+                  {categories.includes(COUPON_EXCLUDED_CATEGORY)
+                    ? `Produtos em "${COUPON_EXCLUDED_CATEGORY}" nunca recebem desconto de cupom`
+                    : "Desmarque para este produto nunca receber desconto de cupom"}
+                </p>
               </div>
             </label>
           </div>

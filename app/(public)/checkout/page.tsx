@@ -55,7 +55,7 @@ interface BoletoData {
 export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { items, subtotal, clearCart } = useCartStore();
+  const { items, subtotal, eligibleSubtotal, clearCart } = useCartStore();
 
   const [step, setStep] = useState(1);
   const [deliveryType, setDeliveryType] = useState<"ENTREGA" | "RETIRADA">("ENTREGA");
@@ -84,7 +84,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new" | null>(null);
 
   const sub = subtotal();
-  const couponAmount = coupon.applied ? (sub * coupon.discount) / 100 : 0;
+  const couponAmount = coupon.applied ? (eligibleSubtotal() * coupon.discount) / 100 : 0;
   const effectiveShipping = deliveryType === "RETIRADA" || coupon.freeShipping ? 0 : (selectedShipping?.price ?? 0);
   const total = sub - couponAmount + effectiveShipping;
 
@@ -229,7 +229,7 @@ export default function CheckoutPage() {
         setCpfError("Digite um CPF válido (11 dígitos).");
         return;
       }
-      if (!coupon.freeShipping && !selectedShipping) {
+      if (!selectedShipping) {
         alert("Selecione uma opção de frete.");
         return;
       }
@@ -526,8 +526,7 @@ export default function CheckoutPage() {
               )}
 
               {/* Frete */}
-              {!coupon.freeShipping && (
-                <div className="mb-6 border-t border-gray-100 pt-5">
+              <div className="mb-6 border-t border-gray-100 pt-5">
                   <p className="label mb-3 flex items-center gap-2">
                     <Truck size={15} className="text-brand-700" /> Opções de entrega
                   </p>
@@ -592,12 +591,13 @@ export default function CheckoutPage() {
                             <p className="text-xs text-gray-400">Prazo: até {opt.days} {opt.days === 1 ? "dia útil" : "dias úteis"}</p>
                           </div>
                         </div>
-                        <span className="text-sm font-bold text-gray-900 flex-shrink-0">{formatCurrency(opt.price)}</span>
+                        <span className={`text-sm font-bold flex-shrink-0 ${coupon.freeShipping ? "text-green-600" : "text-gray-900"}`}>
+                          {coupon.freeShipping ? "Grátis" : formatCurrency(opt.price)}
+                        </span>
                       </label>
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Cupom */}
               <div className="mb-6 border-t border-gray-100 pt-5">

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { WELCOME_COUPON_CODE, WELCOME_COUPON_DISCOUNT } from "@/app/api/cupom/route";
 import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
+import { isCupomElegivel } from "@/lib/utils";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -73,8 +74,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Cálculo do total
-  const couponAmount = subtotal * couponDiscount / 100;
+  // Cálculo do total — cupom só se aplica sobre o valor dos itens elegíveis
+  let eligibleSubtotal = subtotal;
+  if (couponDiscount > 0) {
+    const products = await prisma.product.findMany({
+      where: { id: { in: items.map((item: { productId: string }) => item.productId) } },
+      select: { id: true, categories: true, permiteCupom: true },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    eligibleSubtotal = items.reduce((sum: number, item: { productId: string; price: number; quantity: number }) => {
+      const product = productMap.get(item.productId);
+      const elegivel = product ? isCupomElegivel(product.categories, product.permiteCupom) : true;
+      return elegivel ? sum + item.price * item.quantity : sum;
+    }, 0);
+  }
+
+  const couponAmount = eligibleSubtotal * couponDiscount / 100;
   const finalShipping = freeShipping ? 0 : shipping;
   const finalTotal = subtotal - couponAmount + finalShipping;
 

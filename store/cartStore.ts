@@ -12,6 +12,7 @@ interface CartStore {
   clearCart: () => void;
   totalItems: () => number;
   subtotal: () => number;
+  eligibleSubtotal: () => number;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -61,6 +62,9 @@ export const useCartStore = create<CartStore>()(
 
       subtotal: () =>
         get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+
+      eligibleSubtotal: () =>
+        get().items.reduce((sum, i) => (i.cupomElegivel !== false ? sum + i.price * i.quantity : sum), 0),
     }),
     { name: "bella-forma-cart" }
   )

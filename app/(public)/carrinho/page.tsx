@@ -13,12 +13,13 @@ import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } 
 export default function CarrinhoPage() {
   const router = useRouter();
   const { status } = useSession();
-  const { items, removeItem, updateQuantity, subtotal } = useCartStore();
+  const { items, removeItem, updateQuantity, subtotal, eligibleSubtotal } = useCartStore();
   const [cep, setCep] = useState("");
   const [freteOptions, setFreteOptions] = useState<FreteOption[]>([]);
   const [selectedFrete, setSelectedFrete] = useState<FreteOption | null>(null);
   const [loadingFrete, setLoadingFrete] = useState(false);
   const [freteError, setFreteError] = useState("");
+  const [deliveryType, setDeliveryType] = useState<"ENTREGA" | "RETIRADA">("ENTREGA");
   const [cupomInput, setCupomInput] = useState("");
   const [cupomLoading, setCupomLoading] = useState(false);
   const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discount: number; ownerName: string; freeShipping?: boolean } | null>(null);
@@ -34,8 +35,9 @@ export default function CarrinhoPage() {
   }, [status]);
 
   const sub = subtotal();
-  const freteTotal = cupomAplicado?.freeShipping ? 0 : (selectedFrete?.price ?? 0);
-  const desconto = cupomAplicado ? sub * cupomAplicado.discount / 100 : 0;
+  const temItemNaoElegivel = items.some((i) => i.cupomElegivel === false);
+  const freteTotal = cupomAplicado?.freeShipping ? 0 : deliveryType === "RETIRADA" ? 0 : (selectedFrete?.price ?? 0);
+  const desconto = cupomAplicado ? eligibleSubtotal() * cupomAplicado.discount / 100 : 0;
   const total = sub - desconto + freteTotal;
 
   async function handleCalcularFrete() {
@@ -151,6 +153,10 @@ export default function CarrinhoPage() {
                   </p>
                 )}
 
+                {item.cupomElegivel === false && (
+                  <p className="text-[11px] text-amber-600 mt-1">Não participa de cupom de desconto</p>
+                )}
+
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                     <button
@@ -208,6 +214,11 @@ export default function CarrinhoPage() {
               </div>
             ) : (
               <>
+                {temItemNaoElegivel && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-3">
+                    Alguns itens do carrinho não participam de cupom de desconto. O desconto vale só para os itens elegíveis.
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -258,30 +269,46 @@ export default function CarrinhoPage() {
                 </button>
               </div>
               {freteError && <p className="text-xs text-red-500 mb-2">{freteError}</p>}
-              {freteOptions.length > 0 && (
-                <div className="space-y-2">
-                  {freteOptions.map((opt) => (
-                    <label key={opt.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedFrete?.id === opt.id ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-gray-300"}`}>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="frete"
-                          checked={selectedFrete?.id === opt.id}
-                          onChange={() => setSelectedFrete(opt)}
-                          className="accent-brand-700"
-                        />
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
-                          <p className="text-xs text-gray-500">{opt.days} dias úteis</p>
-                        </div>
+
+              <div className="space-y-2">
+                <label className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === "RETIRADA" ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="frete"
+                      checked={deliveryType === "RETIRADA"}
+                      onChange={() => { setDeliveryType("RETIRADA"); setSelectedFrete(null); }}
+                      className="accent-brand-700"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Retirar na loja</p>
+                      <p className="text-xs text-gray-500">Rua Desembargador Omar Dutra, 60</p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold text-green-600">Grátis</span>
+                </label>
+
+                {freteOptions.map((opt) => (
+                  <label key={opt.id} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === "ENTREGA" && selectedFrete?.id === opt.id ? "border-brand-600 bg-brand-50" : "border-gray-200 hover:border-gray-300"}`}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="frete"
+                        checked={deliveryType === "ENTREGA" && selectedFrete?.id === opt.id}
+                        onChange={() => { setDeliveryType("ENTREGA"); setSelectedFrete(opt); }}
+                        className="accent-brand-700"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
+                        <p className="text-xs text-gray-500">{opt.days} dias úteis</p>
                       </div>
-                      <span className="text-sm font-bold text-gray-900">
-                        {opt.price === 0 ? "Grátis" : formatCurrency(opt.price)}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              )}
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">
+                      {opt.price === 0 ? "Grátis" : formatCurrency(opt.price)}
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
 
@@ -300,13 +327,15 @@ export default function CarrinhoPage() {
                 </div>
               )}
               <div className="flex justify-between text-gray-600">
-                <span>Frete</span>
-                <span className={cupomAplicado?.freeShipping ? "text-green-600 font-medium" : ""}>
+                <span>Frete{deliveryType === "RETIRADA" && !cupomAplicado?.freeShipping ? " (retirada na loja)" : ""}</span>
+                <span className={cupomAplicado?.freeShipping || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
                   {cupomAplicado?.freeShipping
+                    ? "Grátis"
+                    : deliveryType === "RETIRADA"
                     ? "Grátis"
                     : selectedFrete
                     ? (selectedFrete.price === 0 ? "Grátis" : formatCurrency(selectedFrete.price))
-                    : "Calculando..."}
+                    : "Calcule o frete ou retire na loja"}
                 </span>
               </div>
               <div className="border-t border-gray-100 pt-3 mt-2">

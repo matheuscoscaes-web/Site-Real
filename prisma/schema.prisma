@@ -156,19 +156,20 @@ model Reseller {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String
-  price       Float
-  categories  String[] @default([])
-  images      String
-  video       String?
-  stock       Int      @default(0)
-  active      Boolean  @default(true)
-  featured    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String
+  price        Float
+  categories   String[] @default([])
+  images       String
+  video        String?
+  stock        Int      @default(0)
+  active       Boolean  @default(true)
+  featured     Boolean  @default(false)
+  permiteCupom Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   variants   ProductVariant[]
   orderItems OrderItem[]
@@ -232,11 +233,11 @@ model Order {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id])
-  address  Address   @relation(fields: [addressId], references: [id])
+  user     User        @relation(fields: [userId], references: [id])
+  address  Address     @relation(fields: [addressId], references: [id])
   items    OrderItem[]
-  vendor   Vendor?   @relation(fields: [vendorId], references: [id])
-  reseller Reseller? @relation(fields: [resellerId], references: [id])
+  vendor   Vendor?     @relation(fields: [vendorId], references: [id])
+  reseller Reseller?   @relation(fields: [resellerId], references: [id])
   reviews  Review[]
 
   @@map("orders")
