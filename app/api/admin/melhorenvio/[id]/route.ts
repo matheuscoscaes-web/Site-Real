@@ -12,6 +12,11 @@ const ME_HEADERS = {
   "User-Agent": "HeartsCouro/1.0 (ffernandoccaio2004@gmail.com)",
 };
 
+/** Telefone só com dígitos, limitado a DDD + número (máx. 11 dígitos), como o Melhor Envio exige. */
+function sanitizePhone(phone: string | null | undefined): string {
+  return (phone ?? "").replace(/\D/g, "").slice(0, 11);
+}
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -61,7 +66,7 @@ export async function POST(
     service: order.shippingServiceId,
     from: {
       name: env.nome,
-      phone: env.telefone ?? "",
+      phone: sanitizePhone(env.telefone),
       email: "ffernandoccaio2004@gmail.com",
       document: env.documento ?? "",
       address: env.logradouro ?? "",
@@ -74,7 +79,7 @@ export async function POST(
     },
     to: {
       name: order.user.name,
-      phone: order.user.phone ?? "",
+      phone: sanitizePhone(order.user.phone),
       email: order.user.email,
       document: order.address.cpf?.replace(/\D/g, "") ?? "",
       address: order.address.street,
