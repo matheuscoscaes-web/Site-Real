@@ -587,7 +587,9 @@ export default function CheckoutPage() {
                             className="accent-brand-700"
                           />
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {opt.fallback ? opt.customerLabel : `${opt.company} — ${opt.name}`}
+                            </p>
                             <p className="text-xs text-gray-400">Prazo: até {opt.days} {opt.days === 1 ? "dia útil" : "dias úteis"}</p>
                           </div>
                         </div>

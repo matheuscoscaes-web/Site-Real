@@ -4,6 +4,11 @@ export interface FreteOption {
   company: string;
   price: number;
   days: number;
+  /** Nome pra mostrar pro cliente. Igual a `name` normalmente; quando PAC/SEDEX não atendem o CEP
+   *  e caímos numa transportadora alternativa, vira "Correios" pra não expor a transportadora real
+   *  (o admin continua vendo o nome/empresa reais em `name`/`company`). */
+  customerLabel: string;
+  fallback: boolean;
 }
 
 const ME_URL = "https://melhorenvio.com.br/api/v2/me";
@@ -45,14 +50,30 @@ export async function calcularFrete(cep: string, totalItems: number = 1): Promis
 
   const ALLOWED = ["PAC", "SEDEX"];
 
-  return (data as Record<string, unknown>[])
-    .filter((s) => !s.error && ALLOWED.includes(s.name as string))
+  const disponiveis = (data as Record<string, unknown>[]).filter((s) => !s.error && s.price != null);
+
+  let escolhidas = disponiveis.filter((s) => ALLOWED.includes(s.name as string));
+  let isFallback = false;
+
+  // PAC/SEDEX não atendem esse CEP (comum em áreas mais remotas): usa a transportadora
+  // mais barata disponível como alternativa, em vez de travar o checkout do cliente.
+  if (escolhidas.length === 0 && disponiveis.length > 0) {
+    isFallback = true;
+    const maisBarata = disponiveis.slice().sort(
+      (a, b) => parseFloat(a.price as string) - parseFloat(b.price as string)
+    )[0];
+    escolhidas = [maisBarata];
+  }
+
+  return escolhidas
     .map((s) => ({
       id: s.id as number,
       name: s.name as string,
       company: (s.company as { name: string }).name,
       price: parseFloat(s.price as string) + 7,
       days: s.delivery_time as number,
+      customerLabel: isFallback ? "Correios" : (s.name as string),
+      fallback: isFallback,
     }))
     .sort((a, b) => a.price - b.price);
 }
