@@ -82,6 +82,7 @@ export default function CheckoutPage() {
   const [preferredInstallments, setPreferredInstallments] = useState(1);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new" | null>(null);
+  const [enderecosCarregados, setEnderecosCarregados] = useState(false);
 
   const sub = subtotal();
   const couponAmount = coupon.applied ? (eligibleSubtotal() * coupon.discount) / 100 : 0;
@@ -101,19 +102,23 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, [status]);
 
+  // Só carrega o endereço salvo uma vez: sem o guard, a revalidação de sessão do NextAuth
+  // (ex: ao voltar o foco pra aba) refaz esse fetch e sobrescreve o que a pessoa digitou
+  // em "Usar outro endereço" com o endereço padrão salvo.
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status !== "authenticated" || enderecosCarregados) return;
     fetch("/api/clientes/me/enderecos")
       .then((r) => r.json())
       .then((data: SavedAddress[]) => {
+        setEnderecosCarregados(true);
         if (!Array.isArray(data) || data.length === 0) return;
         setSavedAddresses(data);
         const def = data.find((a) => a.isDefault) ?? data[0];
         setSelectedAddressId(def.id);
         setAddress({ name: def.name, cpf: def.cpf ?? "", street: def.street, number: def.number, complement: def.complement ?? "", district: def.district, city: def.city, state: def.state, zipCode: def.zipCode });
       })
-      .catch(() => {});
-  }, [status]);
+      .catch(() => setEnderecosCarregados(true));
+  }, [status, enderecosCarregados]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
