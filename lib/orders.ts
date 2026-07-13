@@ -31,8 +31,10 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
   });
 
   if (newStatus === "SHIPPED" && current.status !== "SHIPPED") {
+    // Não bloqueia a resposta esperando o Gmail — envia em segundo plano
+    // (sendEmail já trata os próprios erros, não precisa de .catch aqui).
     const { subject, html } = orderShippedEmail(updated);
-    await sendEmail({ to: updated.user.email, subject, html });
+    sendEmail({ to: updated.user.email, subject, html });
   }
 
   // Pedido cancelado/recusado devolve o estoque que foi descontado na criação
@@ -64,8 +66,9 @@ export async function confirmOrder(orderId: string) {
     include: ORDER_EMAIL_INCLUDE,
   });
 
+  // Não bloqueia a resposta esperando o Gmail — envia em segundo plano.
   const { subject, html } = orderConfirmedEmail(updated);
-  await sendEmail({ to: updated.user.email, subject, html });
+  sendEmail({ to: updated.user.email, subject, html });
 
   return { ok: true as const, order: updated };
 }

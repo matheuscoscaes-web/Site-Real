@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 
 const STATUS_LIST = ["", "PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 const ORIGEM_LIST = [
@@ -14,9 +14,9 @@ const ORIGEM_LIST = [
 export default async function AdminPedidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; origem?: string; vendorId?: string }>;
+  searchParams: Promise<{ status?: string; origem?: string; vendorId?: string; busca?: string }>;
 }) {
-  const { status, origem, vendorId } = await searchParams;
+  const { status, origem, vendorId, busca } = await searchParams;
 
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
@@ -24,6 +24,14 @@ export default async function AdminPedidosPage({
   else if (origem === "site") where.vendorId = null;
   else if (origem === "vendedor") { where.vendorId = { not: null }; where.resellerId = null; }
   else if (origem === "revendedor") where.resellerId = { not: null };
+  if (busca?.trim()) {
+    const termo = busca.trim();
+    where.OR = [
+      { user: { name: { contains: termo, mode: "insensitive" } } },
+      { user: { phone: { contains: termo } } },
+      { items: { some: { product: { name: { contains: termo, mode: "insensitive" } } } } },
+    ];
+  }
 
   const [orders, vendors] = await Promise.all([
     prisma.order.findMany({
@@ -53,12 +61,37 @@ export default async function AdminPedidosPage({
         </div>
       </div>
 
+      {/* Busca por produto, cliente ou telefone */}
+      <form method="GET" className="flex gap-2 mb-4">
+        {status && <input type="hidden" name="status" value={status} />}
+        {origem && <input type="hidden" name="origem" value={origem} />}
+        {vendorId && <input type="hidden" name="vendorId" value={vendorId} />}
+        <div className="relative flex-1 max-w-md">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            name="busca"
+            defaultValue={busca}
+            placeholder="Buscar por produto, cliente ou telefone..."
+            className="input-field pl-9 py-2.5 text-sm w-full"
+          />
+        </div>
+        <button type="submit" className="btn-primary py-2.5 text-sm">Buscar</button>
+        {busca && (
+          <Link
+            href={{ pathname: "/admin/pedidos", query: { ...(status ? { status } : {}), ...(origem ? { origem } : {}), ...(vendorId ? { vendorId } : {}) } }}
+            className="btn-outline py-2.5 text-sm"
+          >
+            Limpar
+          </Link>
+        )}
+      </form>
+
       {/* Filtro por status */}
       <div className="flex flex-wrap gap-2 mb-3">
         {STATUS_LIST.map((s) => (
           <Link
             key={s || "all"}
-            href={{ pathname: "/admin/pedidos", query: { ...(s ? { status: s } : {}), ...(origem ? { origem } : {}), ...(vendorId ? { vendorId } : {}) } }}
+            href={{ pathname: "/admin/pedidos", query: { ...(s ? { status: s } : {}), ...(origem ? { origem } : {}), ...(vendorId ? { vendorId } : {}), ...(busca ? { busca } : {}) } }}
             className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
               status === s || (!s && !status)
                 ? "bg-brand-700 text-white"
@@ -75,7 +108,7 @@ export default async function AdminPedidosPage({
         {ORIGEM_LIST.map((o) => (
           <Link
             key={o.value || "all"}
-            href={{ pathname: "/admin/pedidos", query: { ...(status ? { status } : {}), ...(o.value ? { origem: o.value } : {}) } }}
+            href={{ pathname: "/admin/pedidos", query: { ...(status ? { status } : {}), ...(o.value ? { origem: o.value } : {}), ...(busca ? { busca } : {}) } }}
             className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
               (origem === o.value || (!o.value && !origem && !vendorId)) && !vendorId
                 ? "bg-purple-700 text-white"
@@ -91,7 +124,7 @@ export default async function AdminPedidosPage({
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <span className="text-xs text-gray-400">Vendedor:</span>
         <Link
-          href={{ pathname: "/admin/pedidos", query: { ...(status ? { status } : {}) } }}
+          href={{ pathname: "/admin/pedidos", query: { ...(status ? { status } : {}), ...(busca ? { busca } : {}) } }}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
             !vendorId ? "bg-gray-800 text-white" : "bg-white border border-gray-200 text-gray-600 hover:border-gray-400"
           }`}
@@ -101,7 +134,7 @@ export default async function AdminPedidosPage({
         {vendors.map((v) => (
           <Link
             key={v.id}
-            href={{ pathname: "/admin/pedidos", query: { ...(status ? { status } : {}), vendorId: v.id } }}
+            href={{ pathname: "/admin/pedidos", query: { ...(status ? { status } : {}), vendorId: v.id, ...(busca ? { busca } : {}) } }}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
               vendorId === v.id ? "bg-gray-800 text-white" : "bg-white border border-gray-200 text-gray-600 hover:border-gray-400"
             }`}
