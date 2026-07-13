@@ -24,7 +24,6 @@ interface ProductData {
   categories?: string[];
   images?: string;
   video?: string | null;
-  stock?: number;
   active?: boolean;
   featured?: boolean;
   permiteCupom?: boolean;
@@ -117,7 +116,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
       });
     }
 
-    return [{ color: "", main: "", extra: [], size: "", stock: product?.stock ?? 0 }];
+    return [{ color: "", main: "", extra: [], size: "", stock: 0 }];
   }
 
   const [form, setForm] = useState({
@@ -125,7 +124,6 @@ export function ProductForm({ product }: { product?: ProductData }) {
     slug: product?.slug || "",
     description: product?.description || "",
     price: product?.price?.toString() || "",
-    stock: product?.stock?.toString() || "0",
     active: product?.active ?? true,
     featured: product?.featured ?? false,
     permiteCupom: product?.permiteCupom ?? true,
@@ -327,11 +325,7 @@ export function ProductForm({ product }: { product?: ProductData }) {
     e.target.value = "";
   }
 
-  // Calcula estoque total a partir das linhas de cor/estoque
-  function syncStockFromRows() {
-    const total = rows.reduce((s, r) => s + (r.stock || 0), 0);
-    setForm((p) => ({ ...p, stock: total.toString() }));
-  }
+  const totalStock = rows.reduce((s, r) => s + (r.stock || 0), 0);
 
   // Todas as fotos de uma linha (principal + extras), na ordem certa
   function rowImages(r: Row) {
@@ -363,12 +357,11 @@ export function ProductForm({ product }: { product?: ProductData }) {
       ...form,
       categories,
       price: parseFloat(form.price),
-      stock: parseInt(form.stock) || 0,
       video: form.video.trim() || null,
       images: JSON.stringify(allImages),
-      variants: rows
-        .filter((r) => r.color || r.size)
-        .map((r) => ({ color: r.color || null, size: r.size || null, stock: r.stock || 0 })),
+      // Toda linha vira uma variante — mesmo produtos sem cor/tamanho definidos
+      // precisam de uma variante (color/size null) pra guardar o estoque.
+      variants: rows.map((r) => ({ color: r.color || null, size: r.size || null, stock: r.stock || 0 })),
     };
 
     const url = isEdit ? `/api/produtos/${product!.id}` : "/api/produtos";
@@ -728,17 +721,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
             </div>
 
             <div className="flex items-center justify-between p-3 bg-brand-50 rounded-xl border border-brand-100">
-              <span className="text-sm font-medium text-brand-800">Total por cor:</span>
-              <span className="text-base font-bold text-brand-700">
-                {rows.reduce((s, r) => s + (r.stock || 0), 0)} unidades
-              </span>
-              <button
-                type="button"
-                onClick={syncStockFromRows}
-                className="text-xs text-brand-600 hover:underline font-medium"
-              >
-                Somar no total
-              </button>
+              <span className="text-sm font-medium text-brand-800">Total em estoque:</span>
+              <span className="text-base font-bold text-brand-700">{totalStock} unidades</span>
             </div>
           </Section>
 
@@ -896,28 +880,17 @@ export function ProductForm({ product }: { product?: ProductData }) {
           {/* Estoque total */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="font-bold text-gray-900 mb-4">Estoque Total</h3>
-            <div>
-              <label className="label">Quantidade total *</label>
-              <input
-                type="number"
-                min="0"
-                className="input-field font-bold text-center text-lg"
-                value={form.stock}
-                onChange={(e) => set("stock", e.target.value)}
-                required
-              />
-              <p className="text-xs text-gray-400 mt-1 text-center">
-                Ou clique em <span className="text-brand-600 font-medium">"Somar no total"</span> na seção de variações
-              </p>
-            </div>
-            <div className={`mt-3 text-center text-sm font-semibold py-2 rounded-xl ${
-              parseInt(form.stock) === 0 ? "bg-red-50 text-red-700" :
-              parseInt(form.stock) <= 5 ? "bg-orange-50 text-orange-700" :
+            <p className="text-xs text-gray-400 mb-3 text-center">
+              Somado automaticamente do estoque por cor, na seção de variações acima.
+            </p>
+            <div className={`text-center text-sm font-semibold py-2 rounded-xl ${
+              totalStock === 0 ? "bg-red-50 text-red-700" :
+              totalStock <= 5 ? "bg-orange-50 text-orange-700" :
               "bg-green-50 text-green-700"
             }`}>
-              {parseInt(form.stock) === 0 ? "⚠ Produto esgotado" :
-               parseInt(form.stock) <= 5 ? `⚠ Estoque baixo (${form.stock} restantes)` :
-               `✓ Em estoque (${form.stock} unidades)`}
+              {totalStock === 0 ? "⚠ Produto esgotado" :
+               totalStock <= 5 ? `⚠ Estoque baixo (${totalStock} restantes)` :
+               `✓ Em estoque (${totalStock} unidades)`}
             </div>
           </div>
 

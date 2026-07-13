@@ -19,7 +19,16 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const liked = useWishlistStore((s) => s.items.some((i) => i.productId === product.id));
 
   const images = parseProductImages(product.images);
-  const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])];
+
+  const colorStockMap = new Map<string, number>();
+  for (const v of product.variants) {
+    if (!v.color) continue;
+    colorStockMap.set(v.color, (colorStockMap.get(v.color) ?? 0) + v.stock);
+  }
+  // Cores esgotadas vão pro final da lista (sort é estável, preserva a ordem entre elas)
+  const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])].sort(
+    (a, b) => Number(colorStockMap.get(a) === 0) - Number(colorStockMap.get(b) === 0)
+  );
   const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean) as string[])];
 
   const [selectedImage, setSelectedImage] = useState<number | "video">(0);
@@ -81,9 +90,11 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
 
   const installment = product.price / 10;
 
+  const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
+
   const colorStock = selectedColor
     ? product.variants.filter((v) => v.color === selectedColor).reduce((s, v) => s + v.stock, 0)
-    : product.stock;
+    : totalStock;
 
   // Estoque exato da combinação cor+tamanho escolhida — é o que de fato pode
   // ser comprado (o colorStock acima soma todos os tamanhos daquela cor).
@@ -91,7 +102,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     (v) => (!selectedColor || v.color === selectedColor) && (!selectedSize || v.size === selectedSize)
   );
   const availableStock = colors.length === 0 && sizes.length === 0
-    ? product.stock
+    ? totalStock
     : selectedVariants.reduce((s, v) => s + v.stock, 0);
 
   return (
@@ -221,19 +232,24 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
               )}
             </p>
             <div className="flex flex-wrap gap-2">
-              {colors.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => handleColorSelect(color)}
-                  className={`px-4 py-2 rounded-full text-sm border-2 transition-all ${
-                    selectedColor === color
-                      ? "border-brand-600 bg-brand-50 text-brand-700 font-semibold"
-                      : "border-gray-200 text-gray-600 hover:border-gray-400"
-                  }`}
-                >
-                  {color}
-                </button>
-              ))}
+              {colors.map((color) => {
+                const outOfStock = colorStockMap.get(color) === 0;
+                return (
+                  <button
+                    key={color}
+                    onClick={() => handleColorSelect(color)}
+                    className={`px-4 py-2 rounded-full text-sm border-2 transition-all ${
+                      selectedColor === color
+                        ? "border-brand-600 bg-brand-50 text-brand-700 font-semibold"
+                        : outOfStock
+                        ? "border-gray-100 text-gray-300"
+                        : "border-gray-200 text-gray-600 hover:border-gray-400"
+                    }`}
+                  >
+                    {color}{outOfStock && " (esgotado)"}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

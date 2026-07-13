@@ -26,6 +26,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   const hoverImage = imageUrls[1];
   const colorCount = new Set((product.variants ?? []).map((v) => v.color).filter(Boolean)).size;
   const hasMultipleColors = colorCount > 1;
+  const totalStock = (product.variants ?? []).reduce((s, v) => s + v.stock, 0);
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
@@ -57,7 +58,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           />
 
           {/* Overlay esgotado */}
-          {product.stock === 0 && (
+          {totalStock === 0 && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
               <span className="bg-white text-gray-800 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow">
                 Esgotado
@@ -67,7 +68,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1 z-20">
-            {product.featured && product.stock > 0 && (
+            {product.featured && totalStock > 0 && (
               <span className="bg-brand-700 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
                 Destaque
               </span>
@@ -84,7 +85,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           </button>
 
           {/* Add to cart overlay */}
-          {product.stock > 0 && (
+          {totalStock > 0 && (
             hasMultipleColors ? (
               <span
                 className="absolute bottom-3 left-3 right-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-white text-brand-700 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-brand-700 hover:text-white"

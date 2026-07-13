@@ -12,7 +12,6 @@ export interface Product {
   categories: string[];
   images: string;
   video?: string | null;
-  stock: number;
   active: boolean;
   featured: boolean;
   permiteCupom: boolean;

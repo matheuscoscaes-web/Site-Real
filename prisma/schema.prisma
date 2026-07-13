@@ -164,7 +164,6 @@ model Product {
   categories   String[] @default([])
   images       String
   video        String?
-  stock        Int      @default(0)
   active       Boolean  @default(true)
   featured     Boolean  @default(false)
   permiteCupom Boolean  @default(true)
@@ -230,6 +229,7 @@ model Order {
   shippingServiceId Int?
   melhorEnvioId     String?
   mpPaymentId       String?
+  confirmedAt       DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -240,6 +240,10 @@ model Order {
   reseller Reseller?   @relation(fields: [resellerId], references: [id])
   reviews  Review[]
 
+  @@index([status])
+  @@index([vendorId])
+  @@index([resellerId])
+  @@index([createdAt])
   @@map("orders")
 }
 
@@ -264,6 +268,8 @@ model OrderItem {
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
 
+  @@index([orderId])
+  @@index([productId])
   @@map("order_items")
 }
 

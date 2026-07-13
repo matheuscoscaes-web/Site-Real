@@ -29,15 +29,19 @@ export default async function AdminPedidosPage({
     prisma.order.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include: {
-        user: true,
-        address: true,
-        items: { include: { product: true } },
-        vendor: { include: { user: true } },
-        reseller: { include: { user: true } },
+      select: {
+        id: true,
+        status: true,
+        total: true,
+        createdAt: true,
+        confirmedAt: true,
+        user: { select: { name: true, email: true } },
+        _count: { select: { items: true } },
+        vendor: { select: { user: { select: { name: true } } } },
+        reseller: { select: { user: { select: { name: true } } } },
       },
     }),
-    prisma.vendor.findMany({ include: { user: true }, orderBy: { createdAt: "desc" } }),
+    prisma.vendor.findMany({ select: { id: true, user: { select: { name: true } } }, orderBy: { createdAt: "desc" } }),
   ]);
 
   return (
@@ -133,7 +137,7 @@ export default async function AdminPedidosPage({
                   <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4">
                       <p className="font-bold text-gray-900 font-mono text-sm">#{order.id.slice(-8).toUpperCase()}</p>
-                      <p className="text-xs text-gray-400">{order.items.length} {order.items.length === 1 ? "item" : "itens"}</p>
+                      <p className="text-xs text-gray-400">{order._count.items} {order._count.items === 1 ? "item" : "itens"}</p>
                     </td>
                     <td className="px-5 py-4 hidden md:table-cell">
                       <p className="text-sm font-medium text-gray-900">{order.user.name}</p>
@@ -161,6 +165,11 @@ export default async function AdminPedidosPage({
                       <span className={`badge text-xs ${ORDER_STATUS_COLORS[order.status]}`}>
                         {ORDER_STATUS_LABELS[order.status]}
                       </span>
+                      {order.status !== "PENDING" && order.status !== "CANCELLED" && !order.confirmedAt && (
+                        <span className="block mt-1 text-[11px] font-semibold text-amber-700">
+                          Aguardando aceite
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       <p className="font-bold text-gray-900 text-sm">{formatCurrency(order.total)}</p>

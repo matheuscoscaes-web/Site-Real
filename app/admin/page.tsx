@@ -14,7 +14,7 @@ function brazilDateKey(date: Date | string) {
 }
 
 async function getDashboardData() {
-  const [orders, users, products, lowStock] = await Promise.all([
+  const [orders, users, products, activeProducts] = await Promise.all([
     prisma.order.findMany({
       include: { user: true, items: true },
       orderBy: { createdAt: "desc" },
@@ -22,11 +22,17 @@ async function getDashboardData() {
     prisma.user.count({ where: { role: "CUSTOMER" } }),
     prisma.product.count({ where: { active: true } }),
     prisma.product.findMany({
-      where: { active: true, stock: { lte: 5 } },
-      orderBy: { stock: "asc" },
-      take: 6,
+      where: { active: true },
+      include: { variants: true },
     }),
   ]);
+
+  // Estoque vive só nas variantes (por cor/tamanho) — soma tudo pra achar os produtos com pouco estoque
+  const lowStock = activeProducts
+    .map((p) => ({ ...p, stock: p.variants.reduce((s, v) => s + v.stock, 0) }))
+    .filter((p) => p.stock <= 5)
+    .sort((a, b) => a.stock - b.stock)
+    .slice(0, 6);
 
   const paid = orders.filter((o) => !["CANCELLED", "PENDING"].includes(o.status));
   const totalRevenue = paid.reduce((s, o) => s + o.total, 0);

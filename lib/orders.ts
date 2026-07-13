@@ -14,6 +14,10 @@ const ORDER_EMAIL_INCLUDE = {
  * transição de status (evita reenviar e-mail se o mesmo status for setado de novo,
  * o que acontece com frequência aqui: webhook + polling + verificação manual
  * podem todos tentar marcar o mesmo pedido como PAID).
+ *
+ * O e-mail de "pagamento confirmado" NÃO é disparado automaticamente aqui quando o
+ * status vira PAID — isso acontece via webhook do Mercado Pago sem revisão humana.
+ * Ele só é enviado quando o admin aceita o pedido manualmente, ver `confirmOrder`.
  */
 export async function updateOrderStatus(orderId: string, newStatus: string) {
   const current = await prisma.order.findUnique({ where: { id: orderId }, include: ORDER_EMAIL_INCLUDE });
@@ -26,11 +30,6 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
     include: ORDER_EMAIL_INCLUDE,
   });
 
-  if (newStatus === "PAID" && current.status !== "PAID") {
-    const { subject, html } = orderConfirmedEmail(updated);
-    await sendEmail({ to: updated.user.email, subject, html });
-  }
-
   if (newStatus === "SHIPPED" && current.status !== "SHIPPED") {
     const { subject, html } = orderShippedEmail(updated);
     await sendEmail({ to: updated.user.email, subject, html });
@@ -42,4 +41,31 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
   }
 
   return updated;
+}
+
+/**
+ * Aceite manual do pedido pelo admin: dispara o e-mail de "pagamento confirmado"
+ * pro cliente (com o botão de acompanhar pedido). Só pode ser feito uma vez por
+ * pedido (protegido por `confirmedAt`) e só faz sentido pra pedidos já pagos.
+ */
+export async function confirmOrder(orderId: string) {
+  const current = await prisma.order.findUnique({ where: { id: orderId }, include: ORDER_EMAIL_INCLUDE });
+  if (!current) return { ok: false as const, error: "Pedido não encontrado" };
+  if (current.status === "PENDING" || current.status === "CANCELLED") {
+    return { ok: false as const, error: "Pedido ainda não está pago" };
+  }
+  if (current.confirmedAt) {
+    return { ok: false as const, error: "Pedido já foi confirmado" };
+  }
+
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: { confirmedAt: new Date() },
+    include: ORDER_EMAIL_INCLUDE,
+  });
+
+  const { subject, html } = orderConfirmedEmail(updated);
+  await sendEmail({ to: updated.user.email, subject, html });
+
+  return { ok: true as const, order: updated };
 }

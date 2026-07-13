@@ -26,9 +26,11 @@ export default async function AdminProdutosPage({
     },
   });
 
+  const stockOf = (p: (typeof products)[number]) => p.variants.reduce((s, v) => s + v.stock, 0);
+
   const totalActive = products.filter((p) => p.active).length;
   const totalInactive = products.filter((p) => !p.active).length;
-  const totalLowStock = products.filter((p) => p.stock <= 5 && p.active).length;
+  const totalLowStock = products.filter((p) => stockOf(p) <= 5 && p.active).length;
 
   return (
     <div>
@@ -102,7 +104,8 @@ export default async function AdminProdutosPage({
                 </tr>
               ) : products.map((product) => {
                 const imgs = parseProductImages(product.images).map((img) => img.url);
-                const isLowStock = product.stock <= 5 && product.active;
+                const stock = stockOf(product);
+                const isLowStock = stock <= 5 && product.active;
                 const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean))];
                 const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))];
 
@@ -147,11 +150,11 @@ export default async function AdminProdutosPage({
                       <div className="flex items-center gap-1.5">
                         {isLowStock && <AlertTriangle size={13} className="text-orange-500 flex-shrink-0" />}
                         <span className={`text-sm font-bold ${
-                          product.stock === 0 ? "text-red-600" :
-                          product.stock <= 5 ? "text-orange-600" :
+                          stock === 0 ? "text-red-600" :
+                          stock <= 5 ? "text-orange-600" :
                           "text-green-700"
                         }`}>
-                          {product.stock}
+                          {stock}
                         </span>
                       </div>
                     </td>

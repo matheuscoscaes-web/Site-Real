@@ -8,6 +8,7 @@ import { UpdateStatusButton } from "./UpdateStatusButton";
 import { MelhorEnvioButton } from "./MelhorEnvioButton";
 import { DefinirFreteForm } from "./DefinirFreteForm";
 import { VerificarPagamentoButton } from "./VerificarPagamentoButton";
+import { ConfirmarPedidoButton } from "./ConfirmarPedidoButton";
 
 const STATUS_OPTIONS = ["PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
@@ -24,9 +25,6 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
 
   if (!order) notFound();
 
-  const images = (slug: string) =>
-    JSON.parse(prisma.product.findUnique({ where: { slug } }) as unknown as string || "[]");
-
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
@@ -41,6 +39,13 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
           <span className={`badge text-sm px-4 py-1.5 ${ORDER_STATUS_COLORS[order.status]}`}>
             {ORDER_STATUS_LABELS[order.status]}
           </span>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h2 className="font-bold text-gray-900 mb-3">Confirmação para o cliente</h2>
+          <ConfirmarPedidoButton orderId={order.id} status={order.status} confirmed={!!order.confirmedAt} />
         </div>
       </div>
 
