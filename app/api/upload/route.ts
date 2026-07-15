@@ -3,6 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sharp from "sharp";
 
+// O libvips (usado pelo sharp) aloca memória nativa fora do controle do
+// --max-old-space-size do Node. Sem isso, o cache interno e o processamento
+// concorrente de múltiplas fotos empilham RSS até estourar o limite de
+// memória do Render, derrubando a instância inteira (não só o upload).
+sharp.cache(false);
+sharp.concurrency(1);
+
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const BUCKET = "produtos";
@@ -65,11 +72,17 @@ export async function POST(request: NextRequest) {
   const rawBuffer = Buffer.from(await file.arrayBuffer());
 
   // Converte para WebP: redimensiona para no máximo 1200px, fundo branco, qualidade 85
-  const webpBuffer = await sharp(rawBuffer)
-    .flatten({ background: { r: 249, g: 250, b: 251 } }) // fundo #F9FAFB (gray-50)
-    .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 85 })
-    .toBuffer();
+  let webpBuffer: Buffer;
+  try {
+    webpBuffer = await sharp(rawBuffer)
+      .flatten({ background: { r: 249, g: 250, b: 251 } }) // fundo #F9FAFB (gray-50)
+      .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 85 })
+      .toBuffer();
+  } catch (err) {
+    console.error("Erro ao processar imagem com sharp:", err);
+    return NextResponse.json({ error: "Não foi possível processar essa imagem. O arquivo pode estar corrompido — tente outra foto." }, { status: 400 });
+  }
 
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
 
