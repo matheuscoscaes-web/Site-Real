@@ -83,6 +83,13 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new" | null>(null);
   const [enderecosCarregados, setEnderecosCarregados] = useState(false);
+  const [inAppBrowser, setInAppBrowser] = useState(false);
+
+  useEffect(() => {
+    // Navegador interno do WhatsApp/Instagram/Facebook às vezes perde a sessão de
+    // login no meio do checkout — orienta a pessoa a abrir no navegador de verdade.
+    setInAppBrowser(/FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(navigator.userAgent));
+  }, []);
 
   const sub = subtotal();
   const couponAmount = coupon.applied ? (eligibleSubtotal() * coupon.discount) / 100 : 0;
@@ -262,12 +269,20 @@ export default function CheckoutPage() {
         }),
       });
 
-      if (!orderRes.ok) throw new Error();
+      if (!orderRes.ok) {
+        if (orderRes.status === 401) {
+          setErro("Sua sessão expirou. Recarregue a página e faça login novamente.");
+        } else {
+          const data = await orderRes.json().catch(() => null);
+          setErro(data?.error || `Erro ao registrar pedido (${orderRes.status}). Tente novamente.`);
+        }
+        return;
+      }
       const order = await orderRes.json();
       setCurrentOrderId(order.id);
       setStep(2);
     } catch {
-      setErro("Erro ao registrar pedido. Tente novamente.");
+      setErro("Erro de conexão ao registrar pedido. Verifique sua internet e tente novamente.");
     } finally {
       setProcessing(false);
     }
@@ -374,6 +389,19 @@ export default function CheckoutPage() {
           </div>
         ))}
       </div>
+
+      {inAppBrowser && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+          <AlertCircle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-amber-800 text-sm">Abra no seu navegador para finalizar a compra</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Você abriu esse link pelo WhatsApp ou Instagram. Esse navegador interno pode dar erro ao registrar o pedido.
+              Toque nos <span className="font-semibold">três pontinhos (⋮)</span> ou no ícone de compartilhar no topo da tela e escolha <span className="font-semibold">&quot;Abrir no navegador&quot;</span> (Chrome ou Safari).
+            </p>
+          </div>
+        </div>
+      )}
 
       {isFirstPurchase && step === 1 && !coupon.applied && (
         <div className="bg-brand-50 border border-brand-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
