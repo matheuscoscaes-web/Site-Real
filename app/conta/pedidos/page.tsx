@@ -38,7 +38,7 @@ export default async function PedidosPage() {
           {orders.map((order) => {
             const reviewedProductIds = new Set(order.reviews.map((r) => r.productId));
             const unreviewedItems = order.status === "DELIVERED"
-              ? order.items.filter((item) => !reviewedProductIds.has(item.productId))
+              ? order.items.filter((item): item is typeof item & { productId: string } => !!item.productId && !reviewedProductIds.has(item.productId))
               : [];
 
             return (
@@ -63,11 +63,19 @@ export default async function PedidosPage() {
                 <div className="space-y-2">
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-3 text-sm">
-                      <Link href={`/produtos/${item.product.slug}`} className="flex items-center gap-2 hover:text-brand-700 transition-colors flex-1 min-w-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
-                        <span className="truncate">{item.product.name}</span>
-                        <span className="text-gray-400 flex-shrink-0">×{item.quantity}</span>
-                      </Link>
+                      {item.product ? (
+                        <Link href={`/produtos/${item.product.slug}`} className="flex items-center gap-2 hover:text-brand-700 transition-colors flex-1 min-w-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                          <span className="truncate">{item.product.name}</span>
+                          <span className="text-gray-400 flex-shrink-0">×{item.quantity}</span>
+                        </Link>
+                      ) : (
+                        <span className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                          <span className="truncate">{item.customName ?? "Item"}</span>
+                          <span className="text-gray-400 flex-shrink-0">×{item.quantity}</span>
+                        </span>
+                      )}
                       <span className="text-gray-600 font-medium flex-shrink-0">{formatCurrency(item.price * item.quantity)}</span>
                     </div>
                   ))}
@@ -86,7 +94,7 @@ export default async function PedidosPage() {
                     orderId={order.id}
                     items={unreviewedItems.map((item) => ({
                       productId: item.productId,
-                      productName: item.product.name,
+                      productName: item.product?.name ?? "Produto",
                     }))}
                   />
                 )}

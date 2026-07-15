@@ -59,23 +59,32 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
             </div>
             <div className="divide-y divide-gray-100">
               {order.items.map((item) => {
-                const imgs = parseProductImages(item.product.images);
+                const imgs = item.product ? parseProductImages(item.product.images) : [];
                 const img = imgs.find((i) => item.color && i.color === item.color) ?? imgs[0];
+                const name = item.product?.name ?? item.customName ?? "Item avulso";
                 return (
                   <div key={item.id} className="flex items-center gap-4 p-4">
                     <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
-                      {img?.url && <Image src={img.url} alt={item.product.name} fill className="object-cover" />}
+                      {img?.url && <Image src={img.url} alt={name} fill className="object-cover" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <Link href={`/produtos/${item.product.slug}`} target="_blank" className="font-semibold text-gray-900 hover:text-brand-700 transition-colors text-sm truncate block">
-                        {item.product.name}
-                      </Link>
+                      {item.product ? (
+                        <Link href={`/produtos/${item.product.slug}`} target="_blank" className="font-semibold text-gray-900 hover:text-brand-700 transition-colors text-sm truncate block">
+                          {name}
+                        </Link>
+                      ) : (
+                        <p className="font-semibold text-gray-900 text-sm truncate">{name}</p>
+                      )}
                       <p className="text-xs text-gray-400 mt-0.5">
                         Qtd: {item.quantity}
                         {item.color && ` • Cor: ${item.color}`}
                         {item.size && ` • Tam: ${item.size}`}
                       </p>
-                      {item.skipStock && (
+                      {!item.product ? (
+                        <span className="inline-block text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5 mt-1">
+                          Bolsa nova (fora do catálogo)
+                        </span>
+                      ) : item.skipStock && (
                         <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 mt-1">
                           Não descontou estoque
                         </span>

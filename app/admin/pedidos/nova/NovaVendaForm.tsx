@@ -16,7 +16,7 @@ interface Vendor { id: string; user: { name: string } }
 
 interface CartItem {
   key: string;
-  productId: string;
+  productId: string | null;
   productName: string;
   color: string | null;
   size: string | null;
@@ -38,10 +38,13 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
   const [loadingCep, setLoadingCep] = useState(false);
   const [shipping, setShipping] = useState(0);
 
+  const [itemMode, setItemMode] = useState<"catalogo" | "novo">("catalogo");
   const [productId, setProductId] = useState("");
   const [variantId, setVariantId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [skipStock, setSkipStock] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState(0);
   const [items, setItems] = useState<CartItem[]>([]);
 
   const [paymentMethod, setPaymentMethod] = useState("DINHEIRO");
@@ -77,6 +80,26 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
   }
 
   function handleAddItem() {
+    if (itemMode === "novo") {
+      const name = customName.trim();
+      if (!name) return;
+      const key = `custom-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      setItems((prev) => [...prev, {
+        key,
+        productId: null,
+        productName: name,
+        color: null,
+        size: null,
+        quantity,
+        price: customPrice,
+        skipStock: true,
+      }]);
+      setCustomName("");
+      setCustomPrice(0);
+      setQuantity(1);
+      return;
+    }
+
     if (!selectedProduct) return;
     const variant = availableVariants.find((v) => v.id === variantId) ?? availableVariants[0] ?? null;
     if (availableVariants.length > 0 && !variant) return;
@@ -143,7 +166,15 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
           newCustomer: customerMode === "novo" ? newCustomer : undefined,
           delivery,
           address: delivery === "ENTREGA" ? address : undefined,
-          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: i.price, color: i.color, size: i.size, skipStock: i.skipStock })),
+          items: items.map((i) => ({
+            productId: i.productId ?? undefined,
+            customName: i.productId ? undefined : i.productName,
+            quantity: i.quantity,
+            price: i.price,
+            color: i.color,
+            size: i.size,
+            skipStock: i.skipStock,
+          })),
           shipping,
           paymentMethod,
           status,
@@ -287,40 +318,81 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
       <div className="card p-5">
         <h2 className="font-bold text-gray-900 mb-3">Itens</h2>
 
-        <div className="grid sm:grid-cols-12 gap-3 mb-4 items-end">
-          <div className="sm:col-span-5">
-            <label className="label">Produto</label>
-            <select className="input-field" value={productId} onChange={(e) => { setProductId(e.target.value); setVariantId(""); }}>
-              <option value="">Selecione um produto</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.price)}</option>)}
-            </select>
-          </div>
-          <div className="sm:col-span-4">
-            <label className="label">Variante</label>
-            <select className="input-field" value={variantId} onChange={(e) => setVariantId(e.target.value)} disabled={availableVariants.length === 0}>
-              {availableVariants.length === 0 && <option>{selectedProduct ? "Sem estoque" : "—"}</option>}
-              {availableVariants.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {[v.color, v.size].filter(Boolean).join(" / ") || "Única"} (estoque: {v.stock})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="sm:col-span-1">
-            <label className="label">Qtd</label>
-            <input className="input-field" type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} />
-          </div>
-          <div className="sm:col-span-2">
-            <button type="button" onClick={handleAddItem} disabled={!productId} className="btn-outline w-full gap-2">
-              <Plus size={16} /> Adicionar
-            </button>
-          </div>
+        <div className="flex gap-2 mb-4">
+          <button type="button" onClick={() => setItemMode("catalogo")} className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${itemMode === "catalogo" ? "bg-brand-700 text-white" : "bg-gray-100 text-gray-600"}`}>
+            Produto do catálogo
+          </button>
+          <button type="button" onClick={() => setItemMode("novo")} className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${itemMode === "novo" ? "bg-brand-700 text-white" : "bg-gray-100 text-gray-600"}`}>
+            Bolsa nova (ainda não cadastrada)
+          </button>
         </div>
 
-        <label className="flex items-center gap-2 mb-4 -mt-1 cursor-pointer w-fit">
-          <input type="checkbox" checked={skipStock} onChange={(e) => setSkipStock(e.target.checked)} className="rounded" />
-          <span className="text-xs text-gray-500">Não descontar do estoque (bolsa feita à parte, amostra, encomenda extra)</span>
-        </label>
+        {itemMode === "catalogo" ? (
+          <>
+            <div className="grid sm:grid-cols-12 gap-3 mb-4 items-end">
+              <div className="sm:col-span-5">
+                <label className="label">Produto</label>
+                <select className="input-field" value={productId} onChange={(e) => { setProductId(e.target.value); setVariantId(""); }}>
+                  <option value="">Selecione um produto</option>
+                  {products.map((p) => <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.price)}</option>)}
+                </select>
+              </div>
+              <div className="sm:col-span-4">
+                <label className="label">Variante</label>
+                <select className="input-field" value={variantId} onChange={(e) => setVariantId(e.target.value)} disabled={availableVariants.length === 0}>
+                  {availableVariants.length === 0 && <option>{selectedProduct ? "Sem estoque" : "—"}</option>}
+                  {availableVariants.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {[v.color, v.size].filter(Boolean).join(" / ") || "Única"} (estoque: {v.stock})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-1">
+                <label className="label">Qtd</label>
+                <input className="input-field" type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} />
+              </div>
+              <div className="sm:col-span-2">
+                <button type="button" onClick={handleAddItem} disabled={!productId} className="btn-outline w-full gap-2">
+                  <Plus size={16} /> Adicionar
+                </button>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 mb-4 -mt-1 cursor-pointer w-fit">
+              <input type="checkbox" checked={skipStock} onChange={(e) => setSkipStock(e.target.checked)} className="rounded" />
+              <span className="text-xs text-gray-500">Não descontar do estoque (bolsa feita à parte, amostra, encomenda extra)</span>
+            </label>
+          </>
+        ) : (
+          <div className="grid sm:grid-cols-12 gap-3 mb-4 items-end">
+            <div className="sm:col-span-5">
+              <label className="label">Nome da bolsa</label>
+              <input
+                className="input-field"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="Ex: Bolsa Valentina (sob encomenda)"
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <label className="label">Preço unitário (R$)</label>
+              <input className="input-field" type="number" min={0} step="0.01" value={customPrice} onChange={(e) => setCustomPrice(Math.max(0, parseFloat(e.target.value) || 0))} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label">Qtd</label>
+              <input className="input-field" type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))} />
+            </div>
+            <div className="sm:col-span-2">
+              <button type="button" onClick={handleAddItem} disabled={!customName.trim()} className="btn-outline w-full gap-2">
+                <Plus size={16} /> Adicionar
+              </button>
+            </div>
+            <p className="sm:col-span-12 text-xs text-gray-400 -mt-2">
+              Essa bolsa ainda não está cadastrada no site — a venda é registrada normalmente, mas sem descontar estoque de nenhum produto.
+            </p>
+          </div>
+        )}
 
         {items.length === 0 ? (
           <p className="text-sm text-gray-400">Nenhum item adicionado ainda.</p>
@@ -333,7 +405,11 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
                   {(item.color || item.size) && (
                     <p className="text-xs text-gray-400">{[item.color, item.size].filter(Boolean).join(" / ")}</p>
                   )}
-                  {item.skipStock && (
+                  {!item.productId ? (
+                    <span className="inline-block text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5 mt-1">
+                      Bolsa nova (fora do catálogo)
+                    </span>
+                  ) : item.skipStock && (
                     <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 mt-1">
                       Não desconta estoque
                     </span>

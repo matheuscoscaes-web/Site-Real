@@ -92,7 +92,7 @@ export async function POST(
       state_abbr: order.address.state,
     },
     products: order.items.map((item) => ({
-      name: item.product.name,
+      name: item.product?.name ?? item.customName ?? "Item avulso",
       quantity: item.quantity,
       unitary_value: item.price,
     })),

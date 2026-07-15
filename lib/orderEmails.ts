@@ -4,7 +4,7 @@ interface OrderForEmail {
   id: string;
   total: number;
   shippingCarrier: string | null;
-  items: { quantity: number; price: number; color: string | null; size: string | null; product: { name: string } }[];
+  items: { quantity: number; price: number; color: string | null; size: string | null; product: { name: string } | null; customName: string | null }[];
   address: { street: string; number: string; district: string; city: string; state: string } | null;
   user: { name: string; email: string };
 }
@@ -37,7 +37,7 @@ function itemsList(order: OrderForEmail) {
     <ul style="list-style:none; padding:0; margin:0 0 16px; border-top:1px solid #eee;">
       ${order.items.map((item) => `
         <li style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; font-size:14px; color:#333;">
-          <span>${item.product.name}${item.color ? ` • ${item.color}` : ""}${item.size ? ` • ${item.size}` : ""} × ${item.quantity}</span>
+          <span>${item.product?.name ?? item.customName ?? "Item"}${item.color ? ` • ${item.color}` : ""}${item.size ? ` • ${item.size}` : ""} × ${item.quantity}</span>
           <strong>${formatCurrency(item.price * item.quantity)}</strong>
         </li>
       `).join("")}

@@ -48,6 +48,8 @@ export async function decrementStockForItems(tx: Prisma.TransactionClient, items
 /** Devolve ao estoque os itens de um pedido cancelado. */
 export async function restoreStockForItems(items: StockItem[], client: PrismaClient | Prisma.TransactionClient = prisma) {
   for (const item of items) {
+    if (item.skipStock) continue;
+
     const variant = await client.productVariant.findFirst({
       where: { productId: item.productId, color: item.color || null, size: item.size || null },
     });

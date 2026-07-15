@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { CheckCircle, Package, ArrowRight, Mail } from "lucide-react";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS } from "@/lib/utils";
+import { ConversionTracker } from "./ConversionTracker";
 
 export default async function SucessoPage({
   searchParams,
@@ -32,6 +33,7 @@ export default async function SucessoPage({
 
   return (
     <div className="container-main py-12 max-w-2xl">
+      <ConversionTracker orderId={order.id} value={order.total} />
       {/* Sucesso */}
       <div className="text-center mb-10">
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
@@ -92,7 +94,7 @@ export default async function SucessoPage({
             {order.items.map((item) => (
               <div key={item.id} className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{item.product.name}</p>
+                  <p className="text-sm font-medium text-gray-900">{item.product?.name ?? item.customName ?? "Item"}</p>
                   <p className="text-xs text-gray-400">Qtd: {item.quantity}{item.color ? ` • ${item.color}` : ""}{item.size ? ` • ${item.size}` : ""}</p>
                 </div>
                 <p className="text-sm font-bold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>

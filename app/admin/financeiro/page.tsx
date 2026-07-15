@@ -38,6 +38,8 @@ async function getFinanceiroData() {
   const productSales: Record<string, { name: string; categories: string[]; qty: number; revenue: number }> = {};
   for (const order of paidOrders) {
     for (const item of order.items) {
+      if (!item.productId || !item.product) continue; // item avulso, sem produto do catalogo pra contabilizar
+
       if (!productSales[item.productId]) {
         productSales[item.productId] = {
           name: item.product.name,

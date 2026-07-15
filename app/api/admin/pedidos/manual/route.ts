@@ -18,7 +18,8 @@ const STORE_ADDRESS = {
 };
 
 interface ManualItem {
-  productId: string;
+  productId?: string | null;
+  customName?: string | null;
   quantity: number;
   price: number;
   color?: string | null;
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
   if (!Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: "Adicione ao menos um item" }, { status: 400 });
   }
-  if (items.some((i) => !i.productId || i.quantity < 1 || i.price < 0)) {
+  if (items.some((i) => (!i.productId && !i.customName?.trim()) || i.quantity < 1 || i.price < 0)) {
     return NextResponse.json({ error: "Item inválido" }, { status: 400 });
   }
   if (!MANUAL_PAYMENT_METHODS.includes(paymentMethod)) {
@@ -110,7 +111,8 @@ export async function POST(request: NextRequest) {
         data: { userId, isDefault: false, ...addressData },
       });
 
-      await decrementStockForItems(tx, items);
+      const catalogItems = items.filter((i): i is ManualItem & { productId: string } => !!i.productId);
+      await decrementStockForItems(tx, catalogItems);
 
       const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
       const finalShipping = delivery === "RETIRADA" ? 0 : Math.max(0, shipping || 0);
@@ -135,12 +137,14 @@ export async function POST(request: NextRequest) {
           shippingCarrier: delivery === "RETIRADA" ? "Loja" : null,
           items: {
             create: items.map((item) => ({
-              productId: item.productId,
+              productId: item.productId || null,
+              customName: item.productId ? null : (item.customName?.trim() || null),
               quantity: item.quantity,
               price: item.price,
               color: item.color || null,
               size: item.size || null,
-              skipStock: !!item.skipStock,
+              // Item avulso (sem produto do catalogo) nunca tem estoque pra descontar.
+              skipStock: item.productId ? !!item.skipStock : true,
             })),
           },
         },

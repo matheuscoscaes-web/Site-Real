@@ -257,17 +257,18 @@ model WhatsappLead {
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Float
-  color     String?
-  size      String?
-  skipStock Boolean @default(false)
+  id         String  @id @default(cuid())
+  orderId    String
+  productId  String?
+  quantity   Int
+  price      Float
+  color      String?
+  size       String?
+  skipStock  Boolean @default(false)
+  customName String?
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])

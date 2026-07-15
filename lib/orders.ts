@@ -38,8 +38,9 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
   }
 
   // Pedido cancelado/recusado devolve o estoque que foi descontado na criação
+  // (itens avulsos, sem produto do catalogo, nunca tiveram estoque descontado).
   if (newStatus === "CANCELLED" && current.status !== "CANCELLED") {
-    await restoreStockForItems(updated.items);
+    await restoreStockForItems(updated.items.filter((i): i is typeof i & { productId: string } => !!i.productId));
   }
 
   return updated;
