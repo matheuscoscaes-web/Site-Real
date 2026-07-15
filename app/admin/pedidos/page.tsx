@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
-import { ChevronRight, Search } from "lucide-react";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, isManualSale } from "@/lib/utils";
+import { ChevronRight, Search, Plus } from "lucide-react";
 
 const STATUS_LIST = ["", "PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 const ORIGEM_LIST = [
@@ -43,6 +43,7 @@ export default async function AdminPedidosPage({
         total: true,
         createdAt: true,
         confirmedAt: true,
+        paymentMethod: true,
         user: { select: { name: true, email: true } },
         _count: { select: { items: true } },
         vendor: { select: { user: { select: { name: true } } } },
@@ -59,6 +60,9 @@ export default async function AdminPedidosPage({
           <h1 className="text-2xl font-bold text-gray-900">Pedidos</h1>
           <p className="text-sm text-gray-500 mt-1">{orders.length} pedido{orders.length !== 1 ? "s" : ""}{status ? ` com status "${ORDER_STATUS_LABELS[status]}"` : ""}</p>
         </div>
+        <Link href="/admin/pedidos/nova" className="btn-primary gap-2 text-sm py-2.5">
+          <Plus size={16} /> Nova venda
+        </Link>
       </div>
 
       {/* Busca por produto, cliente ou telefone */}
@@ -187,6 +191,8 @@ export default async function AdminPedidosPage({
                           <span className="text-xs bg-brand-50 text-brand-700 border border-brand-100 px-2 py-0.5 rounded-lg block w-fit">Vendedor</span>
                           <p className="text-xs text-gray-400 mt-0.5">{order.vendor.user.name}</p>
                         </>
+                      ) : isManualSale(order.paymentMethod) ? (
+                        <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-lg block w-fit">Venda manual</span>
                       ) : (
                         <span className="text-xs text-gray-400">Site (direto)</span>
                       )}
