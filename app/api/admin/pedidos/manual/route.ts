@@ -23,6 +23,7 @@ interface ManualItem {
   price: number;
   color?: string | null;
   size?: string | null;
+  skipStock?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -139,6 +140,7 @@ export async function POST(request: NextRequest) {
               price: item.price,
               color: item.color || null,
               size: item.size || null,
+              skipStock: !!item.skipStock,
             })),
           },
         },

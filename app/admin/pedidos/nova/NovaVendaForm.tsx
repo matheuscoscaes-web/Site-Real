@@ -22,6 +22,7 @@ interface CartItem {
   size: string | null;
   quantity: number;
   price: number;
+  skipStock: boolean;
 }
 
 export function NovaVendaForm({ customers, products, vendors }: { customers: Customer[]; products: Product[]; vendors: Vendor[] }) {
@@ -40,6 +41,7 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
   const [productId, setProductId] = useState("");
   const [variantId, setVariantId] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [skipStock, setSkipStock] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
 
   const [paymentMethod, setPaymentMethod] = useState("DINHEIRO");
@@ -59,7 +61,7 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
   }, [customers, customerSearch]);
 
   const selectedProduct = products.find((p) => p.id === productId);
-  const availableVariants = selectedProduct?.variants.filter((v) => v.stock > 0) ?? [];
+  const availableVariants = selectedProduct?.variants.filter((v) => skipStock || v.stock > 0) ?? [];
 
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const total = subtotal + (delivery === "ENTREGA" ? shipping : 0);
@@ -79,7 +81,7 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
     const variant = availableVariants.find((v) => v.id === variantId) ?? availableVariants[0] ?? null;
     if (availableVariants.length > 0 && !variant) return;
 
-    const key = `${selectedProduct.id}-${variant?.color ?? ""}-${variant?.size ?? ""}`;
+    const key = `${selectedProduct.id}-${variant?.color ?? ""}-${variant?.size ?? ""}-${skipStock}`;
     setItems((prev) => {
       const existing = prev.find((i) => i.key === key);
       if (existing) {
@@ -93,11 +95,13 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
         size: variant?.size ?? null,
         quantity,
         price: selectedProduct.price,
+        skipStock,
       }];
     });
     setProductId("");
     setVariantId("");
     setQuantity(1);
+    setSkipStock(false);
   }
 
   function updateItem(key: string, patch: Partial<CartItem>) {
@@ -139,7 +143,7 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
           newCustomer: customerMode === "novo" ? newCustomer : undefined,
           delivery,
           address: delivery === "ENTREGA" ? address : undefined,
-          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: i.price, color: i.color, size: i.size })),
+          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: i.price, color: i.color, size: i.size, skipStock: i.skipStock })),
           shipping,
           paymentMethod,
           status,
@@ -313,6 +317,11 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
           </div>
         </div>
 
+        <label className="flex items-center gap-2 mb-4 -mt-1 cursor-pointer w-fit">
+          <input type="checkbox" checked={skipStock} onChange={(e) => setSkipStock(e.target.checked)} className="rounded" />
+          <span className="text-xs text-gray-500">Não descontar do estoque (bolsa feita à parte, amostra, encomenda extra)</span>
+        </label>
+
         {items.length === 0 ? (
           <p className="text-sm text-gray-400">Nenhum item adicionado ainda.</p>
         ) : (
@@ -323,6 +332,11 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
                   <p className="text-sm font-semibold text-gray-900 truncate">{item.productName}</p>
                   {(item.color || item.size) && (
                     <p className="text-xs text-gray-400">{[item.color, item.size].filter(Boolean).join(" / ")}</p>
+                  )}
+                  {item.skipStock && (
+                    <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 mt-1">
+                      Não desconta estoque
+                    </span>
                   )}
                 </div>
                 <input

@@ -12,6 +12,7 @@ export interface StockItem {
   quantity: number;
   color?: string | null;
   size?: string | null;
+  skipStock?: boolean;
 }
 
 /**
@@ -24,6 +25,8 @@ export interface StockItem {
  */
 export async function decrementStockForItems(tx: Prisma.TransactionClient, items: StockItem[]) {
   for (const item of items) {
+    if (item.skipStock) continue;
+
     const variant = await tx.productVariant.findFirst({
       where: { productId: item.productId, color: item.color || null, size: item.size || null },
     });

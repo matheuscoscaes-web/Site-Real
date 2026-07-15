@@ -75,6 +75,11 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
                         {item.color && ` • Cor: ${item.color}`}
                         {item.size && ` • Tam: ${item.size}`}
                       </p>
+                      {item.skipStock && (
+                        <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 mt-1">
+                          Não descontou estoque
+                        </span>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-gray-900 text-sm">{formatCurrency(item.price * item.quantity)}</p>
