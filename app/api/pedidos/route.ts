@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { WELCOME_COUPON_CODE, WELCOME_COUPON_DISCOUNT } from "@/app/api/cupom/route";
+import { resolveCoupon, computeDiscountAmount, CouponExhaustedError } from "@/lib/coupons";
 import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
-import { isCupomElegivel } from "@/lib/utils";
+import { isCupomElegivel, formatCurrency } from "@/lib/utils";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -28,74 +28,67 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { address, paymentMethod, items, subtotal, shipping, couponCode, shippingServiceId, shippingService, shippingCarrier } = body;
 
-  // Primeira compra
-  const orderCount = await prisma.order.count({
-    where: { userId: session.user.id, status: { notIn: ["PENDING", "CANCELLED"] } },
-  });
-  const isFirstPurchase = orderCount === 0;
-
-  // Cupom (boas-vindas ou vendedor/revendedor)
-  let couponDiscount = 0;
+  // Cupom (boas-vindas, vendedor/revendedor ou cupom personalizado do admin) —
+  // sempre resolvido de novo aqui, nunca confiando no valor calculado no navegador.
+  let couponDiscount: number | null = null; // percentual (so quando discountType === PERCENT), mantido pra compatibilidade com a visao do vendedor/revendedor
+  let couponDiscountAmount = 0; // valor real descontado em R$, sempre preenchido quando ha cupom valido
   let freeShipping = false;
   let vendorId: string | null = null;
   let resellerId: string | null = null;
   let commissionValue: number | null = null;
   let appliedCoupon: string | null = null;
+  let couponId: string | null = null;
+  let couponMaxUses: number | null = null;
 
   if (couponCode) {
-    const code = couponCode.toUpperCase().trim();
-
-    if (code === WELCOME_COUPON_CODE && isFirstPurchase) {
-      couponDiscount = WELCOME_COUPON_DISCOUNT;
-      freeShipping = true;
-      appliedCoupon = code;
-    } else {
-      const vendor = await prisma.vendor.findUnique({ where: { couponCode: code } });
-      if (vendor && vendor.active && vendor.discount !== null) {
-        couponDiscount = vendor.discount;
-        vendorId = vendor.id;
-        appliedCoupon = code;
-        // Venda direta do vendedor: comissão fixa de 5%
-        commissionValue = subtotal * 0.05;
-      } else {
-        const reseller = await prisma.reseller.findUnique({
-          where: { couponCode: code },
-          include: { vendor: true },
-        });
-        if (reseller && reseller.active && reseller.discount !== null) {
-          couponDiscount = reseller.discount;
-          resellerId = reseller.id;
-          vendorId = reseller.vendor.id;
-          appliedCoupon = code;
-          // Venda de revendedor cadastrado: vendedor ganha comissão fixa de 2,5%
-          commissionValue = subtotal * 0.025;
-        }
-      }
+    const result = await resolveCoupon(couponCode, session.user.id);
+    if (!result.valid) {
+      return NextResponse.json({ error: result.error || "Cupom inválido" }, { status: 400 });
     }
-  }
+    if (result.minPurchase && subtotal < result.minPurchase) {
+      return NextResponse.json({ error: `Este cupom exige compra mínima de ${formatCurrency(result.minPurchase)}` }, { status: 400 });
+    }
 
-  // Cálculo do total — cupom só se aplica sobre o valor dos itens elegíveis
-  let eligibleSubtotal = subtotal;
-  if (couponDiscount > 0) {
+    appliedCoupon = couponCode.toUpperCase().trim();
+    freeShipping = !!result.freeShipping;
+    vendorId = result.vendorId ?? null;
+    resellerId = result.resellerId ?? null;
+    couponId = result.couponId ?? null;
+    couponMaxUses = result.maxUses ?? null;
+    if (result.discountType === "PERCENT") couponDiscount = result.discountValue ?? null;
+    if (resellerId) commissionValue = subtotal * 0.025;
+    else if (vendorId) commissionValue = subtotal * 0.05;
+
+    // Cupom só se aplica sobre o valor dos itens elegíveis
     const products = await prisma.product.findMany({
       where: { id: { in: items.map((item: { productId: string }) => item.productId) } },
       select: { id: true, categories: true, permiteCupom: true },
     });
     const productMap = new Map(products.map((p) => [p.id, p]));
-    eligibleSubtotal = items.reduce((sum: number, item: { productId: string; price: number; quantity: number }) => {
+    const eligibleSubtotal = items.reduce((sum: number, item: { productId: string; price: number; quantity: number }) => {
       const product = productMap.get(item.productId);
       const elegivel = product ? isCupomElegivel(product.categories, product.permiteCupom) : true;
       return elegivel ? sum + item.price * item.quantity : sum;
     }, 0);
+
+    couponDiscountAmount = computeDiscountAmount(result.discountType!, result.discountValue!, eligibleSubtotal);
   }
 
-  const couponAmount = eligibleSubtotal * couponDiscount / 100;
   const finalShipping = freeShipping ? 0 : shipping;
-  const finalTotal = subtotal - couponAmount + finalShipping;
+  const finalTotal = subtotal - couponDiscountAmount + finalShipping;
 
   try {
     const order = await prisma.$transaction(async (tx) => {
       await decrementStockForItems(tx, items);
+
+      // Reserva o uso do cupom de forma atomica (evita duas compras simultaneas
+      // furarem o limite de usos, igual ao desconto de estoque).
+      if (couponId) {
+        const res = couponMaxUses !== null
+          ? await tx.coupon.updateMany({ where: { id: couponId, active: true, usedCount: { lt: couponMaxUses } }, data: { usedCount: { increment: 1 } } })
+          : await tx.coupon.updateMany({ where: { id: couponId, active: true }, data: { usedCount: { increment: 1 } } });
+        if (res.count === 0) throw new CouponExhaustedError();
+      }
 
       const savedAddress = await tx.address.create({
         data: { userId: session.user.id, ...address, isDefault: false },
@@ -111,7 +104,8 @@ export async function POST(request: NextRequest) {
           shipping: finalShipping,
           total: finalTotal,
           couponCode: appliedCoupon,
-          couponDiscount: couponDiscount > 0 ? couponDiscount : null,
+          couponDiscount,
+          couponDiscountAmount: appliedCoupon ? couponDiscountAmount : null,
           vendorId,
           resellerId,
           commissionValue,
@@ -135,6 +129,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(order, { status: 201 });
   } catch (err) {
     if (err instanceof InsufficientStockError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    if (err instanceof CouponExhaustedError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
     }
     throw err;

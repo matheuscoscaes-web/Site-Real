@@ -155,6 +155,23 @@ model Reseller {
   @@map("resellers")
 }
 
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String // "PERCENT" ou "FIXED"
+  discountValue Float
+  freeShipping  Boolean   @default(false)
+  minPurchase   Float?
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("coupons")
+}
+
 model Product {
   id           String   @id @default(cuid())
   name         String
@@ -221,6 +238,7 @@ model Order {
   notes             String?
   couponCode        String?
   couponDiscount    Float?
+  couponDiscountAmount Float?
   vendorId          String?
   resellerId        String?
   commissionValue   Float?

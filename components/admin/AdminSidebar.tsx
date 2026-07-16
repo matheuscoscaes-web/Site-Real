@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Package, ShoppingCart, Users, TrendingUp, LogOut, Menu, X, UserCheck, MessageCircle,
+  LayoutDashboard, Package, ShoppingCart, Users, TrendingUp, LogOut, Menu, X, UserCheck, MessageCircle, Tag,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingCart },
   { href: "/admin/clientes", label: "Clientes / CRM", icon: Users },
   { href: "/admin/vendedores", label: "Vendedores", icon: UserCheck },
+  { href: "/admin/cupons", label: "Cupons", icon: Tag },
   { href: "/admin/financeiro", label: "Financeiro", icon: TrendingUp },
   { href: "/admin/leads", label: "Grupo VIP WhatsApp", icon: MessageCircle },
 ];

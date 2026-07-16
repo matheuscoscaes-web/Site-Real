@@ -59,7 +59,10 @@ export default function CheckoutPage() {
 
   const [step, setStep] = useState(1);
   const [deliveryType, setDeliveryType] = useState<"ENTREGA" | "RETIRADA">("ENTREGA");
-  const [coupon, setCoupon] = useState({ code: "", input: "", discount: 0, loading: false, error: "", applied: false, freeShipping: false });
+  const [coupon, setCoupon] = useState({
+    code: "", input: "", discountType: "PERCENT" as "PERCENT" | "FIXED", discountValue: 0,
+    loading: false, error: "", applied: false, freeShipping: false,
+  });
   const [address, setAddress] = useState<Address>({ name: "Casa", cpf: "", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
   const [cpfError, setCpfError] = useState("");
   const [loadingCep, setLoadingCep] = useState(false);
@@ -92,7 +95,9 @@ export default function CheckoutPage() {
   }, []);
 
   const sub = subtotal();
-  const couponAmount = coupon.applied ? (eligibleSubtotal() * coupon.discount) / 100 : 0;
+  const couponAmount = coupon.applied
+    ? (coupon.discountType === "FIXED" ? Math.min(coupon.discountValue, eligibleSubtotal()) : (eligibleSubtotal() * coupon.discountValue) / 100)
+    : 0;
   const effectiveShipping = deliveryType === "RETIRADA" || coupon.freeShipping ? 0 : (selectedShipping?.price ?? 0);
   const total = sub - couponAmount + effectiveShipping;
 
@@ -131,14 +136,15 @@ export default function CheckoutPage() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("cupom");
     if (!code) return;
-    fetch(`/api/cupom?code=${encodeURIComponent(code)}`)
+    fetch(`/api/cupom?code=${encodeURIComponent(code)}&subtotal=${subtotal()}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.valid) {
-          setCoupon((p) => ({ ...p, applied: true, code: code.toUpperCase(), discount: data.discount, freeShipping: !!data.freeShipping, error: "" }));
+          setCoupon((p) => ({ ...p, applied: true, code: code.toUpperCase(), discountType: data.discountType, discountValue: data.discountValue, freeShipping: !!data.freeShipping, error: "" }));
         }
       })
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Confere o pagamento periodicamente enquanto o QR Code do PIX estiver na tela,
@@ -221,12 +227,12 @@ export default function CheckoutPage() {
   async function applyCoupon() {
     if (!coupon.input.trim()) return;
     setCoupon((p) => ({ ...p, loading: true, error: "" }));
-    const res = await fetch(`/api/cupom?code=${encodeURIComponent(coupon.input.trim())}`);
+    const res = await fetch(`/api/cupom?code=${encodeURIComponent(coupon.input.trim())}&subtotal=${sub}`);
     const data = await res.json();
     if (data.valid) {
-      setCoupon((p) => ({ ...p, loading: false, applied: true, code: coupon.input.trim().toUpperCase(), discount: data.discount, freeShipping: !!data.freeShipping, error: "" }));
+      setCoupon((p) => ({ ...p, loading: false, applied: true, code: coupon.input.trim().toUpperCase(), discountType: data.discountType, discountValue: data.discountValue, freeShipping: !!data.freeShipping, error: "" }));
     } else {
-      setCoupon((p) => ({ ...p, loading: false, error: data.error || "Cupom inválido", applied: false, discount: 0, freeShipping: false }));
+      setCoupon((p) => ({ ...p, loading: false, error: data.error || "Cupom inválido", applied: false, discountValue: 0, freeShipping: false }));
     }
   }
 
@@ -643,10 +649,10 @@ export default function CheckoutPage() {
                       <Tag size={16} className="text-green-600" />
                       <span className="font-mono font-bold text-green-700">{coupon.code}</span>
                       <span className="text-sm text-green-600">
-                        — {coupon.discount}% de desconto{coupon.freeShipping && " + frete grátis"}
+                        — {coupon.discountType === "FIXED" ? formatCurrency(coupon.discountValue) : `${coupon.discountValue}%`} de desconto{coupon.freeShipping && " + frete grátis"}
                       </span>
                     </div>
-                    <button onClick={() => setCoupon({ code: "", input: "", discount: 0, loading: false, error: "", applied: false, freeShipping: false })} className="text-gray-400 hover:text-red-500">
+                    <button onClick={() => setCoupon({ code: "", input: "", discountType: "PERCENT", discountValue: 0, loading: false, error: "", applied: false, freeShipping: false })} className="text-gray-400 hover:text-red-500">
                       <X size={16} />
                     </button>
                   </div>
@@ -940,7 +946,7 @@ export default function CheckoutPage() {
                 </div>
                 {coupon.applied && (
                   <div className="flex justify-between text-green-600 font-medium">
-                    <span>Cupom {coupon.code} ({coupon.discount}%)</span>
+                    <span>Cupom {coupon.code} ({coupon.discountType === "FIXED" ? formatCurrency(coupon.discountValue) : `${coupon.discountValue}%`})</span>
                     <span>-{formatCurrency(couponAmount)}</span>
                   </div>
                 )}
