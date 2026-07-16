@@ -21,6 +21,8 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { name, cpf, street, number, complement, district, city, state, zipCode } = body;
 
+  const isFirstAddress = (await prisma.address.count({ where: { userId: session.user.id } })) === 0;
+
   const address = await prisma.address.create({
     data: {
       userId: session.user.id,
@@ -33,10 +35,28 @@ export async function POST(request: NextRequest) {
       city,
       state,
       zipCode,
-      isDefault: false,
+      isDefault: isFirstAddress,
     },
   });
   return NextResponse.json(address, { status: 201 });
+}
+
+export async function PATCH(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  const { id } = await request.json();
+  if (!id) return NextResponse.json({ error: "ID não informado" }, { status: 400 });
+
+  const address = await prisma.address.findFirst({ where: { id, userId: session.user.id } });
+  if (!address) return NextResponse.json({ error: "Endereço não encontrado" }, { status: 404 });
+
+  await prisma.$transaction([
+    prisma.address.updateMany({ where: { userId: session.user.id, isDefault: true }, data: { isDefault: false } }),
+    prisma.address.update({ where: { id }, data: { isDefault: true } }),
+  ]);
+
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(request: NextRequest) {

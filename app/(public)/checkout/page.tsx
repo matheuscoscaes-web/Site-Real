@@ -85,6 +85,7 @@ export default function CheckoutPage() {
   const [preferredInstallments, setPreferredInstallments] = useState(1);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new" | null>(null);
+  const [trocandoEndereco, setTrocandoEndereco] = useState(false);
   const [enderecosCarregados, setEnderecosCarregados] = useState(false);
   const [inAppBrowser, setInAppBrowser] = useState(false);
 
@@ -174,6 +175,7 @@ export default function CheckoutPage() {
 
   async function handleSelectSavedAddress(id: string) {
     setSelectedAddressId(id);
+    setTrocandoEndereco(false);
     const addr = savedAddresses.find((a) => a.id === id);
     if (!addr) return;
     setAddress({ name: addr.name, cpf: addr.cpf ?? "", street: addr.street, number: addr.number, complement: addr.complement ?? "", district: addr.district, city: addr.city, state: addr.state, zipCode: addr.zipCode });
@@ -263,6 +265,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address: deliveryType === "RETIRADA" ? STORE_PICKUP_ADDRESS : address,
+          addressId: deliveryType === "ENTREGA" && selectedAddressId && selectedAddressId !== "new" ? selectedAddressId : undefined,
           paymentMethod: "MERCADOPAGO",
           items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: i.price, color: i.color, size: i.size })),
           subtotal: sub,
@@ -436,10 +439,46 @@ export default function CheckoutPage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-5">Endereço de entrega</h2>
 
+              {/* Endereço salvo: card compacto com opção de trocar */}
+              {savedAddresses.length > 0 && !trocandoEndereco && (() => {
+                const atual = savedAddresses.find((a) => a.id === selectedAddressId) ?? savedAddresses[0];
+                return (
+                  <div className="mb-5 border-2 border-brand-700 bg-brand-50 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+                    <div className="text-sm">
+                      <p className="font-semibold text-gray-900">{atual.name}</p>
+                      <p className="text-gray-500 text-xs">{atual.street}, {atual.number}{atual.complement ? `, ${atual.complement}` : ""} — {atual.district}, {atual.city}/{atual.state} — CEP {atual.zipCode}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTrocandoEndereco(true)}
+                      className="text-brand-700 text-xs font-semibold whitespace-nowrap hover:underline"
+                    >
+                      Trocar endereço
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* Endereços salvos */}
-              {savedAddresses.length > 0 && (
+              {savedAddresses.length > 0 && trocandoEndereco && (
                 <div className="mb-5">
-                  <label className="label mb-1.5">Endereços salvos</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="label mb-0">Endereços salvos</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const aindaValido = savedAddresses.some((a) => a.id === selectedAddressId);
+                        if (aindaValido) setTrocandoEndereco(false);
+                        else {
+                          const padrao = savedAddresses.find((a) => a.isDefault) ?? savedAddresses[0];
+                          handleSelectSavedAddress(padrao.id);
+                        }
+                      }}
+                      className="text-gray-400 text-xs font-semibold hover:underline"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                   <div className="space-y-2">
                     {savedAddresses.map((addr) => (
                       <label

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { address, paymentMethod, items, subtotal, shipping, couponCode, shippingServiceId, shippingService, shippingCarrier } = body;
+  const { address, addressId, paymentMethod, items, subtotal, shipping, couponCode, shippingServiceId, shippingService, shippingCarrier } = body;
 
   // Cupom (boas-vindas, vendedor/revendedor ou cupom personalizado do admin) —
   // sempre resolvido de novo aqui, nunca confiando no valor calculado no navegador.
@@ -90,14 +90,37 @@ export async function POST(request: NextRequest) {
         if (res.count === 0) throw new CouponExhaustedError();
       }
 
-      const savedAddress = await tx.address.create({
-        data: { userId: session.user.id, ...address, isDefault: false },
-      });
+      // Endereço: reaproveita um já salvo em vez de criar uma linha nova a cada pedido.
+      // Retirada na loja tem endereço fixo e nunca mexe no endereço padrão do cliente.
+      let finalAddressId: string;
+      if (address?.name === "Retirada na loja") {
+        const pickupAddress = await tx.address.findFirst({
+          where: { userId: session.user.id, name: "Retirada na loja" },
+        });
+        finalAddressId = pickupAddress
+          ? pickupAddress.id
+          : (await tx.address.create({ data: { userId: session.user.id, ...address, isDefault: false } })).id;
+      } else {
+        const reused = addressId
+          ? await tx.address.findFirst({ where: { id: addressId, userId: session.user.id } })
+          : null;
+        if (reused) {
+          finalAddressId = reused.id;
+          if (!reused.isDefault) {
+            await tx.address.updateMany({ where: { userId: session.user.id, isDefault: true }, data: { isDefault: false } });
+            await tx.address.update({ where: { id: reused.id }, data: { isDefault: true } });
+          }
+        } else {
+          await tx.address.updateMany({ where: { userId: session.user.id, isDefault: true }, data: { isDefault: false } });
+          const created = await tx.address.create({ data: { userId: session.user.id, ...address, isDefault: true } });
+          finalAddressId = created.id;
+        }
+      }
 
       return tx.order.create({
         data: {
           userId: session.user.id,
-          addressId: savedAddress.id,
+          addressId: finalAddressId,
           paymentMethod,
           status: "PENDING",
           subtotal,

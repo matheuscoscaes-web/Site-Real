@@ -40,6 +40,7 @@ export default function EnderecosPage() {
   const [loadingCep, setLoadingCep] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const fetchAddresses = useCallback(async () => {
@@ -96,6 +97,17 @@ export default function EnderecosPage() {
     setDeletingId(id);
     await fetch(`/api/clientes/me/enderecos?id=${id}`, { method: "DELETE" });
     setDeletingId(null);
+    fetchAddresses();
+  }
+
+  async function handleSetDefault(id: string) {
+    setSettingDefaultId(id);
+    await fetch("/api/clientes/me/enderecos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setSettingDefaultId(null);
     fetchAddresses();
   }
 
@@ -233,17 +245,31 @@ export default function EnderecosPage() {
                     <br />CEP {addr.zipCode}
                   </p>
                 </div>
-                <button
-                  onClick={() => handleDelete(addr.id)}
-                  disabled={deletingId === addr.id}
-                  className="p-2 text-gray-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-                  aria-label="Remover endereço"
-                >
-                  {deletingId === addr.id
-                    ? <Loader2 size={16} className="animate-spin" />
-                    : <Trash2 size={16} />
-                  }
-                </button>
+                <div className="flex items-center gap-1">
+                  {!addr.isDefault && (
+                    <button
+                      onClick={() => handleSetDefault(addr.id)}
+                      disabled={settingDefaultId === addr.id}
+                      className="px-2 py-1 text-xs font-semibold text-brand-700 hover:underline rounded-lg whitespace-nowrap"
+                    >
+                      {settingDefaultId === addr.id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : "Tornar padrão"
+                      }
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(addr.id)}
+                    disabled={deletingId === addr.id}
+                    className="p-2 text-gray-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                    aria-label="Remover endereço"
+                  >
+                    {deletingId === addr.id
+                      ? <Loader2 size={16} className="animate-spin" />
+                      : <Trash2 size={16} />
+                    }
+                  </button>
+                </div>
               </div>
             </div>
           ))}
