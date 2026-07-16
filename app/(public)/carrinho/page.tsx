@@ -22,7 +22,7 @@ export default function CarrinhoPage() {
   const [deliveryType, setDeliveryType] = useState<"ENTREGA" | "RETIRADA">("ENTREGA");
   const [cupomInput, setCupomInput] = useState("");
   const [cupomLoading, setCupomLoading] = useState(false);
-  const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discount: number; ownerName: string; freeShipping?: boolean } | null>(null);
+  const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discountType: "PERCENT" | "FIXED"; discountValue: number; ownerName: string; freeShipping?: boolean } | null>(null);
   const [cupomError, setCupomError] = useState("");
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
 
@@ -37,7 +37,9 @@ export default function CarrinhoPage() {
   const sub = subtotal();
   const temItemNaoElegivel = items.some((i) => i.cupomElegivel === false);
   const freteTotal = cupomAplicado?.freeShipping ? 0 : deliveryType === "RETIRADA" ? 0 : (selectedFrete?.price ?? 0);
-  const desconto = cupomAplicado ? eligibleSubtotal() * cupomAplicado.discount / 100 : 0;
+  const desconto = cupomAplicado
+    ? (cupomAplicado.discountType === "FIXED" ? Math.min(cupomAplicado.discountValue, eligibleSubtotal()) : (eligibleSubtotal() * cupomAplicado.discountValue) / 100)
+    : 0;
   const total = sub - desconto + freteTotal;
 
   async function handleCalcularFrete() {
@@ -70,11 +72,11 @@ export default function CarrinhoPage() {
     if (!cupomInput.trim()) return;
     setCupomLoading(true);
     setCupomError("");
-    const res = await fetch(`/api/cupom?code=${encodeURIComponent(cupomInput.trim())}`);
+    const res = await fetch(`/api/cupom?code=${encodeURIComponent(cupomInput.trim())}&subtotal=${sub}`);
     const data = await res.json();
     setCupomLoading(false);
     if (data.valid) {
-      setCupomAplicado({ code: cupomInput.trim().toUpperCase(), discount: data.discount, ownerName: data.ownerName, freeShipping: !!data.freeShipping });
+      setCupomAplicado({ code: cupomInput.trim().toUpperCase(), discountType: data.discountType, discountValue: data.discountValue, ownerName: data.ownerName, freeShipping: !!data.freeShipping });
       setCupomInput("");
     } else {
       setCupomError(data.error || "Cupom inválido ou expirado.");
@@ -204,7 +206,7 @@ export default function CarrinhoPage() {
                 <div>
                   <p className="font-mono font-bold text-green-700 text-sm">{cupomAplicado.code}</p>
                   <p className="text-xs text-green-600">
-                    {cupomAplicado.discount}% de desconto — economia de {formatCurrency(desconto)}
+                    {cupomAplicado.discountType === "FIXED" ? formatCurrency(cupomAplicado.discountValue) : `${cupomAplicado.discountValue}%`} de desconto — economia de {formatCurrency(desconto)}
                     {cupomAplicado.freeShipping && " + frete grátis"}
                   </p>
                 </div>
