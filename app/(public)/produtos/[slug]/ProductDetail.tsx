@@ -88,7 +88,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     setTimeout(() => setAdded(false), 3000);
   }
 
-  const installment = product.price / 10;
+  const installment = product.price / 6;
 
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
 
@@ -213,7 +213,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
             <span className="text-sm bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">17% off</span>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            ou <strong>10x de {formatCurrency(installment)}</strong> sem juros no cartão
+            ou <strong>6x de {formatCurrency(installment)}</strong> sem juros no cartão
           </p>
           <p className="text-sm text-brand-700 font-medium mt-1">
             5% de desconto no PIX: {formatCurrency(product.price * 0.95)}

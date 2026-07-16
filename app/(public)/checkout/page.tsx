@@ -798,9 +798,9 @@ export default function CheckoutPage() {
               {paymentTab === "CARD" && (
                 <>
                   <div className="mb-4 p-4 bg-gray-50 rounded-xl">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Parcelamento no cartão — em até 10x sem juros</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Parcelamento no cartão — em até 6x sem juros</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                      {[1, 2, 3, 4, 5, 6].map((n) => (
                         <label
                           key={n}
                           className={`flex items-center justify-between gap-2 border-2 rounded-lg px-3 py-2 cursor-pointer transition-all text-sm ${

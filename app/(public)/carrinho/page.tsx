@@ -346,7 +346,7 @@ export default function CarrinhoPage() {
                   <span>{formatCurrency(total)}</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1 text-right">
-                  ou 10x de {formatCurrency(total / 10)} sem juros
+                  ou 6x de {formatCurrency(total / 6)} sem juros
                 </p>
               </div>
             </div>

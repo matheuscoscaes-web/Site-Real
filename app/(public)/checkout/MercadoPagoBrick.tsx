@@ -22,7 +22,7 @@ export function MercadoPagoBrick({ amount, installments, onSubmit, onError }: Pr
           debitCard: "all",
           ticket: "all",
           minInstallments: installments ?? 1,
-          maxInstallments: installments ?? 10,
+          maxInstallments: installments ?? 6,
         },
         visual: {
           style: {

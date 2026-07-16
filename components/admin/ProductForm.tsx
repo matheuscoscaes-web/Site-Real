@@ -865,8 +865,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
                     <span className="font-semibold">R$ {(parseFloat(form.price) * 1.2).toFixed(2).replace(".", ",")}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>10x sem juros:</span>
-                    <span className="font-semibold">R$ {(parseFloat(form.price) / 10).toFixed(2).replace(".", ",")}</span>
+                    <span>6x sem juros:</span>
+                    <span className="font-semibold">R$ {(parseFloat(form.price) / 6).toFixed(2).replace(".", ",")}</span>
                   </div>
                   <div className="flex justify-between text-green-700">
                     <span>Desconto 5% PIX:</span>
