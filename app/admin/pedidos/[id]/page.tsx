@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages } from "@/lib/utils";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages, isManualSale } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { UpdateStatusButton } from "./UpdateStatusButton";
 import { MelhorEnvioButton } from "./MelhorEnvioButton";
 import { DefinirFreteForm } from "./DefinirFreteForm";
@@ -35,7 +35,12 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
           <h1 className="text-2xl font-bold text-gray-900">Pedido #{order.id.slice(-8).toUpperCase()}</h1>
           <p className="text-sm text-gray-500">{formatDateTime(order.createdAt)}</p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          {isManualSale(order.paymentMethod) && (
+            <Link href={`/admin/pedidos/${order.id}/editar`} className="btn-outline text-sm py-2 gap-2">
+              <Pencil size={15} /> Editar venda
+            </Link>
+          )}
           <span className={`badge text-sm px-4 py-1.5 ${ORDER_STATUS_COLORS[order.status]}`}>
             {ORDER_STATUS_LABELS[order.status]}
           </span>

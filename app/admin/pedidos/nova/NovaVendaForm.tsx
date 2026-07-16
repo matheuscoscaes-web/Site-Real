@@ -25,7 +25,21 @@ interface CartItem {
   skipStock: boolean;
 }
 
-export function NovaVendaForm({ customers, products, vendors }: { customers: Customer[]; products: Product[]; vendors: Vendor[] }) {
+export interface ExistingOrderData {
+  id: string;
+  customerName: string;
+  customerEmail: string;
+  delivery: "RETIRADA" | "ENTREGA";
+  address: { cpf: string; street: string; number: string; complement: string; district: string; city: string; state: string; zipCode: string };
+  shipping: number;
+  items: CartItem[];
+  paymentMethod: string;
+  status: string;
+  vendorId: string;
+  notes: string;
+}
+
+export function NovaVendaForm({ customers, products, vendors, editOrder }: { customers: Customer[]; products: Product[]; vendors: Vendor[]; editOrder?: ExistingOrderData }) {
   const router = useRouter();
 
   const [customerMode, setCustomerMode] = useState<"existing" | "novo">("existing");
@@ -33,10 +47,10 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [newCustomer, setNewCustomer] = useState({ name: "", email: "", phone: "" });
 
-  const [delivery, setDelivery] = useState<"RETIRADA" | "ENTREGA">("RETIRADA");
-  const [address, setAddress] = useState({ cpf: "", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
+  const [delivery, setDelivery] = useState<"RETIRADA" | "ENTREGA">(editOrder?.delivery ?? "RETIRADA");
+  const [address, setAddress] = useState(editOrder?.address ?? { cpf: "", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
   const [loadingCep, setLoadingCep] = useState(false);
-  const [shipping, setShipping] = useState(0);
+  const [shipping, setShipping] = useState(editOrder?.shipping ?? 0);
 
   const [itemMode, setItemMode] = useState<"catalogo" | "novo">("catalogo");
   const [productId, setProductId] = useState("");
@@ -45,12 +59,12 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
   const [skipStock, setSkipStock] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState(0);
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(editOrder?.items ?? []);
 
-  const [paymentMethod, setPaymentMethod] = useState("DINHEIRO");
-  const [status, setStatus] = useState("PAID");
-  const [vendorId, setVendorId] = useState("");
-  const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState(editOrder?.paymentMethod ?? "DINHEIRO");
+  const [status, setStatus] = useState(editOrder?.status ?? "PAID");
+  const [vendorId, setVendorId] = useState(editOrder?.vendorId ?? "");
+  const [notes, setNotes] = useState(editOrder?.notes ?? "");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -139,13 +153,15 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
     e.preventDefault();
     setError("");
 
-    if (customerMode === "existing" && !selectedCustomerId) {
-      setError("Selecione um cliente.");
-      return;
-    }
-    if (customerMode === "novo" && !newCustomer.name.trim()) {
-      setError("Informe o nome do cliente.");
-      return;
+    if (!editOrder) {
+      if (customerMode === "existing" && !selectedCustomerId) {
+        setError("Selecione um cliente.");
+        return;
+      }
+      if (customerMode === "novo" && !newCustomer.name.trim()) {
+        setError("Informe o nome do cliente.");
+        return;
+      }
     }
     if (items.length === 0) {
       setError("Adicione ao menos um item à venda.");
@@ -158,35 +174,36 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
 
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/pedidos/manual", {
-        method: "POST",
+      const body = {
+        customerId: !editOrder && customerMode === "existing" ? selectedCustomerId : undefined,
+        newCustomer: !editOrder && customerMode === "novo" ? newCustomer : undefined,
+        delivery,
+        address: delivery === "ENTREGA" ? address : undefined,
+        items: items.map((i) => ({
+          productId: i.productId ?? undefined,
+          customName: i.productId ? undefined : i.productName,
+          quantity: i.quantity,
+          price: i.price,
+          color: i.color,
+          size: i.size,
+          skipStock: i.skipStock,
+        })),
+        shipping,
+        paymentMethod,
+        status,
+        vendorId: vendorId || undefined,
+        notes: notes || undefined,
+      };
+      const res = await fetch(editOrder ? `/api/admin/pedidos/manual/${editOrder.id}` : "/api/admin/pedidos/manual", {
+        method: editOrder ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId: customerMode === "existing" ? selectedCustomerId : undefined,
-          newCustomer: customerMode === "novo" ? newCustomer : undefined,
-          delivery,
-          address: delivery === "ENTREGA" ? address : undefined,
-          items: items.map((i) => ({
-            productId: i.productId ?? undefined,
-            customName: i.productId ? undefined : i.productName,
-            quantity: i.quantity,
-            price: i.price,
-            color: i.color,
-            size: i.size,
-            skipStock: i.skipStock,
-          })),
-          shipping,
-          paymentMethod,
-          status,
-          vendorId: vendorId || undefined,
-          notes: notes || undefined,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erro ao registrar venda");
-      router.push(`/admin/pedidos/${data.id}`);
+      if (!res.ok) throw new Error(data.error || "Erro ao salvar venda");
+      router.push(`/admin/pedidos/${editOrder ? editOrder.id : data.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao registrar venda");
+      setError(err instanceof Error ? err.message : "Erro ao salvar venda");
       setSaving(false);
     }
   }
@@ -198,6 +215,14 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
       {/* Cliente */}
       <div className="card p-5">
         <h2 className="font-bold text-gray-900 mb-3">Cliente</h2>
+        {editOrder ? (
+          <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+            <p className="text-sm font-semibold text-gray-900">{editOrder.customerName}</p>
+            <p className="text-xs text-gray-400">{editOrder.customerEmail}</p>
+            <p className="text-xs text-gray-400 mt-1.5">O cliente não pode ser alterado ao editar uma venda já registrada.</p>
+          </div>
+        ) : (
+        <>
         <div className="flex gap-2 mb-4">
           <button type="button" onClick={() => setCustomerMode("existing")} className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${customerMode === "existing" ? "bg-brand-700 text-white" : "bg-gray-100 text-gray-600"}`}>
             Cliente já cadastrado
@@ -253,6 +278,8 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
               <input className="input-field" type="email" value={newCustomer.email} onChange={(e) => setNewCustomer((p) => ({ ...p, email: e.target.value }))} placeholder="opcional" />
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
 
@@ -479,10 +506,10 @@ export function NovaVendaForm({ customers, products, vendors }: { customers: Cus
       </div>
 
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={() => router.push("/admin/pedidos")} className="btn-ghost">Cancelar</button>
+        <button type="button" onClick={() => router.push(editOrder ? `/admin/pedidos/${editOrder.id}` : "/admin/pedidos")} className="btn-ghost">Cancelar</button>
         <button type="submit" disabled={saving} className="btn-primary gap-2">
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-          {saving ? "Registrando..." : "Registrar venda"}
+          {saving ? "Salvando..." : editOrder ? "Salvar alterações" : "Registrar venda"}
         </button>
       </div>
     </form>
