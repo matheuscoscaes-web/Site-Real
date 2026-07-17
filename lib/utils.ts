@@ -20,6 +20,11 @@ export function parseProductImages(raw: string): ProductImage[] {
   }
 }
 
+/** Parcelamento sem juros: até 6x normalmente, até 10x em compras acima de R$600. */
+export function getMaxInstallments(value: number): number {
+  return value >= 600 ? 10 : 6;
+}
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",

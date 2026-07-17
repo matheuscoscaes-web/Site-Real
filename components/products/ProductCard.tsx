@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Heart, ShoppingBag, Star } from "lucide-react";
-import { formatCurrency, parseProductImages, isCupomElegivel } from "@/lib/utils";
+import { formatCurrency, parseProductImages, isCupomElegivel, getMaxInstallments } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { Product } from "@/types";
@@ -127,7 +127,7 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-gray-900">{formatCurrency(product.price)}</span>
             <span className="text-xs text-gray-400">
-              ou 6x de {formatCurrency(product.price / 6)}
+              ou {getMaxInstallments(product.price)}x de {formatCurrency(product.price / getMaxInstallments(product.price))}
             </span>
           </div>
           {product.price >= 299.9 && (

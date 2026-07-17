@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getMaxInstallments } from "@/lib/utils";
 import { type FreteOption } from "@/lib/frete";
 import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } from "lucide-react";
 
@@ -41,6 +41,7 @@ export default function CarrinhoPage() {
     ? (cupomAplicado.discountType === "FIXED" ? Math.min(cupomAplicado.discountValue, eligibleSubtotal()) : (eligibleSubtotal() * cupomAplicado.discountValue) / 100)
     : 0;
   const total = sub - desconto + freteTotal;
+  const maxInstallments = getMaxInstallments(total);
 
   async function handleCalcularFrete() {
     if (cep.replace(/\D/g, "").length !== 8) {
@@ -346,7 +347,7 @@ export default function CarrinhoPage() {
                   <span>{formatCurrency(total)}</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1 text-right">
-                  ou 6x de {formatCurrency(total / 6)} sem juros
+                  ou {maxInstallments}x de {formatCurrency(total / maxInstallments)} sem juros
                 </p>
               </div>
             </div>

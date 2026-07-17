@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { slugify, CATEGORIES, SUBCATEGORIES, COLORS, SIZES, COUPON_EXCLUDED_CATEGORY } from "@/lib/utils";
+import { slugify, CATEGORIES, SUBCATEGORIES, COLORS, SIZES, COUPON_EXCLUDED_CATEGORY, getMaxInstallments } from "@/lib/utils";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
   ChevronUp, ChevronDown, Package, Info, Star, Upload, Video, Images,
@@ -865,8 +865,8 @@ export function ProductForm({ product }: { product?: ProductData }) {
                     <span className="font-semibold">R$ {(parseFloat(form.price) * 1.2).toFixed(2).replace(".", ",")}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>6x sem juros:</span>
-                    <span className="font-semibold">R$ {(parseFloat(form.price) / 6).toFixed(2).replace(".", ",")}</span>
+                    <span>{getMaxInstallments(parseFloat(form.price))}x sem juros:</span>
+                    <span className="font-semibold">R$ {(parseFloat(form.price) / getMaxInstallments(parseFloat(form.price))).toFixed(2).replace(".", ",")}</span>
                   </div>
                   <div className="flex justify-between text-green-700">
                     <span>Desconto 5% PIX:</span>
