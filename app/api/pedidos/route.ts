@@ -69,8 +69,6 @@ export async function POST(request: NextRequest) {
     couponId = result.couponId ?? null;
     couponMaxUses = result.maxUses ?? null;
     if (result.discountType === "PERCENT") couponDiscount = result.discountValue ?? null;
-    if (resellerId) commissionValue = subtotal * 0.025;
-    else if (vendorId) commissionValue = subtotal * 0.05;
 
     // Cupom só se aplica sobre o valor dos itens elegíveis
     const products = await prisma.product.findMany({
@@ -85,6 +83,12 @@ export async function POST(request: NextRequest) {
     }, 0);
 
     couponDiscountAmount = computeDiscountAmount(result.discountType!, result.discountValue!, eligibleSubtotal);
+
+    // Comissao calculada sobre o que o cliente de fato pagou pelos produtos
+    // (subtotal ja com o desconto do cupom aplicado), sem contar o frete.
+    const valorPagoPelosProdutos = subtotal - couponDiscountAmount;
+    if (resellerId) commissionValue = valorPagoPelosProdutos * 0.025;
+    else if (vendorId) commissionValue = valorPagoPelosProdutos * 0.05;
   }
 
   const finalShipping = freeShipping ? 0 : shipping;
