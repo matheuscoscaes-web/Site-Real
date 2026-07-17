@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getMaxInstallments } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
 import {
   Lock, ChevronDown, ChevronUp, Check, Loader2, Tag, X, AlertCircle, Copy, CheckCheck, Truck,
@@ -88,6 +88,7 @@ export default function CheckoutPage() {
   const [trocandoEndereco, setTrocandoEndereco] = useState(false);
   const [enderecosCarregados, setEnderecosCarregados] = useState(false);
   const [inAppBrowser, setInAppBrowser] = useState(false);
+  const [freteApiError, setFreteApiError] = useState(false);
 
   useEffect(() => {
     // Navegador interno do WhatsApp/Instagram/Facebook às vezes perde a sessão de
@@ -101,11 +102,18 @@ export default function CheckoutPage() {
     : 0;
   const effectiveShipping = deliveryType === "RETIRADA" || coupon.freeShipping ? 0 : (selectedShipping?.price ?? 0);
   const total = sub - couponAmount + effectiveShipping;
+  const maxInstallments = getMaxInstallments(total);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login?redirect=/checkout");
     if (items.length === 0 && status === "authenticated") router.push("/carrinho");
   }, [status, items.length, router]);
+
+  // Se o total cair (cupom, troca de frete...) e a pessoa tiver escolhido mais
+  // parcelas do que o novo limite permite, reduz pro maximo ainda valido.
+  useEffect(() => {
+    setPreferredInstallments((p) => Math.min(p, maxInstallments));
+  }, [maxInstallments]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -122,15 +130,20 @@ export default function CheckoutPage() {
     if (status !== "authenticated" || enderecosCarregados) return;
     fetch("/api/clientes/me/enderecos")
       .then((r) => r.json())
-      .then((data: SavedAddress[]) => {
+      .then(async (data: SavedAddress[]) => {
         setEnderecosCarregados(true);
         if (!Array.isArray(data) || data.length === 0) return;
         setSavedAddresses(data);
         const def = data.find((a) => a.isDefault) ?? data[0];
         setSelectedAddressId(def.id);
         setAddress({ name: def.name, cpf: def.cpf ?? "", street: def.street, number: def.number, complement: def.complement ?? "", district: def.district, city: def.city, state: def.state, zipCode: def.zipCode });
+
+        // O endereço padrão carrega sozinho, mas sem isso o frete nunca era calculado
+        // pra ele: a pessoa via "nenhuma opção de frete disponível" sem ter feito nada de errado.
+        if (def.zipCode) await fetchFreteOptions(def.zipCode);
       })
       .catch(() => setEnderecosCarregados(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, enderecosCarregados]);
 
   useEffect(() => {
@@ -173,6 +186,31 @@ export default function CheckoutPage() {
     );
   }
 
+  async function fetchFreteOptions(cep: string) {
+    setLoadingFrete(true);
+    setShippingOptions([]);
+    setSelectedShipping(null);
+    setFreteApiError(false);
+    try {
+      const res = await fetch("/api/frete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cep, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setShippingOptions(data);
+        if (data.length === 1) setSelectedShipping(data[0]);
+      } else {
+        setFreteApiError(true);
+      }
+    } catch {
+      setFreteApiError(true);
+    } finally {
+      setLoadingFrete(false);
+    }
+  }
+
   async function handleSelectSavedAddress(id: string) {
     setSelectedAddressId(id);
     setTrocandoEndereco(false);
@@ -180,23 +218,7 @@ export default function CheckoutPage() {
     if (!addr) return;
     setAddress({ name: addr.name, cpf: addr.cpf ?? "", street: addr.street, number: addr.number, complement: addr.complement ?? "", district: addr.district, city: addr.city, state: addr.state, zipCode: addr.zipCode });
     setCpfError("");
-    if (addr.zipCode) {
-      setLoadingFrete(true);
-      setShippingOptions([]);
-      setSelectedShipping(null);
-      try {
-        const res = await fetch("/api/frete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cep: addr.zipCode, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
-        });
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setShippingOptions(data);
-          if (data.length === 1) setSelectedShipping(data[0]);
-        }
-      } catch { /* ignora */ } finally { setLoadingFrete(false); }
-    }
+    if (addr.zipCode) await fetchFreteOptions(addr.zipCode);
   }
 
   async function handleCepBlur() {
@@ -209,21 +231,7 @@ export default function CheckoutPage() {
       setAddress((p) => ({ ...p, street: data.street || p.street, district: data.district || p.district, city: data.city || p.city, state: data.state || p.state }));
     } catch { /* mantém */ } finally { setLoadingCep(false); }
 
-    setLoadingFrete(true);
-    setShippingOptions([]);
-    setSelectedShipping(null);
-    try {
-      const res = await fetch("/api/frete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cep: address.zipCode, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
-      });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setShippingOptions(data);
-        if (data.length === 1) setSelectedShipping(data[0]);
-      }
-    } catch { /* ignora */ } finally { setLoadingFrete(false); }
+    await fetchFreteOptions(address.zipCode);
   }
 
   async function applyCoupon() {
@@ -639,7 +647,20 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {!loadingFrete && shippingOptions.length === 0 && address.zipCode.replace(/\D/g, "").length === 8 && (
+                    {!loadingFrete && freteApiError && address.zipCode.replace(/\D/g, "").length === 8 && (
+                      <div className="flex items-center justify-between gap-2 text-sm text-red-500 px-1">
+                        <span>Não foi possível calcular o frete agora.</span>
+                        <button
+                          type="button"
+                          onClick={() => fetchFreteOptions(address.zipCode)}
+                          className="text-brand-700 font-semibold whitespace-nowrap hover:underline"
+                        >
+                          Tentar novamente
+                        </button>
+                      </div>
+                    )}
+
+                    {!loadingFrete && !freteApiError && shippingOptions.length === 0 && address.zipCode.replace(/\D/g, "").length === 8 && (
                       <p className="text-sm text-red-500 px-1">Nenhuma opção de frete disponível para este CEP.</p>
                     )}
 
@@ -837,9 +858,9 @@ export default function CheckoutPage() {
               {paymentTab === "CARD" && (
                 <>
                   <div className="mb-4 p-4 bg-gray-50 rounded-xl">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Parcelamento no cartão — em até 6x sem juros</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Parcelamento no cartão — em até {maxInstallments}x sem juros</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {[1, 2, 3, 4, 5, 6].map((n) => (
+                      {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((n) => (
                         <label
                           key={n}
                           className={`flex items-center justify-between gap-2 border-2 rounded-lg px-3 py-2 cursor-pointer transition-all text-sm ${

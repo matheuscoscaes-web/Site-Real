@@ -3,6 +3,8 @@ import { MercadoPagoConfig, Payment } from "mercadopago";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { reserveStockForRetry } from "@/lib/orders";
+import { InsufficientStockError } from "@/lib/stock";
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
@@ -12,11 +14,20 @@ export async function POST(request: NextRequest) {
 
   const { orderId, cpf } = await request.json();
 
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
   if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
   if (order.userId !== session.user.id) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   if (order.status !== "PENDING" && order.status !== "CANCELLED") {
     return NextResponse.json({ error: "Pedido não está mais pendente de pagamento" }, { status: 409 });
+  }
+
+  try {
+    await reserveStockForRetry(order);
+  } catch (err) {
+    if (err instanceof InsufficientStockError) {
+      return NextResponse.json({ error: `${err.message}. Volte ao carrinho e ajuste o pedido antes de tentar pagar de novo.` }, { status: 409 });
+    }
+    throw err;
   }
 
   const payment = new Payment(client);

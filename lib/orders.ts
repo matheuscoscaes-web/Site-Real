@@ -1,7 +1,7 @@
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
 import { orderConfirmedEmail, orderShippedEmail } from "./orderEmails";
-import { restoreStockForItems } from "./stock";
+import { restoreStockForItems, decrementStockForItems, StockItem } from "./stock";
 
 const ORDER_EMAIL_INCLUDE = {
   items: { include: { product: true } },
@@ -44,6 +44,28 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
   }
 
   return updated;
+}
+
+/**
+ * Quando o cliente tenta pagar de novo (outro cartão, novo PIX...) um pedido que já
+ * foi cancelado (pagamento recusado), o estoque desse pedido já tinha sido devolvido —
+ * sem reservar de novo aqui, o pagamento podia ser aprovado sem nenhum estoque
+ * reservado, permitindo vender a mesma peça duas vezes. Lança InsufficientStockError
+ * se não tiver mais estoque disponível (ex: alguém comprou a última unidade nesse meio-tempo).
+ */
+export async function reserveStockForRetry(order: {
+  id: string;
+  status: string;
+  items: (Omit<StockItem, "productId"> & { productId: string | null })[];
+}) {
+  if (order.status !== "CANCELLED") return;
+
+  const items = order.items.filter((i): i is typeof i & { productId: string } => !!i.productId);
+
+  await prisma.$transaction(async (tx) => {
+    await decrementStockForItems(tx, items);
+    await tx.order.update({ where: { id: order.id }, data: { status: "PENDING" } });
+  });
 }
 
 /**

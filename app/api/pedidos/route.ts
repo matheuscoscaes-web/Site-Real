@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveCoupon, computeDiscountAmount, CouponExhaustedError } from "@/lib/coupons";
 import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
 import { isCupomElegivel, formatCurrency } from "@/lib/utils";
+import { updateOrderStatus } from "@/lib/orders";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -27,6 +28,18 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { address, addressId, paymentMethod, items, subtotal, shipping, couponCode, shippingServiceId, shippingService, shippingCarrier } = body;
+
+  // Se a pessoa saiu do checkout sem nunca ter tentado pagar (voltou pro carrinho pra
+  // adicionar outra peça, fechou a aba, etc.) e volta a "Continuar para pagamento", um
+  // pedido novo seria criado sem cancelar o antigo — a mesma peça ficaria com estoque
+  // descontado duas vezes. Cancela qualquer pendente sem tentativa de pagamento antes.
+  const pedidosAbandonados = await prisma.order.findMany({
+    where: { userId: session.user.id, status: "PENDING", mpPaymentId: null },
+    select: { id: true },
+  });
+  for (const pedido of pedidosAbandonados) {
+    await updateOrderStatus(pedido.id, "CANCELLED");
+  }
 
   // Cupom (boas-vindas, vendedor/revendedor ou cupom personalizado do admin) —
   // sempre resolvido de novo aqui, nunca confiando no valor calculado no navegador.
