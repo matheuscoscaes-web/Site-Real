@@ -9,19 +9,28 @@ import { MelhorEnvioButton } from "./MelhorEnvioButton";
 import { DefinirFreteForm } from "./DefinirFreteForm";
 import { VerificarPagamentoButton } from "./VerificarPagamentoButton";
 import { ConfirmarPedidoButton } from "./ConfirmarPedidoButton";
+import { VendorAssignForm } from "./VendorAssignForm";
 
 const STATUS_OPTIONS = ["PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
 export default async function AdminPedidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: {
-      user: { include: { orders: true } },
-      address: true,
-      items: { include: { product: true } },
-    },
-  });
+  const [order, vendors] = await Promise.all([
+    prisma.order.findUnique({
+      where: { id },
+      include: {
+        user: { include: { orders: true } },
+        address: true,
+        items: { include: { product: true } },
+        vendor: { include: { user: { select: { name: true } } } },
+      },
+    }),
+    prisma.vendor.findMany({
+      where: { active: true },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, user: { select: { name: true } } },
+    }),
+  ]);
 
   if (!order) notFound();
 
@@ -177,6 +186,18 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
             <h2 className="font-bold text-gray-900 mb-3">Pagamento</h2>
             <p className="text-sm text-gray-700">{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}</p>
             <VerificarPagamentoButton orderId={order.id} hasPaymentId={!!order.mpPaymentId} />
+          </div>
+
+          {/* Vendedor */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h2 className="font-bold text-gray-900 mb-3">Vendedor</h2>
+            <VendorAssignForm
+              orderId={order.id}
+              vendors={vendors.map((v) => ({ id: v.id, name: v.user.name }))}
+              currentVendorId={order.vendorId}
+              currentVendorName={order.vendor?.user.name ?? null}
+              commissionValue={order.commissionValue}
+            />
           </div>
 
           {/* Envio */}
