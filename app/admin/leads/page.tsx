@@ -25,8 +25,13 @@ export default async function LeadsPage() {
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-6 text-sm text-blue-800">
           <p className="font-bold mb-2">Como adicionar todo mundo no grupo de uma vez</p>
           <ol className="list-decimal list-inside space-y-1">
-            <li>Clique em <strong>&quot;Baixar contatos (.vcf)&quot;</strong> pelo celular que tem o WhatsApp da loja (ou mande o arquivo pra ele por e-mail/Drive).</li>
-            <li>Abra o arquivo baixado — o celular vai perguntar se quer importar os contatos. Confirme.</li>
+            <li>Clique em <strong>&quot;Baixar contatos (.vcf)&quot;</strong> pelo Safari do celular que tem o WhatsApp da loja.</li>
+            <li>
+              <strong>iPhone:</strong> deve abrir direto a tela &quot;Adicionar todos os X contatos&quot; — toque em Adicionar.
+              Se em vez disso aparecer um texto/página em branco, toque no ícone de compartilhar (□↑) no topo, escolha
+              <strong> &quot;Salvar em Arquivos&quot;</strong>, depois abra pelo app <strong>Arquivos</strong> e toque no arquivo salvo.
+              <br /><strong>Android:</strong> o arquivo baixa e já pergunta se quer importar os contatos — confirme.
+            </li>
             <li>Abra o grupo no WhatsApp → <strong>Adicionar participante</strong> → agora todos aparecem na lista de contatos, prontos pra selecionar em massa (marca vários de uma vez, sem precisar digitar número por número).</li>
           </ol>
         </div>

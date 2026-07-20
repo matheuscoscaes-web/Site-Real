@@ -32,8 +32,8 @@ export async function GET() {
   return new NextResponse(body, {
     status: 200,
     headers: {
-      "Content-Type": "text/vcard; charset=utf-8",
-      "Content-Disposition": `attachment; filename="grupo-vip-whatsapp.vcf"`,
+      "Content-Type": "text/vcard",
+      "Content-Disposition": `inline; filename="grupo-vip-whatsapp.vcf"`,
     },
   });
 }
