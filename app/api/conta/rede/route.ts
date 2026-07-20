@@ -23,7 +23,7 @@ export async function GET() {
             orders: {
               where: { status: { in: CONFIRMED_STATUSES } },
               orderBy: { createdAt: "desc" },
-              select: { id: true, total: true, commissionValue: true, createdAt: true, status: true, couponCode: true },
+              select: { id: true, total: true, createdAt: true, status: true, couponCode: true },
             },
           },
           orderBy: { createdAt: "desc" },
@@ -32,7 +32,7 @@ export async function GET() {
         orders: {
           where: { resellerId: null, status: { in: CONFIRMED_STATUSES } },
           orderBy: { createdAt: "desc" },
-          select: { id: true, total: true, commissionValue: true, createdAt: true, status: true },
+          select: { id: true, total: true, createdAt: true, status: true },
         },
       },
     });
@@ -81,7 +81,7 @@ export async function GET() {
         orders: {
           where: { status: { in: CONFIRMED_STATUSES } },
           orderBy: { createdAt: "desc" },
-          select: { id: true, total: true, commissionValue: true, createdAt: true, status: true },
+          select: { id: true, total: true, createdAt: true, status: true },
         },
       },
     });

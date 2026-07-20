@@ -11,7 +11,7 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 
 type OrderSummary = {
   id: string; total: number; subtotal?: number; shipping?: number;
-  commissionValue: number | null; couponCode?: string | null;
+  commissionValue?: number | null; couponCode?: string | null;
   couponDiscount?: number | null; paymentMethod?: string;
   createdAt: string; status: string;
 };
@@ -258,16 +258,16 @@ export default function MinhaRedePage() {
     const allResellerOrders = vendor.resellers.flatMap((r) => r.orders);
     const allOrders = [...directOrders, ...allResellerOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    const directCommission = directOrders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
-    const resellerCommission = allResellerOrders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
-    const totalCommission = directCommission + resellerCommission;
+    const directVolume = directOrders.reduce((s, o) => s + o.total, 0);
+    const resellerVolume = allResellerOrders.reduce((s, o) => s + o.total, 0);
+    const totalVolume = directVolume + resellerVolume;
 
     const monthlyDirect = getMonthlyBreakdown(directOrders);
     const monthlyReseller = getMonthlyBreakdown(allResellerOrders);
     const monthlyAll = getMonthlyBreakdown(allOrders);
 
     const topResellers = [...vendor.resellers]
-      .sort((a, b) => b.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0) - a.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0))
+      .sort((a, b) => b.orders.reduce((s, o) => s + o.total, 0) - a.orders.reduce((s, o) => s + o.total, 0))
       .slice(0, 5);
 
     return (
@@ -351,7 +351,6 @@ export default function MinhaRedePage() {
                     </div>
                   ) : vendor.resellers.map((r) => {
                     const rSalesTotal = r.orders.reduce((s, o) => s + o.total, 0);
-                    const rCommission = r.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
                     const isExpanded = expandedReseller === r.id;
                     return (
                       <div key={r.id}>
@@ -370,7 +369,7 @@ export default function MinhaRedePage() {
                           </div>
                           <div className="text-right flex-shrink-0">
                             <p className="text-sm font-bold text-gray-900">{r.orders.length} {r.orders.length === 1 ? "venda" : "vendas"}</p>
-                            <p className="text-xs text-green-600 font-bold">{formatCurrency(rCommission)}</p>
+                            <p className="text-xs text-gray-500 font-bold">{formatCurrency(rSalesTotal)}</p>
                             <button onClick={() => setExpandedReseller(isExpanded ? null : r.id)} className="text-xs text-brand-600 hover:underline flex items-center gap-0.5 mt-1 ml-auto">
                               {isExpanded ? <><ChevronUp size={12} /> Fechar</> : <><ChevronDown size={12} /> Vendas</>}
                             </button>
@@ -391,17 +390,13 @@ export default function MinhaRedePage() {
                                       </div>
                                       <div className="text-right">
                                         <p className="font-medium text-gray-900 text-sm">{formatCurrency(o.total)}</p>
-                                        <p className="text-xs text-green-600 font-bold">{formatCurrency(o.commissionValue ?? 0)} p/ você</p>
                                       </div>
                                     </div>
                                   ))}
                                 </div>
                                 <div className="flex justify-between pt-2 mt-1 border-t border-gray-200 font-bold text-sm">
                                   <span className="text-gray-600">Total</span>
-                                  <div className="text-right">
-                                    <span className="text-gray-900 mr-3">{formatCurrency(rSalesTotal)}</span>
-                                    <span className="text-green-600">{formatCurrency(rCommission)}</span>
-                                  </div>
+                                  <span className="text-gray-900">{formatCurrency(rSalesTotal)}</span>
                                 </div>
                               </>
                             )}
@@ -421,10 +416,10 @@ export default function MinhaRedePage() {
           <>
             {/* Stats principais */}
             <div className="grid grid-cols-2 gap-3">
-              <StatCard icon={DollarSign} color="green" label="Comissão total" value={formatCurrency(totalCommission)} sub="diretas + revendedores" />
+              <StatCard icon={DollarSign} color="green" label="Volume total vendido" value={formatCurrency(totalVolume)} sub="diretas + revendedores" />
               <StatCard icon={ShoppingBag} color="brand" label="Vendas totais" value={String(allOrders.length)} sub={`${directOrders.length} diretas · ${allResellerOrders.length} via rede`} />
-              <StatCard icon={TrendingUp} color="purple" label="Vendas diretas" value={formatCurrency(directCommission)} sub={`${directOrders.length} pedidos · ${vendor.discount}% desc.`} />
-              <StatCard icon={Users} color="orange" label="Via revendedores" value={formatCurrency(resellerCommission)} sub={`${vendor.resellers.length} revendedores · 2,5% p/ venda`} />
+              <StatCard icon={TrendingUp} color="purple" label="Vendas diretas" value={String(directOrders.length)} sub={`${formatCurrency(directVolume)} · ${vendor.discount}% desc.`} />
+              <StatCard icon={Users} color="orange" label="Via revendedores" value={String(allResellerOrders.length)} sub={`${vendor.resellers.length} revendedores · ${formatCurrency(resellerVolume)}`} />
             </div>
 
             {/* Gráfico de barras mensal */}
@@ -432,20 +427,20 @@ export default function MinhaRedePage() {
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <BarChart2 size={18} className="text-brand-600" />
-                  <h3 className="font-bold text-gray-900">Comissão por mês</h3>
+                  <h3 className="font-bold text-gray-900">Vendas por mês</h3>
                 </div>
                 <div className="space-y-3">
                   {monthlyAll.map((m) => {
-                    const maxC = Math.max(...monthlyAll.map(x => x.commission), 1);
-                    const pct = Math.round((m.commission / maxC) * 100);
+                    const maxR = Math.max(...monthlyAll.map(x => x.revenue), 1);
+                    const pct = Math.round((m.revenue / maxR) * 100);
                     return (
                       <div key={m.label}>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="capitalize font-medium text-gray-600">{m.label}</span>
-                          <span className="text-gray-500">{m.count} venda{m.count !== 1 ? "s" : ""} · <strong className="text-green-600">{formatCurrency(m.commission)}</strong></span>
+                          <span className="text-gray-500">{m.count} venda{m.count !== 1 ? "s" : ""} · <strong className="text-gray-800">{formatCurrency(m.revenue)}</strong></span>
                         </div>
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -463,7 +458,6 @@ export default function MinhaRedePage() {
                 </div>
                 <div className="divide-y divide-gray-100">
                   {topResellers.map((r, i) => {
-                    const rC = r.orders.reduce((s, o) => s + (o.commissionValue ?? 0), 0);
                     const rV = r.orders.reduce((s, o) => s + o.total, 0);
                     return (
                       <div key={r.id} className="flex items-center gap-3 px-5 py-3">
@@ -471,10 +465,6 @@ export default function MinhaRedePage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-gray-900 text-sm truncate">{r.user.name}</p>
                           <p className="text-xs text-gray-400">{r.orders.length} venda{r.orders.length !== 1 ? "s" : ""} · {formatCurrency(rV)} gerado</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="font-bold text-green-600 text-sm">{formatCurrency(rC)}</p>
-                          <p className="text-xs text-gray-400">p/ você</p>
                         </div>
                       </div>
                     );
@@ -510,7 +500,6 @@ export default function MinhaRedePage() {
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-gray-900 text-sm">{formatCurrency(o.total)}</p>
-                        <p className="text-xs text-green-600 font-bold">{formatCurrency(o.commissionValue ?? 0)} p/ você</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${o.status === "PAID" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
                           {o.status === "PAID" ? "Pago" : "Pendente"}
                         </span>
@@ -914,7 +903,7 @@ function StatCard({ icon: Icon, color, label, value, sub }: { icon: React.Elemen
 function MiniMonthly({ title, color, monthly }: { title: string; color: string; monthly: { label: string; count: number; revenue: number; commission: number }[] }) {
   const barColor = color === "brand" ? "bg-brand-500" : "bg-purple-500";
   if (monthly.length === 0) return null;
-  const maxC = Math.max(...monthly.map(x => x.commission), 1);
+  const maxR = Math.max(...monthly.map(x => x.revenue), 1);
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
       <h4 className="font-bold text-gray-900 text-sm mb-4">{title}</h4>
@@ -923,10 +912,10 @@ function MiniMonthly({ title, color, monthly }: { title: string; color: string; 
           <div key={m.label}>
             <div className="flex justify-between text-xs mb-1">
               <span className="capitalize text-gray-500">{m.label}</span>
-              <span className="text-gray-700 font-medium">{formatCurrency(m.commission)}</span>
+              <span className="text-gray-700 font-medium">{formatCurrency(m.revenue)}</span>
             </div>
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div className={`h-full ${barColor} rounded-full`} style={{ width: `${Math.round((m.commission / maxC) * 100)}%` }} />
+              <div className={`h-full ${barColor} rounded-full`} style={{ width: `${Math.round((m.revenue / maxR) * 100)}%` }} />
             </div>
           </div>
         ))}
