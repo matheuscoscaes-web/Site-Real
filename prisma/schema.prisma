@@ -293,6 +293,15 @@ model OrderItem {
   @@map("order_items")
 }
 
+model HeroImage {
+  id        String   @id @default(cuid())
+  position  Int      @unique
+  url       String
+  updatedAt DateTime @updatedAt
+
+  @@map("hero_images")
+}
+
 model Review {
   id        String   @id @default(cuid())
   productId String

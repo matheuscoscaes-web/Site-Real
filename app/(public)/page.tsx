@@ -31,6 +31,23 @@ const getFeaturedProducts = unstable_cache(
   { revalidate: 60, tags: ["products"] }
 );
 
+const DEFAULT_HERO_IMAGES: Record<number, string> = {
+  1: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=80",
+  2: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&q=80",
+  3: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80",
+  4: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&q=80",
+};
+
+const getHeroImages = unstable_cache(
+  async () => {
+    const images = await prisma.heroImage.findMany({ orderBy: { position: "asc" } });
+    const byPosition = new Map(images.map((i) => [i.position, i.url]));
+    return [1, 2, 3, 4].map((pos) => byPosition.get(pos) || DEFAULT_HERO_IMAGES[pos]);
+  },
+  ["home-hero-images"],
+  { revalidate: 60, tags: ["hero-images"] }
+);
+
 const getCategories = unstable_cache(
   async () => {
     const [bolsas, vestuario, acessorios] = await Promise.all([
@@ -107,9 +124,10 @@ const testimonials = [
 ];
 
 export default async function HomePage() {
-  const [featuredProducts, categories] = await Promise.all([
+  const [featuredProducts, categories, heroImages] = await Promise.all([
     getFeaturedProducts(),
     getCategories(),
+    getHeroImages(),
   ]);
   const hasFeatured = featuredProducts.some((p) => p.featured);
 
@@ -149,18 +167,18 @@ export default async function HomePage() {
           <div className="hidden lg:grid grid-cols-2 gap-4">
             <div className="space-y-4 pt-8">
               <div className="relative rounded-3xl overflow-hidden h-64 shadow-xl ring-1 ring-brand-100">
-                <Image src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=80" alt="Bolsa" fill sizes="300px" className="object-cover" loading="eager" />
+                <Image src={heroImages[0]} alt="Bolsa" fill sizes="300px" className="object-cover" loading="eager" />
               </div>
               <div className="relative rounded-3xl overflow-hidden h-40 shadow-xl ring-1 ring-brand-100">
-                <Image src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&q=80" alt="Acessório" fill sizes="300px" className="object-cover" />
+                <Image src={heroImages[1]} alt="Acessório" fill sizes="300px" className="object-cover" />
               </div>
             </div>
             <div className="space-y-4">
               <div className="relative rounded-3xl overflow-hidden h-40 shadow-xl ring-1 ring-brand-100">
-                <Image src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80" alt="Couro" fill sizes="300px" className="object-cover" />
+                <Image src={heroImages[2]} alt="Couro" fill sizes="300px" className="object-cover" />
               </div>
               <div className="relative rounded-3xl overflow-hidden h-64 shadow-xl ring-1 ring-brand-100">
-                <Image src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&q=80" alt="Bolsa couro" fill sizes="300px" className="object-cover" />
+                <Image src={heroImages[3]} alt="Bolsa couro" fill sizes="300px" className="object-cover" />
               </div>
             </div>
           </div>
