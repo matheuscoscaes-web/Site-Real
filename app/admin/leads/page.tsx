@@ -6,12 +6,31 @@ export default async function LeadsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Grupo VIP WhatsApp</h1>
           <p className="text-sm text-gray-500 mt-1">{leads.length} contato{leads.length !== 1 ? "s" : ""} na lista</p>
         </div>
+        {leads.length > 0 && (
+          <a
+            href="/api/admin/leads/vcard"
+            className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0"
+          >
+            📇 Baixar contatos (.vcf)
+          </a>
+        )}
       </div>
+
+      {leads.length > 0 && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-6 text-sm text-blue-800">
+          <p className="font-bold mb-2">Como adicionar todo mundo no grupo de uma vez</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Clique em <strong>&quot;Baixar contatos (.vcf)&quot;</strong> pelo celular que tem o WhatsApp da loja (ou mande o arquivo pra ele por e-mail/Drive).</li>
+            <li>Abra o arquivo baixado — o celular vai perguntar se quer importar os contatos. Confirme.</li>
+            <li>Abra o grupo no WhatsApp → <strong>Adicionar participante</strong> → agora todos aparecem na lista de contatos, prontos pra selecionar em massa (marca vários de uma vez, sem precisar digitar número por número).</li>
+          </ol>
+        </div>
+      )}
 
       {leads.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
