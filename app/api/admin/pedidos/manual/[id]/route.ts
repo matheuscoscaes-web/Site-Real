@@ -77,9 +77,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   try {
     const order = await prisma.$transaction(async (tx) => {
-      // Devolve o estoque dos itens antigos (respeitando skipStock) antes de descontar os novos
+      // Devolve o estoque dos itens antigos (respeitando skipStock) antes de descontar os novos.
+      // Só devolve se o pedido ainda estava ativo — se já estava CANCELLED, o estoque
+      // já foi devolvido antes e devolver de novo geraria estoque fantasma.
       const oldStockItems = existing.items.filter((i): i is typeof i & { productId: string } => !!i.productId);
-      await restoreStockForItems(oldStockItems, tx);
+      if (existing.status !== "CANCELLED") {
+        await restoreStockForItems(oldStockItems, tx);
+      }
 
       const addressData = delivery === "RETIRADA"
         ? { ...STORE_ADDRESS, cpf: null }
@@ -87,8 +91,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       await tx.address.update({ where: { id: existing.addressId }, data: addressData });
 
+      // Só reserva estoque pros novos itens se o pedido continuar ativo. Se o admin
+      // está marcando como CANCELLED (cliente não pagou), o estoque deve só ser
+      // devolvido acima, nunca descontado de novo pro pedido cancelado.
+      const finalStatus = status || existing.status;
       const catalogItems = items.filter((i): i is ManualItem & { productId: string } => !!i.productId);
-      await decrementStockForItems(tx, catalogItems);
+      if (finalStatus !== "CANCELLED") {
+        await decrementStockForItems(tx, catalogItems);
+      }
 
       const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
       const finalShipping = delivery === "RETIRADA" ? 0 : Math.max(0, shipping || 0);
