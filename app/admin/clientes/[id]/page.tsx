@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Mail, Phone, MapPin, ShoppingBag } from "lucide-react";
 import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
 import { NotesForm } from "./NotesForm";
+import { PromoteToResellerForm } from "./PromoteToResellerForm";
 
 export default async function AdminClientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -72,6 +73,14 @@ export default async function AdminClientePage({ params }: { params: Promise<{ i
               ))}
             </div>
           </div>
+
+          {/* Ações */}
+          {user.role === "CUSTOMER" && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="font-bold text-gray-900 mb-3">Ações</h3>
+              <PromoteToResellerForm userId={user.id} />
+            </div>
+          )}
 
           {/* Endereços */}
           {user.addresses.length > 0 && (

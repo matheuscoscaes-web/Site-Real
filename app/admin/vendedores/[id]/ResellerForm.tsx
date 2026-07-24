@@ -50,19 +50,19 @@ export function ResellerForm({ vendorId }: { vendorId: string }) {
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</div>}
             <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3 text-sm text-blue-700">
-              O revendedor irá configurar o próprio cupom e desconto ao fazer login.
+              Se o e-mail já for de um cliente cadastrado, a conta dele vira revendedor automaticamente (mesmo login e senha). Se for um e-mail novo, defina uma senha inicial para criar o acesso.
             </div>
             <div>
-              <label className="label">Nome completo *</label>
-              <input className="input-field" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required placeholder="Ex: Maria Costa" />
+              <label className="label">Nome completo</label>
+              <input className="input-field" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Ex: Maria Costa (obrigatório só se for e-mail novo)" />
             </div>
             <div>
               <label className="label">E-mail *</label>
               <input className="input-field" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required placeholder="maria@email.com" />
             </div>
             <div>
-              <label className="label">Senha inicial *</label>
-              <input className="input-field" type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required minLength={6} placeholder="Mínimo 6 caracteres" />
+              <label className="label">Senha inicial</label>
+              <input className="input-field" type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} minLength={6} placeholder="Deixe em branco se o cliente já tem conta" />
             </div>
             <div>
               <label className="label">Telefone / WhatsApp</label>

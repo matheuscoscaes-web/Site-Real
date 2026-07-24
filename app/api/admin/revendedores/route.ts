@@ -25,23 +25,53 @@ export async function GET(req: Request) {
   return NextResponse.json(resellers);
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "administrador",
+  VENDOR: "vendedor",
+  RESELLER: "revendedor",
+};
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const { name, email, password, phone, vendorId } = await req.json();
+  const { name, email, password, phone, vendorId, userId } = await req.json();
 
-  if (!name || !email || !password || !vendorId) {
+  if ((!userId && !email) || !vendorId) {
     return NextResponse.json({ error: "Campos obrigatórios faltando" }, { status: 400 });
   }
 
-  const exists = await prisma.user.findUnique({ where: { email } });
-  if (exists) return NextResponse.json({ error: "E-mail já cadastrado" }, { status: 409 });
-
   const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
   if (!vendor) return NextResponse.json({ error: "Vendedor não encontrado" }, { status: 404 });
+
+  const existing = userId
+    ? await prisma.user.findUnique({ where: { id: userId } })
+    : await prisma.user.findUnique({ where: { email } });
+
+  if (existing) {
+    if (existing.role !== "CUSTOMER") {
+      return NextResponse.json(
+        { error: `Este e-mail já está cadastrado como ${ROLE_LABELS[existing.role] || existing.role}.` },
+        { status: 409 }
+      );
+    }
+    const user = await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        role: "RESELLER",
+        phone: phone || existing.phone,
+        reseller: { create: { vendorId } },
+      },
+      include: { reseller: true },
+    });
+    return NextResponse.json(user, { status: 200 });
+  }
+
+  if (!name || !email || !password) {
+    return NextResponse.json({ error: "Campos obrigatórios faltando" }, { status: 400 });
+  }
 
   const hashed = await bcrypt.hash(password, 10);
 
