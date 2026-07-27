@@ -88,6 +88,24 @@ export default async function PedidosPage() {
                     : `Entrega: ${order.address.city}/${order.address.state}`}
                 </p>
 
+                {/* Código de rastreio */}
+                {order.trackingCode && ["SHIPPED", "DELIVERED"].includes(order.status) && (
+                  <div className="mt-3 flex items-center justify-between bg-brand-50 border border-brand-200 rounded-xl px-3 py-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-brand-700/70 mb-0.5">Código de rastreio</p>
+                      <p className="font-mono font-semibold text-brand-700 text-sm">{order.trackingCode}</p>
+                    </div>
+                    <a
+                      href="https://melhorrastreio.com.br/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-brand-700 hover:text-brand-800 underline"
+                    >
+                      Rastrear
+                    </a>
+                  </div>
+                )}
+
                 {/* Avaliação — só aparece após entrega e se ainda houver produtos não avaliados */}
                 {unreviewedItems.length > 0 && (
                   <AvaliarCompra

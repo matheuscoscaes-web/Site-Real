@@ -78,6 +78,35 @@ export async function calcularFrete(cep: string, totalItems: number = 1): Promis
     .sort((a, b) => a.price - b.price);
 }
 
+/** Busca o código de rastreio de um envio já postado no Melhor Envio.
+ * Retorna null se ainda não estiver disponível (a transportadora só gera
+ * o código depois da coleta em alguns casos) — nunca lança erro, é best-effort. */
+export async function buscarCodigoRastreio(meOrderId: string): Promise<string | null> {
+  const token = process.env.MELHOR_ENVIO_TOKEN;
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`${ME_URL}/shipment/tracking`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": "HeartsCouro/1.0 (ffernandoccaio2004@gmail.com)",
+      },
+      body: JSON.stringify({ orders: [meOrderId] }),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const entry = (data as Record<string, { tracking?: string | null }>)[meOrderId];
+    return entry?.tracking || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function buscarEnderecoPorCEP(cep: string) {
   const cepNumerico = cep.replace(/\D/g, "");
   if (cepNumerico.length !== 8) throw new Error("CEP inválido");

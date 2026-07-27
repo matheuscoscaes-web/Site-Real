@@ -214,7 +214,11 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
               <p className="text-sm text-gray-400 mb-4">Serviço não informado</p>
             )}
             {order.shippingServiceId && (
-              <MelhorEnvioButton orderId={order.id} melhorEnvioId={order.melhorEnvioId ?? null} />
+              <MelhorEnvioButton
+                orderId={order.id}
+                melhorEnvioId={order.melhorEnvioId ?? null}
+                trackingCode={order.trackingCode ?? null}
+              />
             )}
           </div>
         </div>

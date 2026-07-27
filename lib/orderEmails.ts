@@ -4,6 +4,7 @@ interface OrderForEmail {
   id: string;
   total: number;
   shippingCarrier: string | null;
+  trackingCode?: string | null;
   items: { quantity: number; price: number; color: string | null; size: string | null; product: { name: string } | null; customName: string | null }[];
   address: { street: string; number: string; district: string; city: string; state: string } | null;
   user: { name: string; email: string };
@@ -66,6 +67,17 @@ export function orderConfirmedEmail(order: OrderForEmail) {
 
 export function orderShippedEmail(order: OrderForEmail) {
   const isPickup = order.shippingCarrier === "Loja";
+  const trackingBlock = order.trackingCode
+    ? `
+        <div style="background:#f9f3e8; border:1px dashed #d9b877; border-radius:12px; padding:14px 18px; margin:0 0 16px;">
+          <p style="margin:0 0 4px; font-size:12px; color:#8a6d3b; text-transform:uppercase; letter-spacing:.05em;">Código de rastreio</p>
+          <p style="margin:0; font-size:16px; font-weight:bold; color:#1c1c1c; font-family:monospace;">${order.trackingCode}</p>
+          <p style="margin:8px 0 0; font-size:12px; color:#777;">
+            Acompanhe em <a href="https://melhorrastreio.com.br/" style="color:${BRAND};">melhorrastreio.com.br</a> colando o código acima.
+          </p>
+        </div>
+      `
+    : "";
   return {
     subject: `Pedido a caminho — #${order.id.slice(-8).toUpperCase()}`,
     html: wrapper(
@@ -78,6 +90,7 @@ export function orderShippedEmail(order: OrderForEmail) {
               : `Seu pedido <strong>#${order.id.slice(-8).toUpperCase()}</strong> já saiu pra entrega${order.address ? ` para ${order.address.city}/${order.address.state}` : ""}.`
           }
         </p>
+        ${!isPickup ? trackingBlock : ""}
         ${itemsList(order)}
         <p style="color:#555; font-size:14px; line-height:1.6;">
           Você pode acompanhar todos os detalhes do pedido pelo site, na área "Meus Pedidos".

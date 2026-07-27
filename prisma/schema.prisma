@@ -246,6 +246,7 @@ model Order {
   shippingCarrier   String?
   shippingServiceId Int?
   melhorEnvioId     String?
+  trackingCode      String?
   mpPaymentId       String?
   confirmedAt       DateTime?
   createdAt         DateTime @default(now())
