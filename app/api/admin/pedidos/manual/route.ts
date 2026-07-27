@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
-import { MANUAL_PAYMENT_METHODS } from "@/lib/utils";
+import { MANUAL_PAYMENT_METHODS, PLACEHOLDER_EMAIL_DOMAIN } from "@/lib/utils";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
           : null;
 
         if (!user) {
-          const email = newCustomer!.email || `venda-manual-${crypto.randomBytes(6).toString("hex")}@heartscouro.local`;
+          const email = newCustomer!.email || `venda-manual-${crypto.randomBytes(6).toString("hex")}${PLACEHOLDER_EMAIL_DOMAIN}`;
           const randomPassword = crypto.randomBytes(16).toString("hex");
           user = await tx.user.create({
             data: {

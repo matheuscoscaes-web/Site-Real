@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { sendEmail } from "./email";
 import { orderConfirmedEmail, orderShippedEmail } from "./orderEmails";
 import { restoreStockForItems, decrementStockForItems, StockItem } from "./stock";
+import { hasRealEmail } from "./utils";
 
 const ORDER_EMAIL_INCLUDE = {
   items: { include: { product: true } },
@@ -30,7 +31,7 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
     include: ORDER_EMAIL_INCLUDE,
   });
 
-  if (newStatus === "SHIPPED" && current.status !== "SHIPPED") {
+  if (newStatus === "SHIPPED" && current.status !== "SHIPPED" && hasRealEmail(updated.user.email)) {
     // Não bloqueia a resposta esperando o Gmail — envia em segundo plano
     // (sendEmail já trata os próprios erros, não precisa de .catch aqui).
     const { subject, html } = orderShippedEmail(updated);
@@ -90,8 +91,10 @@ export async function confirmOrder(orderId: string) {
   });
 
   // Não bloqueia a resposta esperando o Gmail — envia em segundo plano.
-  const { subject, html } = orderConfirmedEmail(updated);
-  sendEmail({ to: updated.user.email, subject, html });
+  if (hasRealEmail(updated.user.email)) {
+    const { subject, html } = orderConfirmedEmail(updated);
+    sendEmail({ to: updated.user.email, subject, html });
+  }
 
   return { ok: true as const, order: updated };
 }

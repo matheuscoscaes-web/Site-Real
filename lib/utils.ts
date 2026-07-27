@@ -115,6 +115,14 @@ export function isManualSale(paymentMethod: string): boolean {
   return paymentMethod !== "MERCADOPAGO";
 }
 
+/** Domínio fake usado como e-mail de clientes de venda manual sem e-mail informado
+ * (ver app/api/admin/pedidos/manual/route.ts) — não existe de verdade, nunca enviar e-mail pra ele. */
+export const PLACEHOLDER_EMAIL_DOMAIN = "@heartscouro.local";
+
+export function hasRealEmail(email: string): boolean {
+  return !email.endsWith(PLACEHOLDER_EMAIL_DOMAIN);
+}
+
 export const CATEGORIES = ["Bolsas", "Mochilas", "Bolsa Tira-Colo", "Acessórios"];
 
 /** Categoria que nunca recebe desconto de cupom, independente do produto. */
