@@ -7,7 +7,7 @@ export default async function AdminClientesPage() {
   const customers = await prisma.user.findMany({
     where: { role: "CUSTOMER" },
     include: {
-      orders: true,
+      orders: { select: { total: true, createdAt: true } },
       _count: { select: { orders: true } },
     },
     orderBy: { createdAt: "desc" },

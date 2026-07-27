@@ -19,7 +19,7 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
     prisma.order.findUnique({
       where: { id },
       include: {
-        user: { include: { orders: true } },
+        user: { include: { orders: { select: { total: true } } } },
         address: true,
         items: { include: { product: true } },
         vendor: { include: { user: { select: { name: true } } } },

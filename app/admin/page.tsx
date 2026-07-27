@@ -16,8 +16,14 @@ function brazilDateKey(date: Date | string) {
 async function getDashboardData() {
   const [orders, users, products, activeProducts] = await Promise.all([
     prisma.order.findMany({
-      include: { user: true, items: true },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        status: true,
+        total: true,
+        createdAt: true,
+        user: { select: { name: true } },
+      },
     }),
     prisma.user.count({ where: { role: "CUSTOMER" } }),
     prisma.product.count({ where: { active: true } }),

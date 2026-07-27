@@ -1,12 +1,27 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { FinanceiroCharts } from "./FinanceiroCharts";
 import { TrendingUp, ShoppingCart, Users, Package, Download } from "lucide-react";
 
-async function getFinanceiroData() {
+const getFinanceiroData = unstable_cache(
+  async () => {
   const orders = await prisma.order.findMany({
-    include: { items: { include: { product: true } }, user: true },
     orderBy: { createdAt: "asc" },
+    select: {
+      status: true,
+      total: true,
+      shipping: true,
+      createdAt: true,
+      items: {
+        select: {
+          productId: true,
+          price: true,
+          quantity: true,
+          product: { select: { name: true, categories: true } },
+        },
+      },
+    },
   });
 
   const paidOrders = orders.filter((o) => !["CANCELLED", "PENDING"].includes(o.status));
@@ -81,7 +96,10 @@ async function getFinanceiroData() {
     categoryData,
     statusData,
   };
-}
+  },
+  ["financeiro-dashboard"],
+  { revalidate: 300, tags: ["orders"] }
+);
 
 export default async function FinanceiroPage() {
   const data = await getFinanceiroData();
