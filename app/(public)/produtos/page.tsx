@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/products/ProductCard";
-import { CATEGORIES, SUBCATEGORIES } from "@/lib/utils";
+import { CATEGORIES, SUBCATEGORIES, sortOutOfStockLast } from "@/lib/utils";
 import { Filter } from "lucide-react";
 import { SortSelect } from "./SortSelect";
 import { FilterSidebar } from "./FilterSidebar";
@@ -65,7 +65,7 @@ export default async function ProdutosPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const products = await getProducts(params);
+  const products = sortOutOfStockLast(await getProducts(params));
 
   const title = params.categoria
     ? params.categoria

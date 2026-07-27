@@ -6,7 +6,7 @@ import { ProductCard } from "@/components/products/ProductCard";
 import {
   Truck, Shield, RefreshCw, Headphones, Star, ChevronRight, ArrowRight,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, sortOutOfStockLast } from "@/lib/utils";
 
 const getFeaturedProducts = unstable_cache(
   async () => {
@@ -124,11 +124,12 @@ const testimonials = [
 ];
 
 export default async function HomePage() {
-  const [featuredProducts, categories, heroImages] = await Promise.all([
+  const [featuredProductsRaw, categories, heroImages] = await Promise.all([
     getFeaturedProducts(),
     getCategories(),
     getHeroImages(),
   ]);
+  const featuredProducts = sortOutOfStockLast(featuredProductsRaw);
   const hasFeatured = featuredProducts.some((p) => p.featured);
 
   return (

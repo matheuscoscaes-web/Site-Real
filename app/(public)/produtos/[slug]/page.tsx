@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { parseProductImages } from "@/lib/utils";
+import { parseProductImages, sortOutOfStockLast } from "@/lib/utils";
 import { ProductDetail } from "./ProductDetail";
 import { ProductCard } from "@/components/products/ProductCard";
 import { AvaliacoesSection } from "./AvaliacoesSection";
@@ -77,7 +77,7 @@ export default async function ProdutoPage({
 
   if (!product) notFound();
 
-  const related = await getRelated(product.categories, product.id);
+  const related = sortOutOfStockLast(await getRelated(product.categories, product.id));
 
   return (
     <div className="container-main py-8">

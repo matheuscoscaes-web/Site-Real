@@ -20,6 +20,13 @@ export function parseProductImages(raw: string): ProductImage[] {
   }
 }
 
+/** Empurra produtos sem estoque (soma de variantes = 0) para o final da lista,
+ * mantendo a ordem relativa dentro de cada grupo (disponíveis / esgotados). */
+export function sortOutOfStockLast<T extends { variants?: { stock: number }[] }>(products: T[]): T[] {
+  const isOutOfStock = (p: T) => (p.variants ?? []).reduce((sum, v) => sum + v.stock, 0) === 0;
+  return [...products].sort((a, b) => Number(isOutOfStock(a)) - Number(isOutOfStock(b)));
+}
+
 /** Parcelamento sem juros: até 6x normalmente, até 10x em compras acima de R$600. */
 export function getMaxInstallments(value: number): number {
   return value >= 600 ? 10 : 6;
