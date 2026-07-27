@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   // um cupom personalizado que nunca sera alcancado por colidir com um deles.
   const [vendorClash, resellerClash] = await Promise.all([
     prisma.vendor.findUnique({ where: { couponCode: normalizedCode } }),
-    prisma.reseller.findUnique({ where: { couponCode: normalizedCode } }),
+    prisma.resellerCoupon.findUnique({ where: { code: normalizedCode } }),
   ]);
   if (vendorClash || resellerClash) {
     return NextResponse.json({ error: "Esse código já está em uso por um vendedor/revendedor" }, { status: 400 });

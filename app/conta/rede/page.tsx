@@ -14,10 +14,21 @@ type OrderSummary = {
   commissionValue?: number | null; couponCode?: string | null;
   couponDiscount?: number | null; paymentMethod?: string;
   createdAt: string; status: string;
+  user?: { name: string; phone: string | null };
+  items?: { quantity: number; customName: string | null; product: { name: string } | null }[];
 };
 
+function orderProductsLabel(items: OrderSummary["items"]): string {
+  if (!items || items.length === 0) return "—";
+  return items
+    .map((i) => `${i.product?.name ?? i.customName ?? "Item"}${i.quantity > 1 ? ` ×${i.quantity}` : ""}`)
+    .join(", ");
+}
+
+type ResellerCouponData = { id: string; code: string; discount: number; active: boolean };
+
 type Reseller = {
-  id: string; couponCode: string | null; discount: number | null;
+  id: string; couponName: string | null; coupons: ResellerCouponData[];
   active: boolean; createdAt: string;
   user: { id: string; name: string; email: string; phone?: string };
   orders: OrderSummary[];
@@ -36,7 +47,7 @@ type RedeData =
   | {
       role: "RESELLER";
       reseller: {
-        couponCode: string | null; discount: number | null;
+        couponName: string | null; coupons: ResellerCouponData[];
         vendor: { user: { name: string; email: string } };
         orders: OrderSummary[];
       };
@@ -69,6 +80,7 @@ export default function MinhaRedePage() {
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
   const [showConfig, setShowConfig] = useState(false);
   const [configForm, setConfigForm] = useState({ couponCode: "", discount: "10" });
+  const [resellerNameForm, setResellerNameForm] = useState({ name: "" });
   const [configLoading, setConfigLoading] = useState(false);
   const [configError, setConfigError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -105,6 +117,14 @@ export default function MinhaRedePage() {
     else { const d = await res.json(); setConfigError(d.error || "Erro ao salvar"); }
   }
 
+  async function handleSaveResellerCoupon(e: React.FormEvent) {
+    e.preventDefault(); setConfigError(""); setConfigLoading(true);
+    const res = await fetch("/api/conta/rede/configurar", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(resellerNameForm) });
+    setConfigLoading(false);
+    if (res.ok) { setShowConfig(false); await loadData(); }
+    else { const d = await res.json(); setConfigError(d.error || "Erro ao salvar"); }
+  }
+
   function copyCoupon(code: string) { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }
 
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 size={28} className="animate-spin text-brand-600" /></div>;
@@ -113,7 +133,7 @@ export default function MinhaRedePage() {
   // ── REVENDEDOR ────────────────────────────────────────────────
   if (data.role === "RESELLER") {
     const { reseller } = data;
-    const configured = !!reseller.couponCode;
+    const configured = reseller.coupons.length > 0;
     const allOrders = reseller.orders;
     const totalRevenue = allOrders.reduce((s, o) => s + o.total, 0);
     const totalCount = allOrders.length;
@@ -138,7 +158,7 @@ export default function MinhaRedePage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg sm:text-xl font-bold text-gray-900">Meu Cupom</h2>
             {configured && !showConfig && (
-              <button onClick={() => { setConfigForm({ couponCode: reseller.couponCode!, discount: String(reseller.discount) }); setShowConfig(true); setConfigError(""); }}
+              <button onClick={() => { setResellerNameForm({ name: reseller.couponName || "" }); setShowConfig(true); setConfigError(""); }}
                 className="flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
                 <Pencil size={14} /> Editar
               </button>
@@ -147,31 +167,34 @@ export default function MinhaRedePage() {
           {!configured ? (
             <div>
               <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3 text-sm text-amber-700 mb-4">
-                Configure seu cupom para começar a vender. Você escolhe o desconto que vai oferecer aos clientes.
+                Escolha um nome pra começar a vender. O sistema cria 5 cupons automaticamente pra você, um pra cada desconto.
               </div>
               {!showConfig
                 ? <button onClick={() => setShowConfig(true)} className="btn-primary flex items-center gap-2"><Tag size={16} /> Configurar meu cupom</button>
-                : <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} commissionNote="O vendedor responsável ganha 2,5% fixo por venda com seu cupom" />
+                : <ResellerNameForm form={resellerNameForm} setForm={setResellerNameForm} onSubmit={handleSaveResellerCoupon} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
               }
             </div>
           ) : showConfig ? (
-            <ConfigForm form={configForm} setForm={setConfigForm} onSubmit={handleSaveConfig} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} commissionNote="O vendedor responsável ganha 2,5% fixo por venda com seu cupom" />
+            <ResellerNameForm form={resellerNameForm} setForm={setResellerNameForm} onSubmit={handleSaveResellerCoupon} onCancel={() => setShowConfig(false)} loading={configLoading} error={configError} />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-4">
               <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><Tag size={16} className="text-gray-600" /></div>
-                <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Seu cupom</p><p className="font-mono font-bold text-gray-900">{reseller.couponCode}</p></div>
-                <button onClick={() => copyCoupon(reseller.couponCode!)} className="text-gray-400 hover:text-brand-600 flex-shrink-0">
-                  {copied ? <CheckCheck size={16} className="text-green-500" /> : <Copy size={16} />}
-                </button>
+                <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0"><Users size={16} className="text-purple-600" /></div>
+                <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Vendedor responsável</p><p className="font-semibold text-gray-900 text-sm">{reseller.vendor.user.name}</p></div>
               </div>
-              <div className="rounded-xl border border-gray-100 p-4">
-                <p className="text-xs text-gray-400 mb-1">Desconto ao cliente</p>
-                <p className="text-lg font-bold text-gray-700">{reseller.discount}%</p>
-              </div>
-              <div className="rounded-xl border border-gray-100 p-4">
-                <p className="text-xs text-gray-400 mb-1">Vendedor responsável</p>
-                <p className="font-semibold text-gray-900 text-sm">{reseller.vendor.user.name}</p>
+              <div>
+                <p className="text-xs text-gray-400 mb-2">Seus cupons — cada um com um desconto diferente pro cliente</p>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {reseller.coupons.map((c) => (
+                    <div key={c.id} className="rounded-xl border border-gray-100 p-3 text-center">
+                      <p className="text-xs text-gray-400">{c.discount}% desc.</p>
+                      <p className="font-mono font-bold text-gray-900 text-sm truncate">{c.code}</p>
+                      <button onClick={() => copyCoupon(c.code)} className="mt-1 text-gray-400 hover:text-brand-600 mx-auto flex items-center justify-center">
+                        {copied ? <CheckCheck size={14} className="text-green-500" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -226,12 +249,16 @@ export default function MinhaRedePage() {
               ) : (
                 <div className="divide-y divide-gray-100">
                   {allOrders.map((o) => (
-                    <div key={o.id} className="flex items-center justify-between px-5 py-3">
-                      <div>
+                    <div key={o.id} className="flex items-center justify-between px-5 py-3 gap-3">
+                      <div className="min-w-0">
                         <p className="text-sm font-mono font-bold text-gray-800">#{o.id.slice(-6).toUpperCase()}</p>
                         <p className="text-xs text-gray-400">{formatDate(o.createdAt)}</p>
+                        <p className="text-xs text-gray-600 mt-1 truncate">{orderProductsLabel(o.items)}</p>
+                        {o.user && (
+                          <p className="text-xs text-gray-400 truncate">{o.user.name}{o.user.phone ? ` · ${o.user.phone}` : ""}</p>
+                        )}
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         <p className="font-bold text-gray-900 text-sm">{formatCurrency(o.total)}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${o.status === "PAID" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
                           {o.status === "PAID" ? "Pago" : "Pendente"}
@@ -359,11 +386,7 @@ export default function MinhaRedePage() {
                             <p className="font-semibold text-gray-900 text-sm truncate">{r.user.name}</p>
                             <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                              {r.couponCode
-                                ? <span className="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">{r.couponCode}</span>
-                                : <span className="text-xs text-amber-500">Aguardando configurar cupom</span>
-                              }
-                              {r.discount !== null && <span className="text-xs text-gray-400">{r.discount}% desc.</span>}
+                              <ResellerCouponBadges coupons={r.coupons} />
                               <span className="text-xs text-green-600 font-bold">+2,5% p/ você</span>
                             </div>
                           </div>
@@ -497,6 +520,10 @@ export default function MinhaRedePage() {
                         <p className="text-sm font-mono font-bold text-gray-800">#{o.id.slice(-6).toUpperCase()}</p>
                         <p className="text-xs text-gray-400">{formatDate(o.createdAt)}</p>
                         {o.couponCode && <p className="text-xs text-gray-400 font-mono">{o.couponCode}</p>}
+                        <p className="text-xs text-gray-600 mt-1 truncate">{orderProductsLabel(o.items)}</p>
+                        {o.user && (
+                          <p className="text-xs text-gray-400 truncate">{o.user.name}{o.user.phone ? ` · ${o.user.phone}` : ""}</p>
+                        )}
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-gray-900 text-sm">{formatCurrency(o.total)}</p>
@@ -628,7 +655,7 @@ export default function MinhaRedePage() {
                               <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
                             </div>
                             <div className="text-right flex-shrink-0">
-                              {r.couponCode ? <p className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded-lg">{r.couponCode}{r.discount !== null ? ` · ${r.discount}%` : ""}</p> : <p className="text-xs text-amber-500">Sem cupom</p>}
+                              <div className="flex flex-wrap justify-end gap-1"><ResellerCouponBadges coupons={r.coupons} /></div>
                               <p className="text-xs text-gray-500">{r.orders.length} vendas</p>
                               <p className="text-xs text-green-600 font-bold">{formatCurrency(rC)} p/ você</p>
                             </div>
@@ -685,7 +712,7 @@ export default function MinhaRedePage() {
                               <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
                             </div>
                             <div className="text-right flex-shrink-0">
-                              {r.couponCode ? <p className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded-lg">{r.couponCode}{r.discount !== null ? ` · ${r.discount}%` : ""}</p> : <p className="text-xs text-amber-500">Sem cupom</p>}
+                              <div className="flex flex-wrap justify-end gap-1"><ResellerCouponBadges coupons={r.coupons} /></div>
                               <p className="text-xs text-gray-500">{r.orders.length} vendas</p>
                               <p className="text-xs text-green-600 font-bold">{formatCurrency(rC)} → {v.user.name}</p>
                             </div>
@@ -745,7 +772,8 @@ export default function MinhaRedePage() {
                       <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i === 0 ? "bg-yellow-100 text-yellow-700" : i === 1 ? "bg-gray-100 text-gray-600" : "bg-orange-50 text-orange-600"}`}>{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 text-sm truncate">{r.user.name}</p>
-                        <p className="text-xs text-gray-400">Vendedor: {r.vendorName} · {r.couponCode ?? "sem cupom"}{r.discount !== null ? ` · ${r.discount}% desc.` : ""}</p>
+                        <p className="text-xs text-gray-400 mb-1">Vendedor: {r.vendorName}</p>
+                        <div className="flex flex-wrap gap-1"><ResellerCouponBadges coupons={r.coupons} /></div>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-gray-900 text-sm">{r.orders.length} vendas</p>
@@ -782,6 +810,10 @@ export default function MinhaRedePage() {
                             }
                           </div>
                           <p className="text-xs text-gray-400 mt-1">{formatDate(o.createdAt)}</p>
+                          <p className="text-xs text-gray-600 mt-1">{orderProductsLabel(o.items)}</p>
+                          {o.user && (
+                            <p className="text-xs text-gray-400">{o.user.name}{o.user.phone ? ` · ${o.user.phone}` : ""}</p>
+                          )}
                           <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5 text-xs text-gray-500">
                             {o.couponOwner !== "—" && <span>Cupom: <strong className="font-mono text-gray-700">{o.couponOwner}</strong></span>}
                             {o.couponDiscount !== null && o.couponDiscount !== undefined && <span>Desconto dado: <strong className="text-red-500">{o.couponDiscount}%</strong></span>}
@@ -834,7 +866,7 @@ export default function MinhaRedePage() {
                         <div className="flex items-center justify-between mb-2">
                           <div>
                             <p className="font-medium text-gray-900 text-sm">{r.user.name}</p>
-                            <p className="text-xs text-gray-400">{r.couponCode ?? "sem cupom"}{r.discount !== null ? ` · ${r.discount}% desc.` : ""}</p>
+                            <div className="flex flex-wrap gap-1 mt-0.5"><ResellerCouponBadges coupons={r.coupons} /></div>
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-sm">{formatCurrency(rV)}</p>
@@ -932,7 +964,7 @@ function ConfigForm({ form, setForm, onSubmit, onCancel, loading, error, commiss
   loading: boolean;
   error: string;
   commissionNote: string;
-  fixedDiscount?: number;
+  fixedDiscount: number;
 }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -941,24 +973,63 @@ function ConfigForm({ form, setForm, onSubmit, onCancel, loading, error, commiss
         <label className="label">Código do cupom *</label>
         <input className="input-field uppercase font-mono" value={form.couponCode} onChange={(e) => setForm((p) => ({ ...p, couponCode: e.target.value.toUpperCase() }))} required placeholder="Ex: JOAO10" />
       </div>
-      {fixedDiscount !== undefined ? (
-        <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5 text-xs space-y-1">
-          <p className="text-gray-500">Desconto ao cliente: <strong className="text-gray-900">{fixedDiscount}% fixo</strong></p>
-          <p className="font-bold text-green-600">{commissionNote}</p>
-        </div>
-      ) : (
-        <div>
-          <label className="label">Desconto ao cliente (10%–50%)</label>
-          <input className="input-field" type="number" min="10" max="50" step="1" value={form.discount} onChange={(e) => setForm((p) => ({ ...p, discount: e.target.value }))} required />
-          <div className="mt-2 flex items-center justify-between text-xs rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5">
-            <span className="text-gray-500">Cliente economiza <strong>{form.discount || 0}%</strong></span>
-            <span className="font-bold text-green-600">{commissionNote}</span>
-          </div>
+      <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5 text-xs space-y-1">
+        <p className="text-gray-500">Desconto ao cliente: <strong className="text-gray-900">{fixedDiscount}% fixo</strong></p>
+        <p className="font-bold text-green-600">{commissionNote}</p>
+      </div>
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onCancel} className="btn-ghost flex-1">Cancelar</button>
+        <button type="submit" disabled={loading} className="btn-primary flex-1">
+          {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Check size={16} /> Salvar</>}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ResellerCouponBadges({ coupons }: { coupons: ResellerCouponData[] }) {
+  if (coupons.length === 0) return <span className="text-xs text-amber-500">Aguardando configurar cupom</span>;
+  return (
+    <>
+      {[...coupons].sort((a, b) => a.discount - b.discount).map((c) => (
+        <span key={c.id} className="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">
+          {c.discount}% {c.code}
+        </span>
+      ))}
+    </>
+  );
+}
+
+function ResellerNameForm({ form, setForm, onSubmit, onCancel, loading, error }: {
+  form: { name: string };
+  setForm: React.Dispatch<React.SetStateAction<typeof form>>;
+  onSubmit: (e: React.FormEvent) => void;
+  onCancel: () => void;
+  loading: boolean;
+  error: string;
+}) {
+  const preview = form.name.toUpperCase().trim().replace(/[^A-Z0-9]/g, "");
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</div>}
+      <div>
+        <label className="label">Seu nome (usado nos cupons) *</label>
+        <input className="input-field uppercase font-mono" value={form.name} onChange={(e) => setForm({ name: e.target.value.toUpperCase() })} required minLength={3} placeholder="Ex: MATHEUS" />
+        <p className="text-xs text-gray-400 mt-1.5">5 cupons são criados automaticamente pra você, um pra cada desconto.</p>
+      </div>
+      {preview.length >= 3 && (
+        <div className="grid grid-cols-5 gap-1.5 text-center">
+          {[10, 20, 30, 40, 50].map((t) => (
+            <div key={t} className="rounded-lg bg-gray-50 border border-gray-100 px-1 py-2">
+              <p className="text-[10px] text-gray-400">{t}%</p>
+              <p className="text-[10px] font-mono font-bold text-gray-700 truncate">{preview}{t}</p>
+            </div>
+          ))}
         </div>
       )}
       <div className="flex gap-3 pt-1">
         <button type="button" onClick={onCancel} className="btn-ghost flex-1">Cancelar</button>
-        <button type="submit" disabled={loading} className="btn-primary flex-1">
+        <button type="submit" disabled={loading || preview.length < 3} className="btn-primary flex-1">
           {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : <><Check size={16} /> Salvar</>}
         </button>
       </div>

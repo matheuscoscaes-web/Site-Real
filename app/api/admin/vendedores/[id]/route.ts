@@ -28,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     const dup = await prisma.vendor.findFirst({ where: { couponCode: code, NOT: { id } } });
     if (dup) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
-    const dupR = await prisma.reseller.findUnique({ where: { couponCode: code } });
+    const dupR = await prisma.resellerCoupon.findUnique({ where: { code } });
     if (dupR) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
   }
 

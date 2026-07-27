@@ -20,10 +20,15 @@ export async function GET() {
         resellers: {
           include: {
             user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
+            coupons: { orderBy: { discount: "asc" } },
             orders: {
               where: { status: { in: CONFIRMED_STATUSES } },
               orderBy: { createdAt: "desc" },
-              select: { id: true, total: true, createdAt: true, status: true, couponCode: true },
+              select: {
+                id: true, total: true, createdAt: true, status: true, couponCode: true,
+                user: { select: { name: true, phone: true } },
+                items: { select: { quantity: true, customName: true, product: { select: { name: true } } } },
+              },
             },
           },
           orderBy: { createdAt: "desc" },
@@ -32,7 +37,11 @@ export async function GET() {
         orders: {
           where: { resellerId: null, status: { in: CONFIRMED_STATUSES } },
           orderBy: { createdAt: "desc" },
-          select: { id: true, total: true, createdAt: true, status: true },
+          select: {
+            id: true, total: true, createdAt: true, status: true,
+            user: { select: { name: true, phone: true } },
+            items: { select: { quantity: true, customName: true, product: { select: { name: true } } } },
+          },
         },
       },
     });
@@ -46,6 +55,7 @@ export async function GET() {
         resellers: {
           include: {
             user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
+            coupons: { orderBy: { discount: "asc" } },
             orders: {
               where: { status: { in: CONFIRMED_STATUSES } },
               orderBy: { createdAt: "desc" },
@@ -53,6 +63,8 @@ export async function GET() {
                 id: true, total: true, subtotal: true, shipping: true,
                 commissionValue: true, couponCode: true, couponDiscount: true,
                 paymentMethod: true, status: true, createdAt: true,
+                user: { select: { name: true, phone: true } },
+                items: { select: { quantity: true, customName: true, product: { select: { name: true } } } },
               },
             },
           },
@@ -65,6 +77,8 @@ export async function GET() {
             id: true, total: true, subtotal: true, shipping: true,
             commissionValue: true, couponCode: true, couponDiscount: true,
             paymentMethod: true, status: true, createdAt: true,
+            user: { select: { name: true, phone: true } },
+            items: { select: { quantity: true, customName: true, product: { select: { name: true } } } },
           },
         },
       },
@@ -78,10 +92,15 @@ export async function GET() {
       where: { userId: session.user.id },
       include: {
         vendor: { include: { user: { select: { name: true, email: true } } } },
+        coupons: { orderBy: { discount: "asc" } },
         orders: {
           where: { status: { in: CONFIRMED_STATUSES } },
           orderBy: { createdAt: "desc" },
-          select: { id: true, total: true, createdAt: true, status: true },
+          select: {
+            id: true, total: true, createdAt: true, status: true,
+            user: { select: { name: true, phone: true } },
+            items: { select: { quantity: true, customName: true, product: { select: { name: true } } } },
+          },
         },
       },
     });

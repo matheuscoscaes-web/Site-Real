@@ -13,24 +13,21 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }
 
-  const { couponCode, discount } = await req.json();
-
-  if (!couponCode) return NextResponse.json({ error: "Código do cupom obrigatório" }, { status: 400 });
-
-  const code = couponCode.toUpperCase().trim();
-
-  if (code === WELCOME_COUPON_CODE) {
-    return NextResponse.json({ error: "Esse código é reservado para o cupom de boas-vindas" }, { status: 409 });
-  }
-
-  // Verifica unicidade do cupom (ignora o próprio registro)
+  // Vendedor/admin: cupom próprio único, desconto fixo em 50%
   if (role === "VENDOR" || role === "ADMIN") {
+    const { couponCode } = await req.json();
+    if (!couponCode) return NextResponse.json({ error: "Código do cupom obrigatório" }, { status: 400 });
+
+    const code = couponCode.toUpperCase().trim();
+    if (code === WELCOME_COUPON_CODE) {
+      return NextResponse.json({ error: "Esse código é reservado para o cupom de boas-vindas" }, { status: 409 });
+    }
+
     const dup = await prisma.vendor.findFirst({ where: { couponCode: code, NOT: { userId: session.user.id } } });
     if (dup) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
-    const dupR = await prisma.reseller.findUnique({ where: { couponCode: code } });
+    const dupR = await prisma.resellerCoupon.findUnique({ where: { code } });
     if (dupR) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
 
-    // Desconto do cupom de vendedor é sempre fixo em 50%
     // upsert: admin pode não ter um registro de Vendor ainda na primeira configuração
     const vendor = await prisma.vendor.upsert({
       where: { userId: session.user.id },
@@ -40,17 +37,40 @@ export async function PATCH(req: Request) {
     return NextResponse.json(vendor);
   }
 
-  // RESELLER
-  const discountNum = Number(discount);
-  if (isNaN(discountNum) || discountNum < 10 || discountNum > 50) {
-    return NextResponse.json({ error: "Desconto deve ser entre 10% e 50%" }, { status: 400 });
+  // Revendedor: informa só um nome e o sistema cria 5 cupons automaticamente,
+  // um pra cada faixa de desconto (10%, 20%, 30%, 40%, 50%), ex: NOME10, NOME20...
+  const TIERS = [10, 20, 30, 40, 50];
+  const { name } = await req.json();
+  const base = String(name ?? "").toUpperCase().trim().replace(/[^A-Z0-9]/g, "");
+
+  if (!base) return NextResponse.json({ error: "Informe um nome para gerar seus cupons" }, { status: 400 });
+  if (base.length < 3) return NextResponse.json({ error: "Use um nome com pelo menos 3 letras" }, { status: 400 });
+
+  const codes = TIERS.map((t) => `${base}${t}`);
+  if (codes.includes(WELCOME_COUPON_CODE)) {
+    return NextResponse.json({ error: "Esse nome é reservado, escolha outro" }, { status: 409 });
   }
 
-  const dup = await prisma.reseller.findFirst({ where: { couponCode: code, NOT: { userId: session.user.id } } });
-  if (dup) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
-  const dupV = await prisma.vendor.findUnique({ where: { couponCode: code } });
-  if (dupV) return NextResponse.json({ error: "Esse cupom já está em uso" }, { status: 409 });
+  const reseller = await prisma.reseller.findUnique({ where: { userId: session.user.id } });
+  if (!reseller) return NextResponse.json({ error: "Revendedor não encontrado" }, { status: 404 });
 
-  const reseller = await prisma.reseller.update({ where: { userId: session.user.id }, data: { couponCode: code, discount: discountNum } });
-  return NextResponse.json(reseller);
+  const [vendorClash, resellerClash] = await Promise.all([
+    prisma.vendor.findFirst({ where: { couponCode: { in: codes } } }),
+    prisma.resellerCoupon.findFirst({ where: { code: { in: codes }, resellerId: { not: reseller.id } } }),
+  ]);
+  if (vendorClash || resellerClash) {
+    return NextResponse.json({ error: "Esse nome já está em uso, escolha outro" }, { status: 409 });
+  }
+
+  await prisma.resellerCoupon.deleteMany({ where: { resellerId: reseller.id } });
+  const updated = await prisma.reseller.update({
+    where: { id: reseller.id },
+    data: {
+      couponName: base,
+      coupons: { create: TIERS.map((t) => ({ code: `${base}${t}`, discount: t })) },
+    },
+    include: { coupons: true },
+  });
+
+  return NextResponse.json(updated);
 }

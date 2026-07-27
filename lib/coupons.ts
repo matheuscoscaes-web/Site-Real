@@ -73,22 +73,24 @@ export async function resolveCoupon(code: string, userId: string | null): Promis
     };
   }
 
-  const reseller = await prisma.reseller.findUnique({
-    where: { couponCode: normalized },
-    include: { user: { select: { name: true } }, vendor: { select: { id: true } } },
+  const resellerCoupon = await prisma.resellerCoupon.findUnique({
+    where: { code: normalized },
+    include: {
+      reseller: { include: { user: { select: { name: true } }, vendor: { select: { id: true } } } },
+    },
   });
-  if (reseller && reseller.active && reseller.discount !== null) {
+  if (resellerCoupon && resellerCoupon.active && resellerCoupon.reseller.active) {
     return {
       valid: true,
       type: "reseller",
-      vendorId: reseller.vendor.id,
-      resellerId: reseller.id,
+      vendorId: resellerCoupon.reseller.vendor.id,
+      resellerId: resellerCoupon.reseller.id,
       couponId: null,
       discountType: "PERCENT",
-      discountValue: reseller.discount,
+      discountValue: resellerCoupon.discount,
       freeShipping: false,
       minPurchase: null,
-      ownerName: reseller.user.name,
+      ownerName: resellerCoupon.reseller.user.name,
     };
   }
 

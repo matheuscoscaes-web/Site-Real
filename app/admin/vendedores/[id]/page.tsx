@@ -17,7 +17,10 @@ export default async function AdminVendedorDetailPage({ params }: { params: Prom
     include: {
       user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
       resellers: {
-        include: { user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } } },
+        include: {
+          user: { select: { id: true, name: true, email: true, phone: true, createdAt: true } },
+          coupons: { orderBy: { discount: "asc" } },
+        },
         orderBy: { createdAt: "desc" },
       },
     },
@@ -189,11 +192,17 @@ export default async function AdminVendedorDetailPage({ params }: { params: Prom
                     </p>
                   </div>
                   <div className="text-right space-y-1">
-                    {r.couponCode
-                      ? <p className="font-mono text-sm bg-gray-100 text-gray-800 px-2 py-0.5 rounded-lg inline-block">{r.couponCode}</p>
-                      : <p className="text-xs text-amber-500">Aguardando configurar cupom</p>
-                    }
-                    {r.discount !== null && <p className="text-xs text-gray-400">desconto {r.discount}%</p>}
+                    {r.coupons.length > 0 ? (
+                      <div className="flex flex-wrap justify-end gap-1">
+                        {r.coupons.map((c) => (
+                          <span key={c.id} className="font-mono text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-lg">
+                            {c.discount}% {c.code}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-amber-500">Aguardando configurar cupom</p>
+                    )}
                     <p className="text-xs text-green-600 font-bold">vendedor ganha 2,5% por venda</p>
                     <span className={`badge text-xs block ${r.active ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-100 text-gray-500 border border-gray-200"}`}>
                       {r.active ? "Ativo" : "Inativo"}
