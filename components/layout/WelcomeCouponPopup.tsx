@@ -90,6 +90,9 @@ export function WelcomeCouponPopup() {
             <Link href="/cadastro" onClick={dismiss} className="btn-primary w-full justify-center">
               Criar minha conta
             </Link>
+            <Link href="/login" onClick={dismiss} className="btn-outline w-full justify-center">
+              Já tenho conta, fazer login
+            </Link>
             <button onClick={dismiss} className="text-xs text-gray-400 hover:text-gray-600">
               Continuar navegando
             </button>
