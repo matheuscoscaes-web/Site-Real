@@ -1,11 +1,15 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { parseProductImages } from "@/lib/utils";
 import { ProductDetail } from "./ProductDetail";
 import { ProductCard } from "@/components/products/ProductCard";
 import { AvaliacoesSection } from "./AvaliacoesSection";
 
 export const revalidate = 60;
 export const dynamicParams = true;
+
+const SITE_URL = process.env.NEXT_PUBLIC_URL ?? "https://heartscouro.com.br";
 
 export async function generateStaticParams() {
   const products = await prisma.product.findMany({ select: { slug: true } });
@@ -17,6 +21,42 @@ async function getProduct(slug: string) {
     where: { slug, active: true },
     include: { variants: true },
   });
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProduct(slug);
+
+  if (!product) return {};
+
+  const images = parseProductImages(product.images);
+  const imageUrl = images[0]?.url;
+  const url = `${SITE_URL}/produtos/${product.slug}`;
+
+  return {
+    title: product.name,
+    description: product.description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      url,
+      title: product.name,
+      description: product.description,
+      images: imageUrl
+        ? [{ url: imageUrl, width: 1200, height: 1200, alt: product.name }]
+        : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description: product.description,
+      images: imageUrl ? [imageUrl] : undefined,
+    },
+  };
 }
 
 async function getRelated(categories: string[], id: string) {
