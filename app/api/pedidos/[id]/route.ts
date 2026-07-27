@@ -31,10 +31,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const { status, ...rest } = await request.json();
 
-  if (status) await updateOrderStatus(id, status);
+  const afterStatus = status ? await updateOrderStatus(id, status) : null;
+
   const order = Object.keys(rest).length > 0
     ? await prisma.order.update({ where: { id }, data: rest })
-    : await prisma.order.findUnique({ where: { id } });
+    : afterStatus ?? (await prisma.order.findUnique({ where: { id } }));
 
   return NextResponse.json(order);
 }

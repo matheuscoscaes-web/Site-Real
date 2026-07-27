@@ -21,9 +21,19 @@ const ORDER_EMAIL_INCLUDE = {
  * Ele só é enviado quando o admin aceita o pedido manualmente, ver `confirmOrder`.
  */
 export async function updateOrderStatus(orderId: string, newStatus: string) {
-  const current = await prisma.order.findUnique({ where: { id: orderId }, include: ORDER_EMAIL_INCLUDE });
+  // Só precisa do status aqui pra comparar a transição — o include pesado
+  // (itens+produto+endereço+cliente) só é buscado abaixo quando realmente
+  // for usado (envio de e-mail ou devolução de estoque), não em toda troca de status.
+  const current = await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } });
   if (!current) return null;
   if (current.status === newStatus) return current;
+
+  const willEmailShipped = newStatus === "SHIPPED" && current.status !== "SHIPPED";
+  const willRestoreStock = newStatus === "CANCELLED" && current.status !== "CANCELLED";
+
+  if (!willEmailShipped && !willRestoreStock) {
+    return prisma.order.update({ where: { id: orderId }, data: { status: newStatus } });
+  }
 
   const updated = await prisma.order.update({
     where: { id: orderId },
@@ -31,7 +41,7 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
     include: ORDER_EMAIL_INCLUDE,
   });
 
-  if (newStatus === "SHIPPED" && current.status !== "SHIPPED" && hasRealEmail(updated.user.email)) {
+  if (willEmailShipped && hasRealEmail(updated.user.email)) {
     // Não bloqueia a resposta esperando o Gmail — envia em segundo plano
     // (sendEmail já trata os próprios erros, não precisa de .catch aqui).
     const { subject, html } = orderShippedEmail(updated);
@@ -40,7 +50,7 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
 
   // Pedido cancelado/recusado devolve o estoque que foi descontado na criação
   // (itens avulsos, sem produto do catalogo, nunca tiveram estoque descontado).
-  if (newStatus === "CANCELLED" && current.status !== "CANCELLED") {
+  if (willRestoreStock) {
     await restoreStockForItems(updated.items.filter((i): i is typeof i & { productId: string } => !!i.productId));
   }
 
