@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
@@ -56,13 +57,16 @@ export function Header() {
       <div className="container-main">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0">
-            <div className="flex flex-col items-start">
-              <span className="text-lg md:text-2xl font-bold text-brand-700 leading-none tracking-tight" style={{ fontFamily: "Playfair Display, serif" }}>
-                Hearts Couro
-              </span>
-              <span className="hidden sm:block text-[9px] tracking-[0.35em] text-gray-400 uppercase">Bolsas &amp; Bolsa Tira-Colo</span>
-            </div>
+          <Link href="/" className="flex-shrink-0 flex items-center gap-2">
+            <Image
+              src="/imagens/logo.png"
+              alt="Hearts Couro"
+              width={64}
+              height={62}
+              priority
+              className="h-11 w-auto md:h-14 object-contain"
+            />
+            <span className="hidden sm:block text-[9px] tracking-[0.35em] text-gray-400 uppercase self-center">Bolsas &amp; Bolsa Tira-Colo</span>
           </Link>
 
           {/* Nav Desktop */}

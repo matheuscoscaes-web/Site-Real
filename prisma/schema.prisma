@@ -316,6 +316,17 @@ model HeroImage {
   @@map("hero_images")
 }
 
+model HomeCategory {
+  id        String   @id @default(cuid())
+  name      String
+  image     String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("home_categories")
+}
+
 model Review {
   id        String   @id @default(cuid())
   productId String

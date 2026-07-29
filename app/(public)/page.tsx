@@ -50,39 +50,23 @@ const getHeroImages = unstable_cache(
 
 const getCategories = unstable_cache(
   async () => {
-    const [bolsas, vestuario, acessorios] = await Promise.all([
-      prisma.product.count({ where: { active: true, OR: [{ categories: { has: "Bolsas" } }, { name: { startsWith: "Bolsa", mode: "insensitive" } }] } }),
-      prisma.product.count({ where: { active: true, categories: { has: "Mochilas" } } }),
-      prisma.product.count({ where: { active: true, categories: { has: "Bolsa Tira-Colo" } } }),
-    ]);
+    const homeCategories = await prisma.homeCategory.findMany({ orderBy: { position: "asc" } });
 
-    return [
-      {
-        name: "Bolsas",
-        href: "/produtos?categoria=Bolsas",
-        image: "/imagens/foto-entrada.png",
-        count: `${bolsas} produto${bolsas !== 1 ? "s" : ""}`,
-        gradient: "from-brand-900/70",
-      },
-      {
-        name: "Mochilas",
-        href: "/produtos?categoria=Mochilas",
-        image: "/imagens/mochila.png",
-        count: `${vestuario} produto${vestuario !== 1 ? "s" : ""}`,
-        gradient: "from-purple-900/70",
-        objectPosition: "center 30%",
-      },
-      {
-        name: "Bolsa Tira-Colo",
-        href: "/produtos?categoria=Bolsa Tira-Colo",
-        image: "/imagens/bolsatira-colo.png",
-        count: `${acessorios} produto${acessorios !== 1 ? "s" : ""}`,
-        gradient: "from-amber-900/70",
-      },
-    ];
+    return Promise.all(
+      homeCategories.map(async (cat) => {
+        const count = await prisma.product.count({ where: { active: true, categories: { has: cat.name } } });
+        return {
+          name: cat.name,
+          href: `/produtos?categoria=${encodeURIComponent(cat.name)}`,
+          image: cat.image,
+          count: `${count} produto${count !== 1 ? "s" : ""}`,
+          gradient: "from-brand-900/70",
+        };
+      })
+    );
   },
   ["home-categories"],
-  { revalidate: 60, tags: ["products"] }
+  { revalidate: 60, tags: ["products", "categories"] }
 );
 
 const benefits = [
@@ -196,7 +180,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {categories.map((cat) => (
               <Link key={cat.name} href={cat.href} className="group relative overflow-hidden rounded-3xl h-72 shadow-md hover:shadow-xl transition-shadow">
-                <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" style={{ objectPosition: (cat as {objectPosition?: string}).objectPosition || "center" }} />
+                <Image src={cat.image} alt={cat.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-105" />
                 <div className={`absolute inset-0 bg-gradient-to-t ${cat.gradient} to-transparent`} />
                 <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                   <p className="text-xs uppercase tracking-wider text-white/70 mb-1">{cat.count}</p>

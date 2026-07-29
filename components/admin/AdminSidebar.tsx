@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Package, ShoppingCart, Users, TrendingUp, LogOut, Menu, X, UserCheck, MessageCircle, Tag, Image as ImageIcon,
+  LayoutDashboard, Package, ShoppingCart, Users, TrendingUp, LogOut, Menu, X, UserCheck, MessageCircle, Tag, Image as ImageIcon, LayoutGrid,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ const navItems = [
   { href: "/admin/vendedores", label: "Vendedores", icon: UserCheck },
   { href: "/admin/cupons", label: "Cupons", icon: Tag },
   { href: "/admin/imagens", label: "Imagens da Home", icon: ImageIcon },
+  { href: "/admin/categorias", label: "Categorias da Home", icon: LayoutGrid },
   { href: "/admin/financeiro", label: "Financeiro", icon: TrendingUp },
   { href: "/admin/leads", label: "Grupo VIP WhatsApp", icon: MessageCircle },
 ];

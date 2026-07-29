@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, isManualSale } from "@/lib/utils";
 import { ChevronRight, Search, Plus } from "lucide-react";
+import { MarcarEnviadoButton } from "./MarcarEnviadoButton";
 
 const STATUS_LIST = ["", "PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 const ORIGEM_LIST = [
@@ -44,6 +45,7 @@ export default async function AdminPedidosPage({
         createdAt: true,
         confirmedAt: true,
         paymentMethod: true,
+        trackingCode: true,
         user: { select: { name: true, email: true } },
         _count: { select: { items: true } },
         vendor: { select: { user: { select: { name: true } } } },
@@ -214,9 +216,14 @@ export default async function AdminPedidosPage({
                       <p className="font-bold text-gray-900 text-sm">{formatCurrency(order.total)}</p>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <Link href={`/admin/pedidos/${order.id}`} className="inline-flex items-center gap-1 text-sm text-brand-600 hover:underline font-medium">
-                        Detalhes <ChevronRight size={14} />
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        {order.status === "PREPARING" && (
+                          <MarcarEnviadoButton orderId={order.id} hasTrackingCode={!!order.trackingCode} />
+                        )}
+                        <Link href={`/admin/pedidos/${order.id}`} className="inline-flex items-center gap-1 text-sm text-brand-600 hover:underline font-medium">
+                          Detalhes <ChevronRight size={14} />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))

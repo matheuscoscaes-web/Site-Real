@@ -52,7 +52,7 @@ export function DefinirFreteForm({ orderId, zipCode, totalItems }: { orderId: st
   return (
     <div className="mb-4 pb-4 border-b border-gray-100">
       <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
-        Este pedido ficou sem transportadora definida (bug já corrigido para pedidos novos). Selecione uma opção abaixo para poder gerar a etiqueta.
+        Este pedido ainda não tem transportadora definida. Selecione uma opção abaixo para poder gerar a etiqueta.
       </p>
 
       {!options && (
