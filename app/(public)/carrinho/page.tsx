@@ -25,6 +25,7 @@ export default function CarrinhoPage() {
   const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discountType: "PERCENT" | "FIXED"; discountValue: number; ownerName: string; freeShipping?: boolean } | null>(null);
   const [cupomError, setCupomError] = useState("");
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
+  const [avisoEstoque, setAvisoEstoque] = useState<string[]>([]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -33,6 +34,39 @@ export default function CarrinhoPage() {
       .then((d: { isFirstPurchase: boolean }) => setIsFirstPurchase(d.isFirstPurchase))
       .catch(() => {});
   }, [status]);
+
+  // O carrinho fica salvo no navegador entre visitas — o estoque pode ter mudado
+  // (ou até esgotado) desde que os itens foram adicionados. Sem isso, a pessoa só
+  // descobre que faltou estoque no fim do checkout, depois de preencher tudo.
+  useEffect(() => {
+    if (items.length === 0) return;
+    const ids = [...new Set(items.map((i) => i.productId))];
+    Promise.all(
+      ids.map((id) => fetch(`/api/produtos/${id}`).then((r) => (r.ok ? r.json() : null)).catch(() => null))
+    ).then((produtos) => {
+      const estoqueMap = new Map(ids.map((id, i) => [id, produtos[i]]));
+      const ajustes: string[] = [];
+      for (const item of items) {
+        const produto = estoqueMap.get(item.productId);
+        if (!produto) continue; // produto removido do catálogo — checkout barra na hora de pagar
+        const variantes = (produto.variants as { color: string | null; size: string | null; stock: number }[]).filter(
+          (v) => (!item.color || v.color === item.color) && (!item.size || v.size === item.size)
+        );
+        const disponivel = variantes.reduce((s, v) => s + v.stock, 0);
+        if (item.quantity > disponivel) {
+          if (disponivel > 0) {
+            updateQuantity(item.id, disponivel);
+            ajustes.push(`${item.name}: quantidade ajustada para ${disponivel} (estoque disponível).`);
+          } else {
+            removeItem(item.id);
+            ajustes.push(`${item.name}: removido do carrinho (esgotado).`);
+          }
+        }
+      }
+      if (ajustes.length > 0) setAvisoEstoque(ajustes);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sub = subtotal();
   const temItemNaoElegivel = items.some((i) => i.cupomElegivel === false);
@@ -110,6 +144,15 @@ export default function CarrinhoPage() {
         Meu Carrinho
         <span className="text-base font-normal text-gray-400 ml-3">({items.length} {items.length === 1 ? "item" : "itens"})</span>
       </h1>
+
+      {avisoEstoque.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6">
+          <p className="font-bold text-amber-800 text-sm mb-1">Alguns itens foram ajustados</p>
+          {avisoEstoque.map((msg) => (
+            <p key={msg} className="text-xs text-amber-700">{msg}</p>
+          ))}
+        </div>
+      )}
 
       {isFirstPurchase && !cupomAplicado && (
         <div className="bg-brand-50 border border-brand-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
