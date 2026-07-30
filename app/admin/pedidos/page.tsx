@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, isManualSale } from "@/lib/utils";
 import { ChevronRight, Search, Plus } from "lucide-react";
 import { MarcarEnviadoButton } from "./MarcarEnviadoButton";
+import { VerificarPagamentosButton } from "./VerificarPagamentosButton";
 
 const STATUS_LIST = ["", "PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 const ORIGEM_LIST = [
@@ -62,9 +63,12 @@ export default async function AdminPedidosPage({
           <h1 className="text-2xl font-bold text-gray-900">Pedidos</h1>
           <p className="text-sm text-gray-500 mt-1">{orders.length} pedido{orders.length !== 1 ? "s" : ""}{status ? ` com status "${ORDER_STATUS_LABELS[status]}"` : ""}</p>
         </div>
-        <Link href="/admin/pedidos/nova" className="btn-primary gap-2 text-sm py-2.5">
-          <Plus size={16} /> Nova venda
-        </Link>
+        <div className="flex items-center gap-2">
+          <VerificarPagamentosButton />
+          <Link href="/admin/pedidos/nova" className="btn-primary gap-2 text-sm py-2.5">
+            <Plus size={16} /> Nova venda
+          </Link>
+        </div>
       </div>
 
       {/* Busca por produto, cliente ou telefone */}
