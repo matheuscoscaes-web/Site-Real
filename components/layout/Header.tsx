@@ -10,25 +10,22 @@ import {
   ShoppingBag, Search, User, Menu, X, Heart, ChevronDown, LogOut, Package, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ProductCategoryNode } from "@/lib/product-categories";
 
-const navLinks = [
-  { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
-  { label: "Mochilas", href: "/produtos?categoria=Mochilas" },
-  { label: "Bolsa Tira-Colo", href: "/produtos?categoria=Bolsa Tira-Colo" },
-  {
-    label: "Acessórios",
-    href: "/produtos?categoria=Acessórios",
-    children: [
-      { label: "Carteira Feminina", href: "/produtos?categoria=Carteira Feminina" },
-      { label: "Carteira Masculina", href: "/produtos?categoria=Carteira Masculina" },
-    ],
-  },
-  { label: "Novidades", href: "/produtos?novidades=true" },
-  { label: "Sale", href: "/produtos?sale=true", className: "text-brand-600 font-bold" },
-];
-
-export function Header() {
+export function Header({ categories }: { categories: ProductCategoryNode[] }) {
   const { data: session } = useSession();
+
+  const navLinks: { label: string; href: string; className?: string; children?: { label: string; href: string }[] }[] = [
+    ...categories.map((c) => ({
+      label: c.name,
+      href: `/produtos?categoria=${encodeURIComponent(c.name)}`,
+      children: c.children.length > 0
+        ? c.children.map((sub) => ({ label: sub.name, href: `/produtos?categoria=${encodeURIComponent(sub.name)}` }))
+        : undefined,
+    })),
+    { label: "Novidades", href: "/produtos?novidades=true" },
+    { label: "Sale", href: "/produtos?sale=true", className: "text-brand-600 font-bold" },
+  ];
   const totalItems = useCartStore((s) => s.totalItems);
   const wishlist = useWishlistStore((s) => s.items);
   const [mobileOpen, setMobileOpen] = useState(false);

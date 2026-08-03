@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsappFloatButton } from "@/components/layout/WhatsappFloatButton";
 import { WelcomeCouponPopup } from "@/components/layout/WelcomeCouponPopup";
+import { getProductCategoryTree } from "@/lib/product-categories";
 import { User, Package, MapPin, Settings, ChevronRight, Network } from "lucide-react";
 
 const baseNavItems = [
@@ -23,10 +24,11 @@ export default async function ContaLayout({ children }: { children: React.ReactN
   const navItems = showRede
     ? [...baseNavItems, { href: "/conta/rede", label: "Minha Rede", icon: Network, exact: false }]
     : baseNavItems;
+  const categories = await getProductCategoryTree();
 
   return (
     <>
-      <Header />
+      <Header categories={categories} />
       <main className="min-h-screen pt-[104px] bg-gray-50">
         <div className="container-main py-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: "Playfair Display, serif" }}>
@@ -58,7 +60,7 @@ export default async function ContaLayout({ children }: { children: React.ReactN
           </div>
         </div>
       </main>
-      <Footer />
+      <Footer categories={categories} />
       <WhatsappFloatButton />
       <WelcomeCouponPopup />
     </>

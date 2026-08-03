@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
+  { href: "/admin/categorias-produtos", label: "Categorias de Produto", icon: Tag },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingCart },
   { href: "/admin/clientes", label: "Clientes / CRM", icon: Users },
   { href: "/admin/vendedores", label: "Vendedores", icon: UserCheck },

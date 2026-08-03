@@ -2,13 +2,16 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsappFloatButton } from "@/components/layout/WhatsappFloatButton";
 import { WelcomeCouponPopup } from "@/components/layout/WelcomeCouponPopup";
+import { getProductCategoryTree } from "@/lib/product-categories";
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default async function PublicLayout({ children }: { children: React.ReactNode }) {
+  const categories = await getProductCategoryTree();
+
   return (
     <>
-      <Header />
+      <Header categories={categories} />
       <main className="min-h-screen pt-[104px]">{children}</main>
-      <Footer />
+      <Footer categories={categories} />
       <WhatsappFloatButton />
       <WelcomeCouponPopup />
     </>

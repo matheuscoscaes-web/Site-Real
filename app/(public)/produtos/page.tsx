@@ -1,7 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/products/ProductCard";
-import { CATEGORIES, SUBCATEGORIES, sortOutOfStockLast } from "@/lib/utils";
+import { sortOutOfStockLast } from "@/lib/utils";
+import { getProductCategoryTree } from "@/lib/product-categories";
 import { Filter } from "lucide-react";
 import { SortSelect } from "./SortSelect";
 import { FilterSidebar } from "./FilterSidebar";
@@ -16,7 +17,7 @@ interface SearchParams {
 }
 
 const getProducts = unstable_cache(
-  async (params: SearchParams) => {
+  async (params: SearchParams, subcategoryNames: string[]) => {
     const where: Record<string, unknown> = { active: true };
 
     if (params.categoria === "Bolsas") {
@@ -30,9 +31,9 @@ const getProducts = unstable_cache(
         },
       ];
       delete where.active;
-    } else if (params.categoria && SUBCATEGORIES[params.categoria]) {
+    } else if (params.categoria && subcategoryNames.length > 0) {
       // Categoria com seções (ex: Acessórios): inclui produtos marcados na categoria pai OU em alguma de suas seções.
-      where.categories = { hasSome: [params.categoria, ...SUBCATEGORIES[params.categoria]] };
+      where.categories = { hasSome: [params.categoria, ...subcategoryNames] };
     } else if (params.categoria) {
       where.categories = { has: params.categoria };
     }
@@ -65,7 +66,21 @@ export default async function ProdutosPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const products = sortOutOfStockLast(await getProducts(params));
+  const categoryTree = await getProductCategoryTree();
+
+  // Categoria pai ativa, mesmo quando o filtro atual é uma de suas seções (ex: "Carteira Feminina" -> "Acessórios")
+  const activeParent = params.categoria
+    ? categoryTree.find(
+        (p) => p.name === params.categoria || p.children.some((c) => c.name === params.categoria)
+      )
+    : undefined;
+
+  const products = sortOutOfStockLast(
+    await getProducts(
+      params,
+      activeParent && activeParent.name === params.categoria ? activeParent.children.map((c) => c.name) : []
+    )
+  );
 
   const title = params.categoria
     ? params.categoria
@@ -89,13 +104,6 @@ export default async function ProdutosPage({
     return `/produtos${query ? "?" + query : ""}`;
   }
 
-  // Categoria pai ativa, mesmo quando o filtro atual é uma de suas seções (ex: "Carteira Feminina" -> "Acessórios")
-  const activeParentCategory = params.categoria
-    ? Object.keys(SUBCATEGORIES).find(
-        (parent) => parent === params.categoria || SUBCATEGORIES[parent].includes(params.categoria!)
-      )
-    : undefined;
-
   return (
     <div className="container-main py-8">
       {/* Breadcrumb */}
@@ -109,18 +117,18 @@ export default async function ProdutosPage({
         <FilterSidebar
           categories={[
             { label: "Todos", href: buildUrl({ categoria: undefined }), active: !params.categoria },
-            ...CATEGORIES.map((cat) => ({
-              label: cat,
-              href: buildUrl({ categoria: cat }),
-              active: params.categoria === cat || activeParentCategory === cat,
+            ...categoryTree.map((cat) => ({
+              label: cat.name,
+              href: buildUrl({ categoria: cat.name }),
+              active: params.categoria === cat.name || activeParent?.name === cat.name,
             })),
           ]}
           subcategories={
-            activeParentCategory
-              ? SUBCATEGORIES[activeParentCategory].map((sub) => ({
-                  label: sub,
-                  href: buildUrl({ categoria: sub }),
-                  active: params.categoria === sub,
+            activeParent && activeParent.children.length > 0
+              ? activeParent.children.map((sub) => ({
+                  label: sub.name,
+                  href: buildUrl({ categoria: sub.name }),
+                  active: params.categoria === sub.name,
                 }))
               : undefined
           }

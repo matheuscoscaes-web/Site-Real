@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import Image from "next/image";
 import { formatCurrency, parseProductImages } from "@/lib/utils";
+import { getProductCategoryTree } from "@/lib/product-categories";
 import { Plus, Edit, AlertTriangle } from "lucide-react";
 import { DeleteProductButton } from "./DeleteProductButton";
 import { ToggleActiveButton } from "./ToggleActiveButton";
@@ -17,14 +18,17 @@ export default async function AdminProdutosPage({
   if (params.categoria) where.categories = { has: params.categoria };
   if (params.busca) where.name = { contains: params.busca };
 
-  const products = await prisma.product.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { orderItems: true } },
-      variants: true,
-    },
-  });
+  const [products, categoryTree] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { orderItems: true } },
+        variants: true,
+      },
+    }),
+    getProductCategoryTree(),
+  ]);
 
   const stockOf = (p: (typeof products)[number]) => p.variants.reduce((s, v) => s + v.stock, 0);
 
@@ -66,9 +70,18 @@ export default async function AdminProdutosPage({
             <label className="label text-xs">Categoria</label>
             <select name="categoria" defaultValue={params.categoria} className="input-field py-2 text-sm">
               <option value="">Todas</option>
-              <option value="Bolsas">Bolsas</option>
-              <option value="Mochilas">Mochilas</option>
-              <option value="Bolsa Tira-Colo">Bolsa Tira-Colo</option>
+              {categoryTree.map((c) =>
+                c.children.length > 0 ? (
+                  <optgroup key={c.id} label={c.name}>
+                    <option value={c.name}>{c.name}</option>
+                    {c.children.map((sub) => (
+                      <option key={sub.id} value={sub.name}>{sub.name}</option>
+                    ))}
+                  </optgroup>
+                ) : (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                )
+              )}
             </select>
           </div>
           <button type="submit" className="btn-primary py-2.5 text-sm">Filtrar</button>

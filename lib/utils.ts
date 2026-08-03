@@ -123,8 +123,6 @@ export function hasRealEmail(email: string): boolean {
   return !email.endsWith(PLACEHOLDER_EMAIL_DOMAIN);
 }
 
-export const CATEGORIES = ["Bolsas", "Mochilas", "Bolsa Tira-Colo", "Acessórios"];
-
 /** Categoria que nunca recebe desconto de cupom, independente do produto. */
 export const COUPON_EXCLUDED_CATEGORY = "Acessórios";
 
@@ -133,10 +131,6 @@ export function isCupomElegivel(categories: string[], permiteCupom?: boolean | n
   return permiteCupom !== false && !categories.includes(COUPON_EXCLUDED_CATEGORY);
 }
 
-/** Subcategorias exibidas como seções dentro de uma categoria pai (ex: menu, sidebar de filtros). */
-export const SUBCATEGORIES: Record<string, string[]> = {
-  "Acessórios": ["Carteira Feminina", "Carteira Masculina"],
-};
 export const SIZES = ["PP", "P", "M", "G", "GG", "36", "38", "40", "42", "44"];
 export const COLORS = [
   "Preto", "Branco", "Off-White", "Bege", "Caramel", "Marrom",

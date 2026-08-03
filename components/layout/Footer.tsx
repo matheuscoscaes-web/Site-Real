@@ -3,8 +3,18 @@
 import Link from "next/link";
 import { Instagram, Facebook, Youtube, Mail, Phone, MapPin, Heart } from "lucide-react";
 import { WhatsappLeadForm } from "@/components/layout/WhatsappLeadForm";
+import type { ProductCategoryNode } from "@/lib/product-categories";
 
-export function Footer() {
+export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
+  const lojaLinks = [
+    ...categories.flatMap((c) => [
+      { label: c.name, href: `/produtos?categoria=${encodeURIComponent(c.name)}` },
+      ...c.children.map((sub) => ({ label: sub.name, href: `/produtos?categoria=${encodeURIComponent(sub.name)}` })),
+    ]),
+    { label: "Novidades", href: "/produtos?novidades=true" },
+    { label: "Sale", href: "/produtos?sale=true" },
+  ];
+
   return (
     <footer className="bg-gray-950 text-gray-300">
       {/* Grupo VIP WhatsApp */}
@@ -51,15 +61,7 @@ export function Footer() {
             <div>
               <h4 className="text-white font-semibold mb-4 text-xs sm:text-sm uppercase tracking-wider">Loja</h4>
               <ul className="space-y-2 text-xs sm:text-sm">
-                {[
-                  { label: "Bolsas", href: "/produtos?categoria=Bolsas" },
-                  { label: "Mochilas Feminino", href: "/produtos?categoria=Mochilas" },
-                  { label: "Bolsa Tira-Colo", href: "/produtos?categoria=Bolsa Tira-Colo" },
-                  { label: "Carteira Feminina", href: "/produtos?categoria=Carteira Feminina" },
-                  { label: "Carteira Masculina", href: "/produtos?categoria=Carteira Masculina" },
-                  { label: "Novidades", href: "/produtos?novidades=true" },
-                  { label: "Sale", href: "/produtos?sale=true" },
-                ].map((l) => (
+                {lojaLinks.map((l) => (
                   <li key={l.href}>
                     <Link href={l.href} className="hover:text-brand-400 transition-colors">{l.label}</Link>
                   </li>

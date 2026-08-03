@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { slugify, CATEGORIES, SUBCATEGORIES, COLORS, SIZES, COUPON_EXCLUDED_CATEGORY, getMaxInstallments } from "@/lib/utils";
+import { slugify, COLORS, SIZES, COUPON_EXCLUDED_CATEGORY, getMaxInstallments } from "@/lib/utils";
+import type { ProductCategoryNode } from "@/lib/product-categories";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
   ChevronUp, ChevronDown, Package, Info, Star, Upload, Video, Images,
@@ -55,7 +56,7 @@ function Section({ title, icon: Icon, children, defaultOpen = true }: {
   );
 }
 
-export function ProductForm({ product }: { product?: ProductData }) {
+export function ProductForm({ product, categoryTree }: { product?: ProductData; categoryTree: ProductCategoryNode[] }) {
   const router = useRouter();
   const isEdit = !!product?.id;
 
@@ -131,7 +132,11 @@ export function ProductForm({ product }: { product?: ProductData }) {
   });
 
   const [categories, setCategories] = useState<string[]>(
-    product?.categories && product.categories.length > 0 ? product.categories : [CATEGORIES[0]]
+    product?.categories && product.categories.length > 0
+      ? product.categories
+      : categoryTree[0]
+      ? [categoryTree[0].name]
+      : []
   );
   const [rows, setRows] = useState<Row[]>(buildInitialRows());
   const [loading, setLoading] = useState(false);
@@ -445,38 +450,38 @@ export function ProductForm({ product }: { product?: ProductData }) {
               <label className="label">Categorias *</label>
               <p className="text-xs text-gray-400 -mt-0.5 mb-1.5">Pode marcar mais de uma.</p>
               <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((c) => {
-                  const checked = categories.includes(c);
+                {categoryTree.map((c) => {
+                  const checked = categories.includes(c.name);
                   return (
                     <label
-                      key={c}
+                      key={c.id}
                       className={`px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer transition-colors ${
                         checked ? "bg-brand-700 border-brand-700 text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
                     >
-                      <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleCategory(c)} />
-                      {c}
+                      <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleCategory(c.name)} />
+                      {c.name}
                     </label>
                   );
                 })}
               </div>
 
               {/* Subcategorias — só aparecem quando a categoria pai está marcada */}
-              {CATEGORIES.filter((c) => categories.includes(c) && SUBCATEGORIES[c]).map((c) => (
-                <div key={c} className="mt-3 pl-3 border-l-2 border-gray-100">
-                  <p className="text-xs text-gray-400 mb-1.5">Seção de {c}</p>
+              {categoryTree.filter((c) => categories.includes(c.name) && c.children.length > 0).map((c) => (
+                <div key={c.id} className="mt-3 pl-3 border-l-2 border-gray-100">
+                  <p className="text-xs text-gray-400 mb-1.5">Seção de {c.name}</p>
                   <div className="flex flex-wrap gap-2">
-                    {SUBCATEGORIES[c].map((sub) => {
-                      const checked = categories.includes(sub);
+                    {c.children.map((sub) => {
+                      const checked = categories.includes(sub.name);
                       return (
                         <label
-                          key={sub}
+                          key={sub.id}
                           className={`px-3 py-1.5 rounded-lg border text-sm font-medium cursor-pointer transition-colors ${
                             checked ? "bg-brand-700 border-brand-700 text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                           }`}
                         >
-                          <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleCategory(sub)} />
-                          {sub}
+                          <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleCategory(sub.name)} />
+                          {sub.name}
                         </label>
                       );
                     })}
