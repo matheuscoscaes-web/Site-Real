@@ -1,12 +1,10 @@
 export function WhatsappFloatButton() {
-  const message = encodeURIComponent("Olá! Vim do site da Hearts Couro e gostaria de mais informações.");
-
   return (
     <a
-      href={`https://wa.me/5521974961669?text=${message}`}
+      href="https://chat.whatsapp.com/CM2CTpnNOp6IsQZk0MUzCT?mode=gi_t"
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Falar no WhatsApp"
+      aria-label="Entrar no grupo do WhatsApp"
       className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-[#25D366] shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
     >
       <svg viewBox="0 0 24 24" fill="white" className="w-8 h-8" aria-hidden="true">
