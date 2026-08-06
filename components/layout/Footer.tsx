@@ -19,12 +19,25 @@ export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
     <footer className="bg-gray-950 text-gray-300">
       {/* Grupo VIP WhatsApp */}
       <div className="bg-brand-700 py-12">
-        <div className="container-main text-center">
-          <h3 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "Playfair Display, serif" }}>
-            Entre no nosso Grupo VIP do WhatsApp
-          </h3>
-          <p className="text-brand-100 mb-6 text-sm">Promoções exclusivas, lançamentos em primeira mão e ofertas especiais só para membros VIP</p>
-          <WhatsappLeadForm />
+        <div className="container-main flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 text-center">
+          <div>
+            <h3 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "Playfair Display, serif" }}>
+              Entre no nosso Grupo VIP do WhatsApp
+            </h3>
+            <p className="text-brand-100 mb-6 text-sm">Promoções exclusivas, lançamentos em primeira mão e ofertas especiais só para membros VIP</p>
+            <WhatsappLeadForm />
+          </div>
+          <div className="lg:border-l lg:border-brand-500 lg:pl-12 lg:self-stretch lg:flex lg:flex-col lg:justify-center">
+            <p className="text-brand-100 mb-3 text-sm">Quer vender nossos produtos?</p>
+            <a
+              href="https://wa.me/5521974961669?text=Ol%C3%A1!%20Quero%20virar%20revendedor%20Hearts%20Couro."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-white text-brand-700 font-bold px-6 py-3 rounded-full hover:bg-brand-50 transition-colors text-sm whitespace-nowrap"
+            >
+              Quero virar revendedor
+            </a>
+          </div>
         </div>
       </div>
 
@@ -127,7 +140,7 @@ export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
               <div className="mt-5 p-3 bg-gray-900 rounded-xl">
                 <p className="text-xs text-gray-400 mb-1 font-medium">Atendimento</p>
                 <p className="text-xs text-gray-500">Seg–Sex: 9h às 18h</p>
-                <p className="text-xs text-gray-500">Sáb: 9h às 13h</p>
+                <p className="text-xs text-gray-500">Sáb: 9h às 16h</p>
               </div>
             </div>
           </div>

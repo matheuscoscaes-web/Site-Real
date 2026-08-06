@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { FinanceiroCharts } from "./FinanceiroCharts";
 import { TrendingUp, ShoppingCart, Users, Package, Download } from "lucide-react";
+import { WELCOME_COUPON_CODE } from "@/lib/coupons";
+
+const WELCOME_COUPON_FLAT_DEDUCTION = 15;
 
 const getFinanceiroData = unstable_cache(
   async () => {
@@ -12,6 +15,7 @@ const getFinanceiroData = unstable_cache(
       status: true,
       total: true,
       shipping: true,
+      couponCode: true,
       createdAt: true,
       items: {
         select: {
@@ -26,7 +30,12 @@ const getFinanceiroData = unstable_cache(
 
   const paidOrders = orders.filter((o) => !["CANCELLED", "PENDING"].includes(o.status));
 
-  const totalRevenue = paidOrders.reduce((s, o) => s + o.total, 0);
+  // Pedidos com o cupom de boas-vindas contam receita com deducao fixa de R$15
+  // em vez do total real, a pedido do usuario (2026-07-31).
+  const revenueOf = (o: { total: number; couponCode: string | null }) =>
+    o.couponCode === WELCOME_COUPON_CODE ? Math.max(0, o.total - WELCOME_COUPON_FLAT_DEDUCTION) : o.total;
+
+  const totalRevenue = paidOrders.reduce((s, o) => s + revenueOf(o), 0);
   const totalShipping = paidOrders.reduce((s, o) => s + o.shipping, 0);
   const estimatedNet = totalRevenue * 0.75; // estimativa com 25% de custos
   const avgTicket = paidOrders.length > 0 ? totalRevenue / paidOrders.length : 0;
@@ -44,7 +53,7 @@ const getFinanceiroData = unstable_cache(
     });
     return {
       label,
-      revenue: monthOrders.reduce((s, o) => s + o.total, 0),
+      revenue: monthOrders.reduce((s, o) => s + revenueOf(o), 0),
       orders: monthOrders.length,
     };
   });
