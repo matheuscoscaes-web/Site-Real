@@ -58,6 +58,55 @@ const getFinanceiroData = unstable_cache(
     };
   });
 
+  // Faturamento por quinzena (ultimas 12 = ~6 meses). Dia 1-15 = 1a quinzena,
+  // 16-fim do mes = 2a. Datas no fuso de Sao Paulo pra pedido feito perto da
+  // meia-noite nao cair na quinzena errada (servidor roda em UTC).
+  const spDate = (d: Date) => {
+    const [y, m, day] = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .format(d)
+      .split("-")
+      .map(Number);
+    return { y, m, day };
+  };
+  const fortnightKey = (d: Date) => {
+    const { y, m, day } = spDate(d);
+    return y * 24 + (m - 1) * 2 + (day > 15 ? 1 : 0);
+  };
+  const currentFortnight = fortnightKey(now);
+  const fortnightBuckets = new Map<number, typeof paidOrders>();
+  for (const o of paidOrders) {
+    const key = fortnightKey(new Date(o.createdAt));
+    if (key < currentFortnight - 11) continue;
+    if (!fortnightBuckets.has(key)) fortnightBuckets.set(key, []);
+    fortnightBuckets.get(key)!.push(o);
+  }
+  const fortnightData = Array.from({ length: 12 }, (_, i) => {
+    const key = currentFortnight - 11 + i;
+    const y = Math.floor(key / 24);
+    const m = Math.floor((key % 24) / 2) + 1;
+    const half = key % 2;
+    const lastDay = new Date(y, m, 0).getDate();
+    const mm = String(m).padStart(2, "0");
+    const monthLabel = new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+    const list = fortnightBuckets.get(key) ?? [];
+    const revenue = list.reduce((s, o) => s + revenueOf(o), 0);
+    return {
+      label: `${half === 0 ? "1ª" : "2ª"} ${monthLabel}`,
+      range: half === 0 ? `01/${mm} a 15/${mm}` : `16/${mm} a ${lastDay}/${mm}`,
+      current: key === currentFortnight,
+      revenue,
+      net: revenue * 0.75,
+      shipping: list.reduce((s, o) => s + o.shipping, 0),
+      orders: list.length,
+      avgTicket: list.length > 0 ? revenue / list.length : 0,
+    };
+  });
+
   // Produtos mais vendidos
   const productSales: Record<string, { name: string; categories: string[]; qty: number; revenue: number }> = {};
   for (const order of paidOrders) {
@@ -101,6 +150,7 @@ const getFinanceiroData = unstable_cache(
     totalOrders,
     totalCustomers,
     monthlyData,
+    fortnightData,
     topProducts,
     categoryData,
     statusData,
@@ -149,7 +199,62 @@ export default async function FinanceiroPage() {
       </div>
 
       {/* Gráficos */}
-      <FinanceiroCharts monthlyData={data.monthlyData} categoryData={data.categoryData} />
+      <FinanceiroCharts monthlyData={data.monthlyData} fortnightData={data.fortnightData} categoryData={data.categoryData} />
+
+      {/* Resultado por quinzena */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mt-6">
+        <div className="p-5 border-b border-gray-100">
+          <h2 className="font-bold text-gray-900">Resultado por quinzena</h2>
+          <p className="text-xs text-gray-400 mt-0.5">1ª quinzena: dia 1 a 15 · 2ª quinzena: dia 16 ao fim do mês</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quinzena</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pedidos</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Receita Bruta</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Líquida (est.)</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Ticket Médio</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Frete</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">vs anterior</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {[...data.fortnightData].reverse().map((f, i, arr) => {
+                const prev = arr[i + 1];
+                const diff = prev && prev.revenue > 0 ? ((f.revenue - prev.revenue) / prev.revenue) * 100 : null;
+                return (
+                  <tr key={f.label} className={f.current ? "bg-brand-50/50" : "hover:bg-gray-50 transition-colors"}>
+                    <td className="px-5 py-3">
+                      <p className="text-sm font-medium text-gray-900">
+                        {f.label}
+                        {f.current && <span className="ml-2 badge bg-brand-100 text-brand-700 text-xs">em andamento</span>}
+                      </p>
+                      <p className="text-xs text-gray-400">{f.range}</p>
+                    </td>
+                    <td className="px-5 py-3 text-sm font-semibold text-gray-900">{f.orders}</td>
+                    <td className="px-5 py-3 text-sm font-bold text-gray-900">{formatCurrency(f.revenue)}</td>
+                    <td className="px-5 py-3 text-sm text-gray-700 hidden sm:table-cell">{formatCurrency(f.net)}</td>
+                    <td className="px-5 py-3 text-sm text-gray-700 hidden md:table-cell">{formatCurrency(f.avgTicket)}</td>
+                    <td className="px-5 py-3 text-sm text-gray-700 hidden md:table-cell">{formatCurrency(f.shipping)}</td>
+                    <td className="px-5 py-3 text-sm font-semibold">
+                      {diff === null ? (
+                        <span className="text-gray-300">—</span>
+                      ) : (
+                        <span className={diff >= 0 ? "text-green-600" : "text-red-500"}>
+                          {diff >= 0 ? "+" : ""}
+                          {diff.toFixed(0)}%
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Top produtos */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mt-6">

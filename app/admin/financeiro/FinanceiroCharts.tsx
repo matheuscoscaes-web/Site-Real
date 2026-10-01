@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/utils";
 
 interface Props {
   monthlyData: { label: string; revenue: number; orders: number }[];
+  fortnightData: { label: string; revenue: number; orders: number }[];
   categoryData: { name: string; value: number }[];
 }
 
@@ -15,7 +16,7 @@ const COLORS = ["#be185d", "#7c3aed", "#2563eb", "#d97706", "#059669"];
 
 const currencyFormatter = (v: number) => formatCurrency(v);
 
-export function FinanceiroCharts({ monthlyData, categoryData }: Props) {
+export function FinanceiroCharts({ monthlyData, fortnightData, categoryData }: Props) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Faturamento mensal */}
@@ -62,6 +63,24 @@ export function FinanceiroCharts({ monthlyData, categoryData }: Props) {
             </PieChart>
           </ResponsiveContainer>
         )}
+      </div>
+
+      {/* Faturamento quinzenal */}
+      <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 className="font-bold text-gray-900 mb-5">Faturamento quinzenal</h2>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={fortnightData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+            <Tooltip
+              formatter={(v) => [formatCurrency(v as number), "Receita"]}
+              contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+              labelStyle={{ fontWeight: "bold", color: "#111827" }}
+            />
+            <Bar dataKey="revenue" fill="#7c3aed" radius={[6, 6, 0, 0]} name="Receita" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Pedidos por mês */}
