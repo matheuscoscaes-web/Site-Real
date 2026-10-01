@@ -1,14 +1,19 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ChevronRight, Users } from "lucide-react";
 
+// So vendas pagas contam (mesma regra do Financeiro): aguardando pagamento e
+// canceladas ficam de fora do total gasto, da contagem e do ranking.
+const PAID_ORDERS: Prisma.OrderWhereInput = { status: { notIn: ["CANCELLED", "PENDING"] } };
+
 export default async function AdminClientesPage() {
   const customers = await prisma.user.findMany({
     where: { role: "CUSTOMER" },
     include: {
-      orders: { select: { total: true, createdAt: true } },
-      _count: { select: { orders: true } },
+      orders: { where: PAID_ORDERS, select: { total: true, createdAt: true } },
+      _count: { select: { orders: { where: PAID_ORDERS } } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -19,7 +24,10 @@ export default async function AdminClientesPage() {
     lastOrder: c.orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null,
   }));
 
-  const topCustomers = [...enriched].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 3);
+  const topCustomers = enriched
+    .filter((c) => c.totalSpent > 0)
+    .sort((a, b) => b.totalSpent - a.totalSpent)
+    .slice(0, 3);
 
   return (
     <div>
@@ -36,12 +44,12 @@ export default async function AdminClientesPage() {
               <span className="w-7 h-7 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center">
                 {i + 1}°
               </span>
-              <span className="text-xs text-gray-400">Top cliente</span>
+              <span className="text-xs text-gray-400">Top cliente · só vendas pagas</span>
             </div>
             <p className="font-bold text-gray-900 truncate">{c.name}</p>
             <p className="text-xs text-gray-500 mt-0.5 truncate">{c.email}</p>
             <p className="text-lg font-bold text-brand-700 mt-2">{formatCurrency(c.totalSpent)}</p>
-            <p className="text-xs text-gray-400">{c._count.orders} pedidos</p>
+            <p className="text-xs text-gray-400">{c._count.orders} pedido{c._count.orders !== 1 ? "s" : ""} pago{c._count.orders !== 1 ? "s" : ""}</p>
           </Link>
         ))}
       </div>

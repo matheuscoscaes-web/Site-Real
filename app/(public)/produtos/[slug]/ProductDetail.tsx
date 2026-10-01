@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
+import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
-import { formatCurrency, parseProductImages, isCupomElegivel, getMaxInstallments } from "@/lib/utils";
-import { ShoppingBag, Truck, Shield, RefreshCw, Star, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { formatCurrency, parseProductImages, isCupomElegivel, getMaxInstallments, sortSizes } from "@/lib/utils";
+import { ShoppingBag, Truck, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
 
@@ -16,7 +18,8 @@ interface ProductWithVariants extends Product {
 export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const addItem = useCartStore((s) => s.addItem);
   const toggleWishlist = useWishlistStore((s) => s.toggle);
-  const liked = useWishlistStore((s) => s.items.some((i) => i.productId === product.id));
+  const mounted = useMounted();
+  const liked = useWishlistStore((s) => s.items.some((i) => i.productId === product.id)) && mounted;
 
   const images = parseProductImages(product.images);
 
@@ -29,11 +32,26 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])].sort(
     (a, b) => Number(colorStockMap.get(a) === 0) - Number(colorStockMap.get(b) === 0)
   );
-  const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean) as string[])];
+  // Numeração/tamanhos de cada cor, com o estoque de cada um. Cada cor pode ter
+  // uma grade diferente (ex: o preto vai do 33 ao 40 e o caramelo só até o 38).
+  const sizesFor = (color: string) => {
+    const vs = product.variants.filter((v) => v.size && (!color || v.color === color));
+    return sortSizes([...new Set(vs.map((v) => v.size as string))]).map((size) => ({
+      size,
+      stock: vs.filter((v) => v.size === size).reduce((s, v) => s + v.stock, 0),
+    }));
+  };
+  const firstAvailableSize = (color: string) => {
+    const list = sizesFor(color);
+    return (list.find((s) => s.stock > 0) ?? list[0])?.size ?? "";
+  };
+  const isNumbered = product.variants.some((v) => v.size && /^\d/.test(v.size));
+  const sizeLabel = isNumbered ? "Numeração" : "Tamanho";
 
   const [selectedImage, setSelectedImage] = useState<number | "video">(0);
   const [selectedColor, setSelectedColor] = useState(colors[0] || "");
-  const [selectedSize, setSelectedSize] = useState(sizes[0] || "");
+  const [selectedSize, setSelectedSize] = useState(() => firstAvailableSize(colors[0] || ""));
+  const sizes = sizesFor(selectedColor);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -45,6 +63,9 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     setSelectedColor(color);
     setSelectedImage(0);
     setQuantity(1);
+    // Mantém o número escolhido se a nova cor tiver ele em estoque; senão pula pro primeiro disponível
+    const keep = sizesFor(color).find((s) => s.size === selectedSize && s.stock > 0);
+    if (!keep) setSelectedSize(firstAvailableSize(color));
   }
 
   function handleSizeSelect(size: string) {
@@ -52,25 +73,43 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     setQuantity(1);
   }
 
-  function nextImage() {
-    setSelectedImage((i) => (i === "video" ? 0 : (i + 1) % displayImages.length));
-  }
-  function prevImage() {
-    setSelectedImage((i) => (i === "video" ? 0 : (i - 1 + displayImages.length) % displayImages.length));
+  // Galeria: faixa com rolagem horizontal e encaixe nativo, a foto acompanha o
+  // dedo. O video (se houver) e o ultimo slide.
+  const slideCount = displayImages.length + (product.video ? 1 : 0);
+  const videoIndex = product.video ? displayImages.length : -1;
+  const activeIndex = selectedImage === "video" ? videoIndex : selectedImage;
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  function goTo(i: number) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const target = (i + slideCount) % slideCount;
+    el.scrollTo({ left: target * el.clientWidth, behavior: "smooth" });
   }
 
-  const touchStartX = useRef<number | null>(null);
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX;
+  function handleScroll() {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    const next = i === videoIndex ? "video" : i;
+    if (next !== selectedImage) setSelectedImage(next);
   }
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null || displayImages.length <= 1) return;
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(delta) > 40) {
-      if (delta < 0) nextImage(); else prevImage();
-    }
-    touchStartX.current = null;
-  }
+
+  // Trocou de cor: volta pra primeira foto sem animacao
+  useEffect(() => {
+    scrollerRef.current?.scrollTo({ left: 0 });
+  }, [selectedColor]);
+
+  // Barra de compra fixa no mobile quando o botao principal sai da tela
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const [ctaVisible, setCtaVisible] = useState(true);
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => setCtaVisible(entry.isIntersecting || entry.boundingClientRect.top > window.innerHeight));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   function handleAddToCart() {
     addItem({
@@ -107,53 +146,64 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     : selectedVariants.reduce((s, v) => s + v.stock, 0);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-16">
       {/* Galeria */}
-      <div className="space-y-3">
-        <div
-          className="relative overflow-hidden rounded-2xl bg-gray-50 aspect-square touch-pan-y"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          {selectedImage === "video" && product.video ? (
-            <video src={product.video} controls autoPlay className="w-full h-full object-cover" />
-          ) : (
-            <Image
-              src={displayImages[selectedImage as number]?.url || images[0]?.url || ""}
-              alt={product.name}
-              fill
-              className="object-cover"
-              priority
-            />
-          )}
+      <div className="space-y-3 -mx-4 sm:mx-0">
+        <div className="relative group/gallery sm:rounded-3xl overflow-hidden bg-cream-50 aspect-square">
+          <div ref={scrollerRef} onScroll={handleScroll} className="snap-row h-full w-full">
+            {displayImages.map((img, i) => (
+              <div key={img.url + i} className="relative w-full h-full">
+                <Image
+                  src={img.url}
+                  alt={`${product.name}${img.color ? ` - ${img.color}` : ""} ${i + 1}`}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
+                  priority={i === 0}
+                />
+              </div>
+            ))}
+            {product.video && (
+              <div className="relative w-full h-full bg-black">
+                {selectedImage === "video" ? (
+                  <video src={product.video} controls autoPlay playsInline className="w-full h-full object-contain" />
+                ) : (
+                  <button onClick={() => setSelectedImage("video")} className="w-full h-full flex items-center justify-center" aria-label="Ver vídeo">
+                    <PlayCircle size={56} className="text-white/90" strokeWidth={1.25} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <button
             onClick={() => toggleWishlist({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0]?.url || "" })}
-            className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+            aria-label={liked ? "Remover dos favoritos" : "Favoritar"}
+            className="absolute top-4 right-4 w-11 h-11 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-md active:scale-90 hover:scale-110 transition-transform"
           >
-            <Heart size={18} className={liked ? "fill-brand-700 text-brand-700" : "text-gray-400"} />
+            <Heart size={19} className={liked ? "fill-brand-700 text-brand-700" : "text-gray-500"} />
           </button>
-          {selectedImage !== "video" && displayImages.length > 1 && (
+          {slideCount > 1 && (
             <>
               <button
-                onClick={prevImage}
+                onClick={() => goTo(activeIndex - 1)}
                 aria-label="Foto anterior"
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
+                className="hidden [@media(hover:hover)]:flex absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/90 backdrop-blur rounded-full items-center justify-center shadow-md opacity-0 group-hover/gallery:opacity-100 transition-opacity"
               >
-                <ChevronLeft size={20} className="text-gray-700" />
+                <ChevronLeft size={20} className="text-gray-800" />
               </button>
               <button
-                onClick={nextImage}
+                onClick={() => goTo(activeIndex + 1)}
                 aria-label="Próxima foto"
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center shadow-md hover:bg-white transition-colors"
+                className="hidden [@media(hover:hover)]:flex absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/90 backdrop-blur rounded-full items-center justify-center shadow-md opacity-0 group-hover/gallery:opacity-100 transition-opacity"
               >
-                <ChevronRight size={20} className="text-gray-700" />
+                <ChevronRight size={20} className="text-gray-800" />
               </button>
-              <div className="absolute bottom-3 inset-x-0 flex items-center justify-center gap-1.5">
-                {displayImages.map((_, i) => (
+              <div className="absolute bottom-4 inset-x-0 flex items-center justify-center gap-1.5 pointer-events-none">
+                {Array.from({ length: slideCount }, (_, i) => (
                   <span
                     key={i}
-                    className={`h-1.5 rounded-full transition-all ${
-                      selectedImage === i ? "w-4 bg-white" : "w-1.5 bg-white/60"
+                    className={`h-1.5 rounded-full shadow-sm transition-all duration-300 ${
+                      activeIndex === i ? "w-5 bg-white" : "w-1.5 bg-white/60"
                     }`}
                   />
                 ))}
@@ -161,14 +211,15 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
             </>
           )}
         </div>
-        {(displayImages.length > 1 || product.video) && (
-          <div className="grid grid-cols-4 gap-2">
+        {slideCount > 1 && (
+          <div className="snap-row gap-2 px-4 py-1 scroll-px-4 sm:px-1 sm:scroll-px-1">
             {displayImages.map((img, i) => (
               <button
                 key={i}
-                onClick={() => setSelectedImage(i)}
-                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                  selectedImage === i ? "border-brand-600" : "border-transparent hover:border-gray-300"
+                onClick={() => goTo(i)}
+                aria-label={`Ver foto ${i + 1}`}
+                className={`relative w-[18%] sm:w-[calc(20%-0.4rem)] aspect-square rounded-xl overflow-hidden ring-2 ring-offset-2 transition-all ${
+                  activeIndex === i ? "ring-brand-600" : "ring-transparent opacity-70 hover:opacity-100"
                 }`}
               >
                 <Image src={img.url} alt={img.color || `${product.name} ${i + 1}`} fill sizes="100px" className="object-cover" />
@@ -181,9 +232,10 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
             ))}
             {product.video && (
               <button
-                onClick={() => setSelectedImage("video")}
-                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all bg-black ${
-                  selectedImage === "video" ? "border-brand-600" : "border-transparent hover:border-gray-300"
+                onClick={() => goTo(videoIndex)}
+                aria-label="Ver vídeo"
+                className={`relative w-[18%] sm:w-[calc(20%-0.4rem)] aspect-square rounded-xl overflow-hidden ring-2 ring-offset-2 transition-all bg-black ${
+                  selectedImage === "video" ? "ring-brand-600" : "ring-transparent opacity-70 hover:opacity-100"
                 }`}
               >
                 <video src={product.video} className="w-full h-full object-cover opacity-70" muted />
@@ -195,9 +247,9 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
       </div>
 
       {/* Info */}
-      <div>
-        <span className="text-xs text-brand-600 font-semibold uppercase tracking-wider">{product.categories.join(" · ")}</span>
-        <h1 className="text-3xl font-bold text-gray-900 mt-1 mb-3" style={{ fontFamily: "Playfair Display, serif" }}>
+      <div className="lg:sticky lg:top-28 lg:self-start">
+        <span className="eyebrow">{product.categories.join(" · ")}</span>
+        <h1 className="text-[1.9rem] md:text-4xl leading-tight font-bold text-gray-900 mt-2 mb-3">
           {product.name}
         </h1>
 
@@ -207,11 +259,11 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
         </div>
 
         {/* Preço */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-2xl">
-          <div className="flex items-baseline gap-3">
+        <div className="mb-6 p-5 bg-cream-50 rounded-2xl">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="text-3xl font-bold text-gray-900">{formatCurrency(product.price)}</span>
             <span className="text-lg text-gray-400 line-through">{formatCurrency(product.price * 1.2)}</span>
-            <span className="text-sm bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">17% off</span>
+            <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap self-center">17% off</span>
           </div>
           <p className="text-sm text-gray-500 mt-1">
             ou <strong>{maxInstallments}x de {formatCurrency(installment)}</strong> sem juros no cartão
@@ -239,7 +291,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
                   <button
                     key={color}
                     onClick={() => handleColorSelect(color)}
-                    className={`px-4 py-2 rounded-full text-sm border-2 transition-all ${
+                    className={`px-4 py-2.5 rounded-full text-sm border-2 transition-all active:scale-95 ${
                       selectedColor === color
                         ? "border-brand-600 bg-brand-50 text-brand-700 font-semibold"
                         : outOfStock
@@ -255,24 +307,32 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
           </div>
         )}
 
-        {/* Tamanhos */}
+        {/* Numeração / tamanhos da cor escolhida */}
         {sizes.length > 0 && (
           <div className="mb-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-gray-700">
-                Tamanho: <span className="font-normal text-gray-600">{selectedSize}</span>
-              </p>
-              <button className="text-xs text-brand-600 underline">Guia de tamanhos</button>
-            </div>
+            <p className="text-sm font-semibold text-gray-700 mb-2">
+              {sizeLabel}: <span className="font-normal text-gray-600">{selectedSize || "escolha"}</span>
+              {selectedSize && availableStock > 0 && availableStock <= 3 && (
+                <span className="text-xs ml-2 text-orange-600 font-medium">
+                  {availableStock === 1 ? "última unidade!" : `últimas ${availableStock} unidades`}
+                </span>
+              )}
+            </p>
             <div className="flex flex-wrap gap-2">
-              {sizes.map((size) => (
+              {sizes.map(({ size, stock }) => (
                 <button
                   key={size}
-                  onClick={() => handleSizeSelect(size)}
-                  className={`w-12 h-12 rounded-xl text-sm border-2 transition-all font-medium ${
+                  onClick={() => stock > 0 && handleSizeSelect(size)}
+                  disabled={stock === 0}
+                  aria-pressed={selectedSize === size}
+                  aria-label={stock === 0 ? `${size} esgotado` : size}
+                  title={stock === 0 ? "Esgotado" : undefined}
+                  className={`min-w-[3rem] h-12 px-3 rounded-xl text-sm border-2 transition-all font-semibold active:scale-95 ${
                     selectedSize === size
                       ? "border-brand-600 bg-brand-50 text-brand-700"
-                      : "border-gray-200 text-gray-600 hover:border-gray-400"
+                      : stock === 0
+                      ? "border-gray-100 text-gray-300 line-through cursor-not-allowed"
+                      : "border-gray-200 text-gray-700 hover:border-gray-400"
                   }`}
                 >
                   {size}
@@ -286,19 +346,21 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
         <div className="mb-6">
           <p className="text-sm font-semibold text-gray-700 mb-2">Quantidade</p>
           <div className="flex items-center gap-3">
-            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
+            <div className="flex items-center border border-gray-200 rounded-full overflow-hidden">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="px-4 py-3 hover:bg-gray-50 transition-colors text-gray-600"
+                aria-label="Diminuir quantidade"
+                className="px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-gray-600"
               >
                 <Minus size={16} />
               </button>
-              <span className="px-5 py-3 font-semibold text-gray-900 min-w-[50px] text-center border-x border-gray-200">
+              <span className="px-3 py-3 font-semibold text-gray-900 min-w-[44px] text-center tabular-nums">
                 {quantity}
               </span>
               <button
                 onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
-                className="px-4 py-3 hover:bg-gray-50 transition-colors text-gray-600"
+                aria-label="Aumentar quantidade"
+                className="px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-gray-600"
               >
                 <Plus size={16} />
               </button>
@@ -307,7 +369,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
         </div>
 
         {/* CTA */}
-        <div className="space-y-3 mb-8">
+        <div ref={ctaRef} className="space-y-3 mb-8">
           <button
             onClick={handleAddToCart}
             disabled={availableStock === 0}
@@ -321,13 +383,38 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
               <><ShoppingBag size={18} className="shrink-0" /> Adicionar ao carrinho — {formatCurrency(product.price * quantity)}</>
             )}
           </button>
-          <a href="/carrinho" className="btn-outline w-full text-sm sm:text-base py-4">
+          <Link href="/carrinho" className="btn-outline w-full text-sm sm:text-base py-4">
             Ir para o carrinho
-          </a>
+          </Link>
+        </div>
+
+        {/* Barra de compra fixa (mobile), aparece depois que o botao principal sai da tela */}
+        <div
+          className={`lg:hidden fixed inset-x-0 bottom-0 z-[55] bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-8px_30px_-12px_rgba(0,0,0,0.2)] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-transform duration-300 ${
+            ctaVisible ? "translate-y-full" : "translate-y-0"
+          }`}
+          aria-hidden={ctaVisible}
+        >
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-gray-500 truncate">
+                {product.name}{selectedColor ? ` · ${selectedColor}` : ""}
+              </p>
+              <p className="text-base font-bold text-gray-900">{formatCurrency(product.price)}</p>
+            </div>
+            <button
+              onClick={handleAddToCart}
+              disabled={availableStock === 0}
+              tabIndex={ctaVisible ? -1 : 0}
+              className={`btn-primary py-3 px-5 text-sm flex-shrink-0 ${added ? "bg-green-600 hover:bg-green-700" : ""}`}
+            >
+              {added ? <><Check size={18} /> Adicionado</> : availableStock === 0 ? "Esgotado" : <><ShoppingBag size={17} /> Comprar</>}
+            </button>
+          </div>
         </div>
 
         {/* Garantias */}
-        <div className="space-y-2 mb-6 p-4 bg-gray-50 rounded-2xl">
+        <div className="space-y-2.5 mb-6 p-5 border border-gray-100 rounded-2xl">
           {[
             { icon: Truck, text: "Frete grátis acima de R$ 299,90" },
             { icon: Shield, text: "Compra 100% segura e protegida" },

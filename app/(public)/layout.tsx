@@ -10,7 +10,7 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <>
       <Header categories={categories} />
-      <main className="min-h-screen pt-[104px]">{children}</main>
+      <main className="min-h-screen pt-16 md:pt-20">{children}</main>
       <Footer categories={categories} />
       <WhatsappFloatButton />
       <WelcomeCouponPopup />

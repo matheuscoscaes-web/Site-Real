@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { slugify, COLORS, SIZES, COUPON_EXCLUDED_CATEGORY, getMaxInstallments } from "@/lib/utils";
+import { slugify, COLORS, sortSizes, COUPON_EXCLUDED_CATEGORY, getMaxInstallments } from "@/lib/utils";
 import type { ProductCategoryNode } from "@/lib/product-categories";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
@@ -29,6 +29,28 @@ interface ProductData {
   featured?: boolean;
   permiteCupom?: boolean;
   variants?: Variant[];
+}
+
+const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, k) => String(from + k));
+
+// Atalhos pra montar a grade de numeração/tamanho de uma cor
+const SIZE_PRESETS = [
+  { label: "33 ao 40", sizes: range(33, 40) },
+  { label: "37 ao 44", sizes: range(37, 44) },
+  { label: "PP ao GG", sizes: ["PP", "P", "M", "G", "GG"] },
+];
+
+// Mesma cor em duas linhas (ex: fotos sobem pelo "Adicionar várias fotos" sem
+// cor) geraria variantes repetidas de cor + tamanho, e a baixa de estoque só
+// enxerga uma delas. Junta as repetidas somando o estoque.
+function mergeVariants(list: Variant[]): Variant[] {
+  const out: Variant[] = [];
+  for (const v of list) {
+    const same = out.find((o) => o.color === v.color && o.size === v.size);
+    if (same) same.stock += v.stock;
+    else out.push({ ...v });
+  }
+  return out;
 }
 
 function Section({ title, icon: Icon, children, defaultOpen = true }: {
@@ -61,8 +83,12 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
   const isEdit = !!product?.id;
 
   // Cada linha é uma cor: foto principal + fotos extras (mais de uma imagem
-  // pra mesma cor) + tamanho + estoque, tudo junto.
-  type Row = { color: string; main: string; extra: string[]; size: string; stock: number };
+  // pra mesma cor) + estoque. Se a cor tem numeração/tamanho, o estoque fica
+  // separado por número em `sizes`; senão vale o `stock` da linha.
+  type SizeStock = { size: string; stock: number };
+  type Row = { color: string; main: string; extra: string[]; stock: number; sizes: SizeStock[] };
+  const newRow = (main = ""): Row => ({ color: "", main, extra: [], stock: 0, sizes: [] });
+  const rowStock = (r: Row) => (r.sizes.length > 0 ? r.sizes.reduce((s, x) => s + (x.stock || 0), 0) : r.stock || 0);
 
   function parseFormImages(raw?: string): { url: string; color: string }[] {
     if (!raw) return [];
@@ -89,22 +115,28 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
     }
 
     if (variants.length > 0) {
-      const usedColors = new Set<string>();
-      const rows: Row[] = variants.map((v) => {
+      // Junta as variantes da mesma cor numa linha só; cada tamanho vira um
+      // item da grade de numeração com o próprio estoque.
+      const rows: Row[] = [];
+      for (const v of variants) {
         const color = v.color ?? "";
-        let main = "";
-        let extra: string[] = [];
-        if (color && !usedColors.has(color)) {
-          const g = groups.find((g) => g.color === color);
-          if (g && g.urls.length > 0) { [main, ...extra] = g.urls; }
-          usedColors.add(color);
+        let row = rows.find((r) => r.color === color);
+        if (!row) {
+          const [main = "", ...extra] = groups.find((g) => g.color === color)?.urls ?? [];
+          row = { color, main, extra, stock: 0, sizes: [] };
+          rows.push(row);
         }
-        return { color, main, extra, size: v.size ?? "", stock: v.stock ?? 0 };
-      });
+        if (v.size) row.sizes.push({ size: v.size, stock: v.stock ?? 0 });
+        else row.stock += v.stock ?? 0;
+      }
+      for (const r of rows) {
+        const order = sortSizes(r.sizes.map((s) => s.size));
+        r.sizes.sort((a, b) => order.indexOf(a.size) - order.indexOf(b.size));
+      }
       groups.forEach((g) => {
-        if (!usedColors.has(g.color) && g.urls.length > 0) {
+        if (!rows.some((r) => r.color === g.color) && g.urls.length > 0) {
           const [main, ...extra] = g.urls;
-          rows.push({ color: g.color, main, extra, size: "", stock: 0 });
+          rows.push({ color: g.color, main, extra, stock: 0, sizes: [] });
         }
       });
       return rows;
@@ -113,11 +145,11 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
     if (groups.length > 0) {
       return groups.map((g) => {
         const [main, ...extra] = g.urls;
-        return { color: g.color, main: main || "", extra, size: "", stock: 0 };
+        return { color: g.color, main: main || "", extra, stock: 0, sizes: [] };
       });
     }
 
-    return [{ color: "", main: "", extra: [], size: "", stock: 0 }];
+    return [newRow()];
   }
 
   const [form, setForm] = useState({
@@ -170,13 +202,49 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
     setCategories((p) => (p.includes(cat) ? p.filter((c) => c !== cat) : [...p, cat]));
   }
 
-  // Linhas (cor + fotos + tamanho + estoque)
-  function addRow() { setRows((p) => [...p, { color: "", main: "", extra: [], size: "", stock: 0 }]); }
-  function updateRow(i: number, field: "color" | "size", val: string) {
-    setRows((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+  // Calçados abrem a numeração em destaque; o resto mostra tamanhos de roupa primeiro
+  const isFootwear = categories.some((c) => /cal[cç]ad|sapat|t[eê]nis|sand[aá]li|bota|chinel|rasteir/i.test(c));
+  const stockClass = (n: number) =>
+    n === 0 ? "border-red-200 bg-red-50 text-red-700" : n <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "border-gray-200 text-green-700";
+
+  // Linhas (cor + fotos + estoque / numeração)
+  function addRow() { setRows((p) => [...p, newRow()]); }
+  function updateColor(i: number, val: string) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, color: val } : r));
   }
   function updateStock(i: number, val: number) {
     setRows((p) => p.map((r, idx) => idx === i ? { ...r, stock: val } : r));
+  }
+
+  // Numeração: adiciona os tamanhos que ainda não existem na cor (estoque 0) e mantém ordenado
+  function addSizes(i: number, list: string[]) {
+    setRows((p) => p.map((r, idx) => {
+      if (idx !== i) return r;
+      const clean = [...new Set(list.map((s) => s.trim().toUpperCase()).filter(Boolean))];
+      const merged = [...r.sizes, ...clean.filter((s) => !r.sizes.some((x) => x.size === s)).map((size) => ({ size, stock: 0 }))];
+      const order = sortSizes(merged.map((s) => s.size));
+      return { ...r, sizes: merged.sort((a, b) => order.indexOf(a.size) - order.indexOf(b.size)) };
+    }));
+  }
+  function updateSizeStock(i: number, size: string, val: number) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, sizes: r.sizes.map((s) => s.size === size ? { ...s, stock: val } : s) } : r));
+  }
+  function removeSize(i: number, size: string) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, sizes: r.sizes.filter((s) => s.size !== size) } : r));
+  }
+  function clearSizes(i: number) {
+    setRows((p) => p.map((r, idx) => idx === i ? { ...r, sizes: [] } : r));
+  }
+  function addCustomSize(i: number, input: HTMLInputElement) {
+    // aceita "35" ou vários de uma vez: "35, 36, 37" ou faixa "33-40"
+    const raw = input.value.trim();
+    if (!raw) return;
+    const range = raw.match(/^(\d+)\s*(?:-|a|ao|até)\s*(\d+)$/i);
+    const list = range
+      ? Array.from({ length: Math.abs(+range[2] - +range[1]) + 1 }, (_, k) => String(Math.min(+range[1], +range[2]) + k))
+      : raw.split(/[,;\s]+/);
+    addSizes(i, list);
+    input.value = "";
   }
   function removeRow(i: number) { setRows((p) => p.filter((_, idx) => idx !== i)); }
   function moveRow(i: number, dir: -1 | 1) {
@@ -308,7 +376,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) { setUploadError(data.error || "Erro no upload"); continue; }
-      setRows((p) => [...p, { color: "", main: data.url, extra: [], size: "", stock: 0 }]);
+      setRows((p) => [...p, newRow(data.url)]);
     }
 
     setUploadingMulti(false);
@@ -330,7 +398,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
     e.target.value = "";
   }
 
-  const totalStock = rows.reduce((s, r) => s + (r.stock || 0), 0);
+  const totalStock = rows.reduce((s, r) => s + rowStock(r), 0);
 
   // Todas as fotos de uma linha (principal + extras), na ordem certa
   function rowImages(r: Row) {
@@ -342,7 +410,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
     setError("");
     setSuccess("");
 
-    const allImages = rows.flatMap((r) => rowImages(r).map((url) => ({ url, color: r.color })));
+    const allImages = rows.flatMap((r) => rowImages(r).map((url) => ({ url, color: r.color.trim() })));
     if (allImages.length === 0) {
       setError("Adicione pelo menos uma imagem.");
       return;
@@ -364,9 +432,16 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
       price: parseFloat(form.price),
       video: form.video.trim() || null,
       images: JSON.stringify(allImages),
-      // Toda linha vira uma variante — mesmo produtos sem cor/tamanho definidos
-      // precisam de uma variante (color/size null) pra guardar o estoque.
-      variants: rows.map((r) => ({ color: r.color || null, size: r.size || null, stock: r.stock || 0 })),
+      // Cor com numeração: uma variante por tamanho, cada uma com seu estoque.
+      // Cor sem numeração: uma variante só (size null) — mesmo produto sem cor
+      // nenhuma precisa dela pra guardar o estoque.
+      variants: mergeVariants(
+        rows.flatMap((r): Variant[] =>
+          r.sizes.length > 0
+            ? r.sizes.map((s) => ({ color: r.color.trim() || null, size: s.size, stock: s.stock || 0 }))
+            : [{ color: r.color.trim() || null, size: null, stock: r.stock || 0 }]
+        )
+      ),
     };
 
     const url = isEdit ? `/api/produtos/${product!.id}` : "/api/produtos";
@@ -494,7 +569,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
           {/* FOTOS, COR E ESTOQUE */}
           <Section title="Fotos, Cor e Estoque" icon={ImageIcon}>
             <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Cada linha é uma cor: foto principal, fotos extras dessa mesma cor (clique no "+" ao lado da foto), tamanho e estoque. A primeira linha é a foto principal do produto. Arraste qualquer foto e solte em outra linha pra mudar ela de cor.
+              Cada linha é uma cor: foto principal, fotos extras dessa mesma cor (clique no "+" ao lado da foto), e estoque. Calçados e roupas: use os atalhos de numeração (ex: "+ 33 ao 40") e preencha o estoque de cada número separado. A primeira linha é a foto principal do produto. Arraste qualquer foto e solte em outra linha pra mudar ela de cor.
             </p>
             {uploadError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
@@ -679,36 +754,106 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
                     )}
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-1.5 pl-1">
+                  <div className="flex gap-1.5 pl-1">
                     <div className="flex-1 min-w-0">
                       <input
                         list={`cores-${i}`}
                         className="input-field w-full text-xs py-1.5 text-gray-600"
                         value={r.color}
-                        onChange={(e) => updateRow(i, "color", e.target.value)}
+                        onChange={(e) => updateColor(i, e.target.value)}
                         placeholder="Cor (ex: Preto, Caramelo, Rosé)"
                       />
                       <datalist id={`cores-${i}`}>
                         {COLORS.map((c) => <option key={c} value={c} />)}
                       </datalist>
                     </div>
-                    <div className="flex gap-1.5">
-                      <select
-                        className="input-field text-xs py-1.5 text-gray-600 flex-1 min-w-0 sm:w-24 sm:flex-none"
-                        value={r.size}
-                        onChange={(e) => updateRow(i, "size", e.target.value)}
-                      >
-                        <option value="">— Tam. —</option>
-                        {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                    {r.sizes.length === 0 && (
                       <input
                         type="number"
                         min="0"
                         title="Estoque desta cor"
-                        className={`input-field text-xs py-1.5 font-bold text-center flex-1 min-w-0 sm:w-16 sm:flex-none ${r.stock === 0 ? "border-red-200 bg-red-50 text-red-700" : r.stock <= 3 ? "border-orange-200 bg-orange-50 text-orange-700" : "text-green-700"}`}
+                        aria-label="Estoque desta cor"
+                        className={`input-field text-xs py-1.5 font-bold text-center w-20 flex-none ${stockClass(r.stock)}`}
                         value={r.stock}
                         onChange={(e) => updateStock(i, parseInt(e.target.value) || 0)}
                       />
+                    )}
+                  </div>
+
+                  {/* Numeração / tamanhos desta cor, com estoque separado por número */}
+                  <div className="pl-1">
+                    {r.sizes.length > 0 && (
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+                            {isFootwear ? "Numeração" : "Tamanhos"} · estoque por {isFootwear ? "número" : "tamanho"}
+                          </p>
+                          <span className="text-[11px] font-bold text-gray-700">{rowStock(r)} un.</span>
+                        </div>
+                        <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-1.5">
+                          {r.sizes.map((s) => (
+                            <div key={s.size} className="relative bg-white rounded-lg border border-gray-200 p-1 text-center">
+                              <p className="text-xs font-bold text-gray-800 leading-tight">{s.size}</p>
+                              <input
+                                type="number"
+                                min="0"
+                                inputMode="numeric"
+                                aria-label={`Estoque do ${isFootwear ? "número" : "tamanho"} ${s.size}`}
+                                className={`w-full mt-0.5 rounded-md border text-xs py-1 font-bold text-center focus:outline-none focus:ring-2 focus:ring-brand-300 ${stockClass(s.stock)}`}
+                                value={s.stock}
+                                onChange={(e) => updateSizeStock(i, s.size, parseInt(e.target.value) || 0)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeSize(i, s.size)}
+                                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gray-400 hover:bg-red-500 text-white flex items-center justify-center transition-colors"
+                                title={`Remover ${s.size}`}
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {r.sizes.length === 0 && (
+                        <span className="text-[11px] text-gray-400 mr-0.5">{isFootwear ? "Adicionar numeração:" : "Tem tamanho?"}</span>
+                      )}
+                      {(isFootwear ? SIZE_PRESETS : [...SIZE_PRESETS].reverse()).map((p) => (
+                        <button
+                          key={p.label}
+                          type="button"
+                          onClick={() => addSizes(i, p.sizes)}
+                          className="text-[11px] font-medium px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-600 hover:border-brand-300 hover:text-brand-700 transition-colors"
+                        >
+                          + {p.label}
+                        </button>
+                      ))}
+                      {i > 0 && rows[i - 1].sizes.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => addSizes(i, rows[i - 1].sizes.map((s) => s.size))}
+                          className="text-[11px] font-medium px-2.5 py-1 rounded-full border border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
+                        >
+                          Copiar numeração da cor acima
+                        </button>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Outro (ex: 35 ou 33-40)"
+                        className="text-[11px] px-2.5 py-1 rounded-full border border-gray-200 bg-white w-36 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); addCustomSize(i, e.currentTarget); }
+                        }}
+                        onBlur={(e) => addCustomSize(i, e.currentTarget)}
+                      />
+                      {r.sizes.length > 0 && (
+                        <button type="button" onClick={() => clearSizes(i)} className="text-[11px] text-gray-400 hover:text-red-500 ml-auto">
+                          Tirar numeração
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

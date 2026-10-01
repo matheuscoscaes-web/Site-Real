@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { parseProductImages, sortOutOfStockLast } from "@/lib/utils";
+import { parseProductImages, sortOutOfStockLast, toCardProduct } from "@/lib/utils";
 import { ProductDetail } from "./ProductDetail";
 import { ProductCard } from "@/components/products/ProductCard";
 import { AvaliacoesSection } from "./AvaliacoesSection";
@@ -80,20 +81,20 @@ export default async function ProdutoPage({
   const related = sortOutOfStockLast(await getRelated(product.categories, product.id));
 
   return (
-    <div className="container-main py-8">
+    <div className="container-main pt-0 sm:pt-6 pb-16">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <a href="/" className="hover:text-brand-700">Home</a>
+      <nav className="hidden sm:flex items-center gap-2 text-xs text-gray-400 mb-6 min-w-0">
+        <Link href="/" className="hover:text-brand-700 transition-colors">Home</Link>
         <span>/</span>
-        <a href="/produtos" className="hover:text-brand-700">Produtos</a>
+        <Link href="/produtos" className="hover:text-brand-700 transition-colors">Produtos</Link>
         <span>/</span>
         {product.categories.map((c) => (
           <span key={c} className="flex items-center gap-2">
-            <a href={`/produtos?categoria=${c}`} className="hover:text-brand-700">{c}</a>
+            <Link href={`/produtos?categoria=${encodeURIComponent(c)}`} className="hover:text-brand-700 transition-colors">{c}</Link>
             <span>/</span>
           </span>
         ))}
-        <span className="text-gray-900 font-medium line-clamp-1">{product.name}</span>
+        <span className="text-gray-600 truncate">{product.name}</span>
       </nav>
 
       <ProductDetail product={product} />
@@ -102,13 +103,13 @@ export default async function ProdutoPage({
 
       {/* Produtos relacionados */}
       {related.length > 0 && (
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6" style={{ fontFamily: "Playfair Display, serif" }}>
+        <section className="mt-16 md:mt-24">
+          <h2 className="section-title mb-8">
             Você também pode gostar
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-8 md:gap-6">
             {related.map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id} product={toCardProduct(p)} />
             ))}
           </div>
         </section>

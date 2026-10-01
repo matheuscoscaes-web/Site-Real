@@ -9,10 +9,12 @@
 
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html, body {
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
@@ -20,20 +22,38 @@
     background-color: #fff;
     color: #1c1c1c;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3 {
     font-family: var(--font-playfair), serif;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: #faeece;
+    color: #653a0a;
+  }
+
+  /* Anel de foco so pra teclado, nao aparece no toque/clique */
+  :focus-visible {
+    outline: 2px solid #c97f10;
+    outline-offset: 2px;
+  }
+
+  button, a {
+    touch-action: manipulation;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-brand-700 hover:bg-brand-800 text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 active:scale-95 inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm;
+    @apply bg-brand-700 hover:bg-brand-800 text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md;
   }
 
   .btn-outline {
-    @apply border-2 border-brand-700 text-brand-700 hover:bg-brand-700 hover:text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 inline-flex items-center justify-center gap-2;
+    @apply border-2 border-brand-700 text-brand-700 hover:bg-brand-700 hover:text-white font-semibold px-6 py-3 rounded-full transition-all duration-200 active:scale-[0.97] inline-flex items-center justify-center gap-2;
   }
 
   .btn-ghost {
@@ -57,12 +77,29 @@
     font-family: var(--font-playfair), serif;
   }
 
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-600;
+  }
+
   .badge {
     @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
   }
 
   .container-main {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Faixa com rolagem horizontal e encaixe (carrosseis de arrastar no mobile) */
+  .snap-row {
+    @apply flex overflow-x-auto snap-x snap-mandatory overscroll-x-contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .snap-row::-webkit-scrollbar {
+    display: none;
+  }
+  .snap-row > * {
+    @apply snap-start shrink-0;
   }
 }
 
@@ -74,10 +111,13 @@
   }
 }
 
-/* Scrollbar personalizada */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #955707; border-radius: 3px; }
+/* Scrollbar personalizada (desktop) */
+@media (hover: hover) {
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d6c3a3; border-radius: 8px; border: 2px solid #fff; }
+  ::-webkit-scrollbar-thumb:hover { background: #955707; }
+}
 
 /* Animações */
 @keyframes fadeInUp {
@@ -85,8 +125,36 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .animate-fade-in-up {
-  animation: fadeInUp 0.5s ease forwards;
+  animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease both;
+}
+
+/* Revela secoes ao rolar, sem JavaScript. Navegador sem suporte so mostra
+   o conteudo normalmente. */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: fadeInUp linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Toast */

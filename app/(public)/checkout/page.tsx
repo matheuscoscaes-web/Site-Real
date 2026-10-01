@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
+import { useMounted } from "@/lib/useMounted";
 import { formatCurrency, getMaxInstallments } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
 import {
@@ -56,6 +57,7 @@ export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { items, subtotal, eligibleSubtotal, clearCart } = useCartStore();
+  const mounted = useMounted();
 
   const [step, setStep] = useState(1);
   const [deliveryType, setDeliveryType] = useState<"ENTREGA" | "RETIRADA">("ENTREGA");
@@ -178,7 +180,7 @@ export default function CheckoutPage() {
     return () => clearInterval(interval);
   }, [pixDireto, currentOrderId, clearCart, router]);
 
-  if (status === "loading") {
+  if (status === "loading" || !mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin text-brand-700" size={40} />

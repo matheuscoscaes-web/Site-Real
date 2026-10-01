@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
+import { useMounted } from "@/lib/useMounted";
 import { formatCurrency, getMaxInstallments } from "@/lib/utils";
 import { type FreteOption } from "@/lib/frete";
 import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } from "lucide-react";
@@ -14,6 +15,7 @@ export default function CarrinhoPage() {
   const router = useRouter();
   const { status } = useSession();
   const { items, removeItem, updateQuantity, subtotal, eligibleSubtotal } = useCartStore();
+  const mounted = useMounted();
   const [cep, setCep] = useState("");
   const [freteOptions, setFreteOptions] = useState<FreteOption[]>([]);
   const [selectedFrete, setSelectedFrete] = useState<FreteOption | null>(null);
@@ -123,6 +125,15 @@ export default function CarrinhoPage() {
     router.push(url);
   }
 
+  // Espera ler o carrinho salvo no navegador antes de decidir se esta vazio
+  if (!mounted) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="animate-spin text-brand-700" size={36} />
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div className="container-main py-20 text-center">
@@ -195,7 +206,7 @@ export default function CarrinhoPage() {
                   <p className="text-xs text-gray-400 mt-1">
                     {item.color && `Cor: ${item.color}`}
                     {item.color && item.size && " • "}
-                    {item.size && `Tamanho: ${item.size}`}
+                    {item.size && `${/^\d/.test(item.size) ? "Numeração" : "Tamanho"}: ${item.size}`}
                   </p>
                 )}
 

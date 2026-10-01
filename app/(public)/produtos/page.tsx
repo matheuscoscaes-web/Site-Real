@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { ProductCard } from "@/components/products/ProductCard";
-import { sortOutOfStockLast } from "@/lib/utils";
+import { ProductGrid } from "./ProductGrid";
+import { sortOutOfStockLast, toCardProduct } from "@/lib/utils";
 import { getProductCategoryTree } from "@/lib/product-categories";
 import { Filter } from "lucide-react";
 import { SortSelect } from "./SortSelect";
@@ -105,15 +106,24 @@ export default async function ProdutosPage({
   }
 
   return (
-    <div className="container-main py-8">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <a href="/" className="hover:text-brand-700">Home</a>
+    <div className="container-main pt-6 pb-16 md:pt-10">
+      {/* Breadcrumb + título */}
+      <nav className="flex items-center gap-2 text-xs text-gray-400 mb-3">
+        <Link href="/" className="hover:text-brand-700 transition-colors">Home</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">{title}</span>
+        <span className="text-gray-600">{title}</span>
       </nav>
+      <div className="flex items-end justify-between gap-4 mb-6 md:mb-10">
+        <div className="min-w-0">
+          <h1 className="text-[1.75rem] md:text-5xl font-bold text-gray-900 leading-tight break-words">{title}</h1>
+          <p className="text-sm text-gray-500 mt-1.5">
+            {products.length} produto{products.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <SortSelect currentValue={params.ordem} />
+      </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-12">
         <FilterSidebar
           categories={[
             { label: "Todos", href: buildUrl({ categoria: undefined }), active: !params.categoria },
@@ -141,32 +151,16 @@ export default async function ProdutosPage({
         />
 
         {/* Lista de produtos */}
-        <div className="flex-1">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900" style={{ fontFamily: "Playfair Display, serif" }}>
-                {title}
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">{products.length} produto{products.length !== 1 ? "s" : ""} encontrado{products.length !== 1 ? "s" : ""}</p>
-            </div>
-
-            {/* Ordenação */}
-            <SortSelect currentValue={params.ordem} />
-          </div>
-
+        <div className="flex-1 min-w-0">
           {products.length === 0 ? (
             <div className="text-center py-20">
               <Filter size={48} className="text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum produto encontrado</h3>
               <p className="text-gray-500 mb-6">Tente ajustar os filtros ou buscar por outro termo.</p>
-              <a href="/produtos" className="btn-primary">Ver todos os produtos</a>
+              <Link href="/produtos" className="btn-primary">Ver todos os produtos</Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
-              {products.map((product, i) => (
-                <ProductCard key={product.id} product={product} priority={i < 4} />
-              ))}
-            </div>
+            <ProductGrid products={products.map(toCardProduct)} />
           )}
         </div>
       </div>

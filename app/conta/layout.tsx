@@ -29,7 +29,7 @@ export default async function ContaLayout({ children }: { children: React.ReactN
   return (
     <>
       <Header categories={categories} />
-      <main className="min-h-screen pt-[104px] bg-gray-50">
+      <main className="min-h-screen pt-16 md:pt-20 bg-gray-50">
         <div className="container-main py-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-6" style={{ fontFamily: "Playfair Display, serif" }}>
             Olá, {session.user.name.split(" ")[0]} 👋

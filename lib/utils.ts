@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { ProductImage } from "@/types";
+import { Product, ProductImage } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -18,6 +18,29 @@ export function parseProductImages(raw: string): ProductImage[] {
   } catch {
     return [];
   }
+}
+
+/** O que o ProductCard precisa. Paginas com lista de produtos passam isso em vez
+ * do produto inteiro: a descricao e todas as fotos iam junto no HTML de cada
+ * card e deixavam a pagina de produtos com ~500KB. */
+export type CardProduct = Pick<
+  Product,
+  "id" | "name" | "slug" | "price" | "categories" | "images" | "featured" | "permiteCupom"
+> & { variants: { color: string | null; size: string | null; stock: number }[] };
+
+export function toCardProduct(p: Product): CardProduct {
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    price: p.price,
+    categories: p.categories,
+    // so as 2 primeiras fotos (principal + a do hover)
+    images: JSON.stringify(parseProductImages(p.images).slice(0, 2).map((i) => i.url)),
+    featured: p.featured,
+    permiteCupom: p.permiteCupom,
+    variants: (p.variants ?? []).map((v) => ({ color: v.color, size: v.size, stock: v.stock })),
+  };
 }
 
 /** Empurra produtos sem estoque (soma de variantes = 0) para o final da lista,
@@ -131,7 +154,23 @@ export function isCupomElegivel(categories: string[], permiteCupom?: boolean | n
   return permiteCupom !== false && !categories.includes(COUPON_EXCLUDED_CATEGORY);
 }
 
-export const SIZES = ["PP", "P", "M", "G", "GG", "36", "38", "40", "42", "44"];
+const LETTER_SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XG", "XXG", "U"];
+
+/** Ordena tamanhos do jeito que a cliente espera: numeração em ordem numérica
+ * (33, 34, 35...), letras na ordem de roupa (PP, P, M, G, GG) e o resto em ordem alfabética. */
+export function sortSizes(sizes: string[]): string[] {
+  const rank = (s: string) => {
+    const n = parseFloat(s.replace(",", "."));
+    if (!Number.isNaN(n)) return [0, n] as const;
+    const i = LETTER_SIZE_ORDER.indexOf(s.toUpperCase());
+    return i >= 0 ? ([1, i] as const) : ([2, 0] as const);
+  };
+  return [...sizes].sort((a, b) => {
+    const [ga, va] = rank(a);
+    const [gb, vb] = rank(b);
+    return ga - gb || va - vb || a.localeCompare(b, "pt-BR");
+  });
+}
 export const COLORS = [
   "Preto", "Branco", "Off-White", "Bege", "Caramel", "Marrom",
   "Rosé", "Rose", "Rosa Floral", "Ouro Rosé", "Dourado", "Prata",

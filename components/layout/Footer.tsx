@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Instagram, Facebook, Youtube, Mail, Phone, MapPin, Heart } from "lucide-react";
+import { Instagram, Mail, Phone, MapPin, Heart } from "lucide-react";
 import { WhatsappLeadForm } from "@/components/layout/WhatsappLeadForm";
 import type { ProductCategoryNode } from "@/lib/product-categories";
 
@@ -18,22 +18,27 @@ export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
   return (
     <footer className="bg-gray-950 text-gray-300">
       {/* Grupo VIP WhatsApp */}
-      <div className="bg-brand-700 py-12">
-        <div className="container-main flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 text-center">
-          <div>
-            <h3 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "Playfair Display, serif" }}>
+      <div className="bg-brand-700 py-12 md:py-14">
+        <div className="container-main grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] items-center gap-8 lg:gap-12">
+          {/* Grupo VIP */}
+          <div className="text-center lg:text-left min-w-0">
+            <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
               Entre no nosso Grupo VIP do WhatsApp
             </h3>
             <p className="text-brand-100 mb-6 text-sm">Promoções exclusivas, lançamentos em primeira mão e ofertas especiais só para membros VIP</p>
             <WhatsappLeadForm />
           </div>
-          <div className="lg:border-l lg:border-brand-500 lg:pl-12 lg:self-stretch lg:flex lg:flex-col lg:justify-center">
-            <p className="text-brand-100 mb-3 text-sm">Quer vender nossos produtos?</p>
+
+          {/* Revendedor */}
+          <div className="rounded-3xl bg-white/10 ring-1 ring-white/15 p-6 text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-200 mb-2">Revenda</p>
+            <p className="text-white font-semibold mb-1">Quer vender nossos produtos?</p>
+            <p className="text-brand-100 text-sm mb-5">Fale com a gente e receba as condições para revendedores.</p>
             <a
               href="https://wa.me/5521974961669?text=Ol%C3%A1!%20Quero%20virar%20revendedor%20Hearts%20Couro."
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block bg-white text-brand-700 font-bold px-6 py-3 rounded-full hover:bg-brand-50 transition-colors text-sm whitespace-nowrap"
+              className="inline-flex w-full items-center justify-center bg-white text-brand-700 font-bold px-6 py-3 rounded-full hover:bg-brand-50 active:scale-[0.97] transition-all text-sm whitespace-nowrap"
             >
               Quero virar revendedor
             </a>
@@ -59,21 +64,15 @@ export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
               <a href="https://www.instagram.com/heartscouro" target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-brand-700 transition-colors" aria-label="Instagram">
                 <Instagram size={16} />
               </a>
-              <a href="#" className="w-9 h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-brand-700 transition-colors" aria-label="Facebook">
-                <Facebook size={16} />
-              </a>
-              <a href="#" className="w-9 h-9 bg-gray-800 rounded-full flex items-center justify-center hover:bg-brand-700 transition-colors" aria-label="Youtube">
-                <Youtube size={16} />
-              </a>
             </div>
           </div>
 
           {/* Loja + Ajuda + Contato sempre lado a lado */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 md:col-span-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-10 md:col-span-3">
             {/* Links */}
             <div>
-              <h4 className="text-white font-semibold mb-4 text-xs sm:text-sm uppercase tracking-wider">Loja</h4>
-              <ul className="space-y-2 text-xs sm:text-sm">
+              <h4 className="text-white font-semibold mb-4 text-xs uppercase tracking-[0.2em]">Loja</h4>
+              <ul className="space-y-2.5 text-sm">
                 {lojaLinks.map((l) => (
                   <li key={l.href}>
                     <Link href={l.href} className="hover:text-brand-400 transition-colors">{l.label}</Link>
@@ -84,8 +83,8 @@ export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
 
             {/* Ajuda */}
             <div>
-              <h4 className="text-white font-semibold mb-4 text-xs sm:text-sm uppercase tracking-wider">Ajuda</h4>
-              <ul className="space-y-2 text-xs sm:text-sm">
+              <h4 className="text-white font-semibold mb-4 text-xs uppercase tracking-[0.2em]">Ajuda</h4>
+              <ul className="space-y-2.5 text-sm">
                 {[
                   { label: "Minha Conta", href: "/conta" },
                   { label: "Meus Pedidos", href: "/conta/pedidos" },
@@ -102,9 +101,9 @@ export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
             </div>
 
             {/* Contato */}
-            <div>
-              <h4 className="text-white font-semibold mb-4 text-xs sm:text-sm uppercase tracking-wider">Contato</h4>
-              <ul className="space-y-3 text-xs sm:text-sm">
+            <div className="col-span-2 sm:col-span-1">
+              <h4 className="text-white font-semibold mb-4 text-xs uppercase tracking-[0.2em]">Contato</h4>
+              <ul className="space-y-3 text-sm">
                 <li className="flex items-start gap-2">
                   <Phone size={13} className="text-brand-400 mt-0.5 flex-shrink-0" />
                   <a

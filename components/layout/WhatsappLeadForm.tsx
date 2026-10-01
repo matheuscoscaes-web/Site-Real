@@ -33,7 +33,7 @@ export function WhatsappLeadForm() {
 
   if (status === "success") {
     return (
-      <div className="max-w-md mx-auto text-center bg-white/10 rounded-2xl px-6 py-5">
+      <div className="max-w-md mx-auto lg:mx-0 text-center bg-white/10 rounded-2xl px-6 py-5">
         <p className="text-2xl mb-2">🎉</p>
         <p className="font-bold text-white text-lg">Você entrou na lista!</p>
         <p className="text-brand-100 text-sm mt-1">Entraremos em contato pelo WhatsApp em breve para te adicionar ao grupo.</p>
@@ -42,22 +42,22 @@ export function WhatsappLeadForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row flex-wrap gap-3 max-w-2xl mx-auto lg:mx-0">
       <input
         type="text"
         placeholder="Seu nome"
         value={name}
         onChange={(e) => setName(e.target.value)}
         required
-        className="flex-1 px-5 py-3 rounded-full text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-white"
+        className="flex-1 min-w-0 sm:min-w-[180px] px-5 py-3 rounded-full text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-white"
       />
       <input
         type="tel"
-        placeholder="WhatsApp (DDD + número)"
+        placeholder="WhatsApp com DDD"
         value={phone}
         onChange={(e) => setPhone(formatPhone(e.target.value))}
         required
-        className="flex-1 px-5 py-3 rounded-full text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-white"
+        className="flex-1 min-w-0 sm:min-w-[180px] px-5 py-3 rounded-full text-gray-800 text-base focus:outline-none focus:ring-2 focus:ring-white"
       />
       <button
         type="submit"
