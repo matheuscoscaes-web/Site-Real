@@ -10,13 +10,14 @@ interface Props {
   monthlyData: { label: string; revenue: number; orders: number }[];
   fortnightData: { label: string; revenue: number; orders: number }[];
   categoryData: { name: string; value: number }[];
+  categoryTitle?: string;
 }
 
 const COLORS = ["#be185d", "#7c3aed", "#2563eb", "#d97706", "#059669"];
 
 const currencyFormatter = (v: number) => formatCurrency(v);
 
-export function FinanceiroCharts({ monthlyData, fortnightData, categoryData }: Props) {
+export function FinanceiroCharts({ monthlyData, fortnightData, categoryData, categoryTitle = "Vendas por categoria" }: Props) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Faturamento mensal */}
@@ -39,9 +40,9 @@ export function FinanceiroCharts({ monthlyData, fortnightData, categoryData }: P
 
       {/* Categorias */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="font-bold text-gray-900 mb-5">Vendas por categoria</h2>
+        <h2 className="font-bold text-gray-900 mb-5">{categoryTitle}</h2>
         {categoryData.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-12">Sem dados ainda</p>
+          <p className="text-sm text-gray-400 text-center py-12">Sem vendas neste período</p>
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
