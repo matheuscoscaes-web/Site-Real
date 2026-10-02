@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Instagram, Mail, Phone, MapPin, Heart } from "lucide-react";
-import { WhatsappLeadForm } from "@/components/layout/WhatsappLeadForm";
 import type { ProductCategoryNode } from "@/lib/product-categories";
 
 export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
@@ -17,35 +16,6 @@ export function Footer({ categories }: { categories: ProductCategoryNode[] }) {
 
   return (
     <footer className="bg-gray-950 text-gray-300">
-      {/* Grupo VIP WhatsApp */}
-      <div className="bg-brand-700 py-12 md:py-14">
-        <div className="container-main grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] items-center gap-8 lg:gap-12">
-          {/* Grupo VIP */}
-          <div className="text-center lg:text-left min-w-0">
-            <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Entre no nosso Grupo VIP do WhatsApp
-            </h3>
-            <p className="text-brand-100 mb-6 text-sm">Promoções exclusivas, lançamentos em primeira mão e ofertas especiais só para membros VIP</p>
-            <WhatsappLeadForm />
-          </div>
-
-          {/* Revendedor */}
-          <div className="rounded-3xl bg-white/10 ring-1 ring-white/15 p-6 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-200 mb-2">Revenda</p>
-            <p className="text-white font-semibold mb-1">Quer vender nossos produtos?</p>
-            <p className="text-brand-100 text-sm mb-5">Fale com a gente e receba as condições para revendedores.</p>
-            <a
-              href="https://wa.me/5521974961669?text=Ol%C3%A1!%20Quero%20virar%20revendedor%20Hearts%20Couro."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-full items-center justify-center bg-white text-brand-700 font-bold px-6 py-3 rounded-full hover:bg-brand-50 active:scale-[0.97] transition-all text-sm whitespace-nowrap"
-            >
-              Quero virar revendedor
-            </a>
-          </div>
-        </div>
-      </div>
-
       {/* Main footer */}
       <div className="container-main py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
