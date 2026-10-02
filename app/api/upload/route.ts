@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     };
     const ext = ALLOWED_VIDEO_TYPES[file.type];
     if (!ext) return NextResponse.json({ error: "Formato de vídeo não suportado (use MP4, WebM ou MOV)" }, { status: 400 });
-    if (file.size > 50 * 1024 * 1024) return NextResponse.json({ error: "Vídeo muito grande (máx 50MB)" }, { status: 400 });
+    if (file.size > 60 * 1024 * 1024) return NextResponse.json({ error: "Vídeo muito grande (máx 60MB)" }, { status: 400 });
 
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 

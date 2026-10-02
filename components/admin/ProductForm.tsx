@@ -879,7 +879,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
           {/* VÍDEO DO PRODUTO */}
           <Section title="Vídeo do Produto" icon={Video} defaultOpen={false}>
             <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Opcional. Um vídeo curto mostrando o produto (MP4, WebM ou MOV, máx 50MB).
+              Opcional. Um vídeo curto mostrando o produto (MP4, WebM ou MOV, máx 60MB).
             </p>
             {uploadError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
