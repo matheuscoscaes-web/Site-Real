@@ -4,9 +4,10 @@ import { authOptions } from "@/lib/auth";
 import Link from "next/link";
 import {
   TrendingUp, ShoppingCart, Users, Package, AlertTriangle,
-  Plus, ArrowUpRight, Eye, Clock,
+  Plus, ArrowUpRight, Eye, Clock, CalendarDays,
 } from "lucide-react";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+import { orderRevenue, monthKeyOf, fortnightKeyOf, monthInfo, fortnightInfo } from "@/lib/faturamento";
 
 const BR_TZ = "America/Sao_Paulo";
 function brazilDateKey(date: Date | string) {
@@ -21,6 +22,7 @@ async function getDashboardData() {
         id: true,
         status: true,
         total: true,
+        couponCode: true,
         createdAt: true,
         user: { select: { name: true } },
       },
@@ -47,7 +49,33 @@ async function getDashboardData() {
   const todayOrders = orders.filter((o) => brazilDateKey(o.createdAt) === todayKey);
   const todayRevenue = todayOrders.filter((o) => o.status !== "CANCELLED").reduce((s, o) => s + o.total, 0);
 
+  // Faturamento do mês e da quinzena atuais (mesma regra de receita do financeiro)
+  const now = new Date();
+  const currentMonth = monthKeyOf(now);
+  const currentFortnight = fortnightKeyOf(now);
+  const revenueBy = (keyOf: (d: Date) => number, key: number) => {
+    const list = paid.filter((o) => keyOf(o.createdAt) === key);
+    return { revenue: list.reduce((s, o) => s + orderRevenue(o), 0), orders: list.length };
+  };
+  const periods = [
+    {
+      title: "Faturamento do mês",
+      info: monthInfo(currentMonth),
+      prevInfo: monthInfo(currentMonth - 1),
+      current: revenueBy(monthKeyOf, currentMonth),
+      prev: revenueBy(monthKeyOf, currentMonth - 1),
+    },
+    {
+      title: "Faturamento da quinzena",
+      info: fortnightInfo(currentFortnight),
+      prevInfo: fortnightInfo(currentFortnight - 1),
+      current: revenueBy(fortnightKeyOf, currentFortnight),
+      prev: revenueBy(fortnightKeyOf, currentFortnight - 1),
+    },
+  ];
+
   return {
+    periods,
     totalRevenue, pending, users, products,
     recentOrders: orders.slice(0, 8),
     lowStock,
@@ -120,6 +148,35 @@ export default async function AdminHome() {
               Ver detalhes <ArrowUpRight size={12} />
             </div>
           </Link>
+        ))}
+      </div>
+
+      {/* Faturamento mensal e quinzenal */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {d.periods.map((p) => (
+          <div key={p.title} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                  <CalendarDays size={16} className="text-brand-600" /> {p.title}
+                </h2>
+                <p className="text-xs text-gray-400 mt-0.5">{p.info.label} · {p.info.range} · em andamento</p>
+              </div>
+              <Link href={`/admin/financeiro?periodo=${p.info.param}`} className="text-sm text-brand-600 font-medium hover:underline flex items-center gap-1 shrink-0">
+                Detalhes <ArrowUpRight size={14} />
+              </Link>
+            </div>
+            <p className="text-3xl font-bold text-gray-900 mt-4">{formatCurrency(p.current.revenue)}</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {p.current.orders} {p.current.orders === 1 ? "pedido pago" : "pedidos pagos"}
+            </p>
+            <Link href={`/admin/financeiro?periodo=${p.prevInfo.param}`} className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3 text-sm hover:text-brand-700 transition-colors">
+              <span className="text-gray-500 first-letter:uppercase">{p.prevInfo.label}</span>
+              <span className="font-semibold text-gray-700 shrink-0">
+                {formatCurrency(p.prev.revenue)} <span className="text-xs font-normal text-gray-400">· {p.prev.orders} ped.</span>
+              </span>
+            </Link>
+          </div>
         ))}
       </div>
 

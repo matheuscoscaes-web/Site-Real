@@ -4,57 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 import { FinanceiroCharts } from "./FinanceiroCharts";
 import { TrendingUp, ShoppingCart, Users, Package, Download, ChevronLeft, ChevronRight } from "lucide-react";
-import { WELCOME_COUPON_CODE } from "@/lib/coupons";
+import { orderRevenue, monthKeyOf, fortnightKeyOf, monthInfo, fortnightInfo } from "@/lib/faturamento";
 
-const WELCOME_COUPON_FLAT_DEDUCTION = 15;
 const NET_FACTOR = 0.75; // receita líquida estimada: 25% de custos
-
-// ---------------------------------------------------------------------------
-// Datas sempre no fuso de São Paulo: o servidor roda em UTC e um pedido feito
-// às 23h do dia 15 não pode cair na quinzena (ou mês) seguinte.
-// ---------------------------------------------------------------------------
-function spDate(d: Date) {
-  const [y, m, day] = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  })
-    .format(d)
-    .split("-")
-    .map(Number);
-  return { y, m, day };
-}
-// Chaves numéricas sequenciais: mês = y*12+(m-1); quinzena = y*24+(m-1)*2+(0|1)
-const monthKeyOf = (d: Date) => { const { y, m } = spDate(d); return y * 12 + (m - 1); };
-const fortnightKeyOf = (d: Date) => { const { y, m, day } = spDate(d); return y * 24 + (m - 1) * 2 + (day > 15 ? 1 : 0); };
-
-const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-// "Setembro de 2026" (long) ou "set/26" (short)
-const monthName = (y: number, m: number, style: "long" | "short" = "long") =>
-  style === "long"
-    ? `${MONTHS[m - 1].charAt(0).toUpperCase()}${MONTHS[m - 1].slice(1)} de ${y}`
-    : `${MONTHS[m - 1].slice(0, 3)}/${String(y).slice(2)}`;
-const monthInfo = (key: number) => {
-  const y = Math.floor(key / 12);
-  const m = (key % 12) + 1;
-  const mm = String(m).padStart(2, "0");
-  return { y, m, label: monthName(y, m), short: monthName(y, m, "short"), range: `01/${mm} a ${new Date(y, m, 0).getDate()}/${mm}`, param: `m-${y}-${mm}` };
-};
-const fortnightInfo = (key: number) => {
-  const y = Math.floor(key / 24);
-  const m = Math.floor((key % 24) / 2) + 1;
-  const half = key % 2;
-  const mm = String(m).padStart(2, "0");
-  const n = half === 0 ? "1ª" : "2ª";
-  return {
-    y, m, half,
-    label: `${n} quinzena de ${monthName(y, m).toLowerCase()}`,
-    short: `${n} ${monthName(y, m, "short")}`,
-    range: half === 0 ? `01/${mm} a 15/${mm}` : `16/${mm} a ${new Date(y, m, 0).getDate()}/${mm}`,
-    param: `q-${y}-${mm}-${half + 1}`,
-  };
-};
 
 // ---------------------------------------------------------------------------
 // Dados brutos (cache de 5 min). O unstable_cache serializa em JSON, então as
@@ -84,9 +36,7 @@ const getRawData = unstable_cache(
 
     return {
       orders: orders.map((o) => ({
-        // Pedidos com o cupom de boas-vindas contam receita com dedução fixa de R$15
-        // em vez do total real, a pedido do usuário (2026-07-31).
-        revenue: o.couponCode === WELCOME_COUPON_CODE ? Math.max(0, o.total - WELCOME_COUPON_FLAT_DEDUCTION) : o.total,
+        revenue: orderRevenue(o),
         shipping: o.shipping,
         createdAt: o.createdAt.toISOString(),
         items: o.items,
