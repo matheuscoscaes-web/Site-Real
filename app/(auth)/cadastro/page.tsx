@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Loader2, Check } from "lucide-react";
+import { safeRedirect } from "@/lib/checkoutPrefill";
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -18,6 +19,12 @@ export default function CadastroPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Quem veio do checkout volta pra ele depois de criar a conta (antes caía na home e perdia a compra)
+  const [redirect, setRedirect] = useState("/");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setRedirect(safeRedirect(params.get("redirect") ?? params.get("callbackUrl")));
+  }, []);
 
   function update(field: string, value: string) {
     setForm((p) => ({ ...p, [field]: value }));
@@ -62,7 +69,7 @@ export default function CadastroPage() {
       redirect: false,
     });
 
-    router.push("/");
+    router.push(redirect);
     router.refresh();
   }
 
@@ -185,7 +192,7 @@ export default function CadastroPage() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Já tem conta?{" "}
-            <Link href="/login" className="text-brand-700 font-semibold hover:underline">
+            <Link href={redirect !== "/" ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"} className="text-brand-700 font-semibold hover:underline">
               Entrar
             </Link>
           </p>

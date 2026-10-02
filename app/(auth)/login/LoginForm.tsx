@@ -5,11 +5,13 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
+import { safeRedirect } from "@/lib/checkoutPrefill";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  // ?callbackUrl= vem do proxy (ex: abriu /checkout sem estar logada); ?redirect= dos links do site
+  const redirect = safeRedirect(searchParams.get("redirect") ?? searchParams.get("callbackUrl"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -113,7 +115,7 @@ export function LoginForm() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Não tem conta?{" "}
-            <Link href={`/cadastro${redirect !== "/" ? `?redirect=${redirect}` : ""}`} className="text-brand-700 font-semibold hover:underline">
+            <Link href={`/cadastro${redirect !== "/" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`} className="text-brand-700 font-semibold hover:underline">
               Criar conta grátis
             </Link>
           </p>

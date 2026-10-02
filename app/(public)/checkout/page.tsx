@@ -10,6 +10,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useMounted } from "@/lib/useMounted";
 import { formatCurrency, getMaxInstallments } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
+import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
 import {
   Lock, ChevronDown, ChevronUp, Check, Loader2, Tag, X, AlertCircle, Copy, CheckCheck, Truck,
 } from "lucide-react";
@@ -107,7 +108,8 @@ export default function CheckoutPage() {
   const maxInstallments = getMaxInstallments(total);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login?redirect=/checkout");
+    // Mantém o ?cupom= depois do login — antes o cupom aplicado no carrinho se perdia aqui
+    if (status === "unauthenticated") router.push(`/login?redirect=${encodeURIComponent(`/checkout${window.location.search}`)}`);
     if (items.length === 0 && status === "authenticated") router.push("/carrinho");
   }, [status, items.length, router]);
 
@@ -132,17 +134,30 @@ export default function CheckoutPage() {
     if (status !== "authenticated" || enderecosCarregados) return;
     fetch("/api/clientes/me/enderecos")
       .then((r) => r.json())
-      .then(async (data: SavedAddress[]) => {
+      .then(async (raw: SavedAddress[]) => {
         setEnderecosCarregados(true);
-        if (!Array.isArray(data) || data.length === 0) return;
+        const prefill = loadPrefill();
+        if (prefill.deliveryType === "RETIRADA") setDeliveryType("RETIRADA");
+        const cepCarrinho = (prefill.cep ?? "").replace(/\D/g, "");
+
+        // O endereço fixo de "Retirada na loja" também fica salvo na conta, mas não é
+        // endereço de entrega — se aparecesse aqui, escondia o formulário de CEP.
+        const data = Array.isArray(raw) ? raw.filter((a) => a.name !== "Retirada na loja" && a.zipCode) : [];
+        if (data.length === 0) {
+          // Sem endereço salvo: já começa com o CEP que a pessoa digitou no carrinho
+          if (cepCarrinho.length === 8) await preencherPorCep(formatCep(cepCarrinho), prefill.freteId);
+          return;
+        }
         setSavedAddresses(data);
-        const def = data.find((a) => a.isDefault) ?? data[0];
+        // Prefere o endereço salvo com o mesmo CEP usado no carrinho; senão, o padrão
+        const def =
+          data.find((a) => a.zipCode.replace(/\D/g, "") === cepCarrinho) ?? data.find((a) => a.isDefault) ?? data[0];
         setSelectedAddressId(def.id);
         setAddress({ name: def.name, cpf: def.cpf ?? "", street: def.street, number: def.number, complement: def.complement ?? "", district: def.district, city: def.city, state: def.state, zipCode: def.zipCode });
 
         // O endereço padrão carrega sozinho, mas sem isso o frete nunca era calculado
         // pra ele: a pessoa via "nenhuma opção de frete disponível" sem ter feito nada de errado.
-        if (def.zipCode) await fetchFreteOptions(def.zipCode);
+        await fetchFreteOptions(def.zipCode, prefill.freteId);
       })
       .catch(() => setEnderecosCarregados(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -188,7 +203,7 @@ export default function CheckoutPage() {
     );
   }
 
-  async function fetchFreteOptions(cep: string) {
+  async function fetchFreteOptions(cep: string, preferId?: number) {
     setLoadingFrete(true);
     setShippingOptions([]);
     setSelectedShipping(null);
@@ -202,7 +217,10 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setShippingOptions(data);
-        if (data.length === 1) setSelectedShipping(data[0]);
+        // Já deixa escolhido o frete do carrinho (ou o mais barato) — um clique a menos
+        const escolhido = (data as FreteOption[]).find((o) => o.id === preferId) ?? data[0] ?? null;
+        setSelectedShipping(escolhido);
+        savePrefill({ cep: formatCep(cep), freteId: escolhido?.id });
       } else {
         setFreteApiError(true);
       }
@@ -218,22 +236,26 @@ export default function CheckoutPage() {
     setTrocandoEndereco(false);
     const addr = savedAddresses.find((a) => a.id === id);
     if (!addr) return;
-    setAddress({ name: addr.name, cpf: addr.cpf ?? "", street: addr.street, number: addr.number, complement: addr.complement ?? "", district: addr.district, city: addr.city, state: addr.state, zipCode: addr.zipCode });
+    setAddress((p) => ({ name: addr.name, cpf: addr.cpf || p.cpf, street: addr.street, number: addr.number, complement: addr.complement ?? "", district: addr.district, city: addr.city, state: addr.state, zipCode: addr.zipCode }));
     setCpfError("");
     if (addr.zipCode) await fetchFreteOptions(addr.zipCode);
   }
 
-  async function handleCepBlur() {
-    const cepNum = address.zipCode.replace(/\D/g, "");
-    if (cepNum.length !== 8) return;
-
+  // Com o CEP completo, busca rua/bairro/cidade e o frete ao mesmo tempo
+  async function preencherPorCep(cep: string, preferFreteId?: number) {
+    if (cep.replace(/\D/g, "").length !== 8) return;
+    setAddress((p) => ({ ...p, zipCode: cep }));
     setLoadingCep(true);
-    try {
-      const data = await buscarEnderecoPorCEP(address.zipCode);
-      setAddress((p) => ({ ...p, street: data.street || p.street, district: data.district || p.district, city: data.city || p.city, state: data.state || p.state }));
-    } catch { /* mantém */ } finally { setLoadingCep(false); }
+    const endereco = buscarEnderecoPorCEP(cep)
+      .then((data) => setAddress((p) => ({ ...p, street: data.street || p.street, district: data.district || p.district, city: data.city || p.city, state: data.state || p.state })))
+      .catch(() => { /* mantém o que a pessoa digitou */ })
+      .finally(() => setLoadingCep(false));
+    await Promise.all([endereco, fetchFreteOptions(cep, preferFreteId)]);
+  }
 
-    await fetchFreteOptions(address.zipCode);
+  function escolherEntrega(tipo: "ENTREGA" | "RETIRADA") {
+    setDeliveryType(tipo);
+    savePrefill({ deliveryType: tipo });
   }
 
   async function applyCoupon() {
@@ -299,6 +321,8 @@ export default function CheckoutPage() {
       }
       const order = await orderRes.json();
       setCurrentOrderId(order.id);
+      // CPF já foi digitado no endereço: o PIX não precisa pedir de novo
+      if (deliveryType === "ENTREGA") setPixCpf((p) => p || address.cpf);
       setStep(2);
     } catch {
       setErro("Erro de conexão ao registrar pedido. Verifique sua internet e tente novamente.");
@@ -447,8 +471,38 @@ export default function CheckoutPage() {
           {/* Passo 1: Endereço + Cupom */}
           {step === 1 && (
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-5">Endereço de entrega</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Como você quer receber?</h2>
 
+              {/* Primeiro a forma de entrega: quem retira na loja não precisa preencher endereço */}
+              <div className="grid grid-cols-2 gap-2 mb-6">
+                {([
+                  { tipo: "ENTREGA", titulo: "Receber em casa", sub: "PAC ou SEDEX" },
+                  { tipo: "RETIRADA", titulo: "Retirar na loja", sub: "Grátis" },
+                ] as const).map((o) => (
+                  <button
+                    key={o.tipo}
+                    type="button"
+                    onClick={() => escolherEntrega(o.tipo)}
+                    className={`text-left border-2 rounded-xl px-4 py-3 transition-all ${
+                      deliveryType === o.tipo ? "border-brand-700 bg-brand-50" : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                      {deliveryType === o.tipo && <Check size={14} className="text-brand-700" />} {o.titulo}
+                    </p>
+                    <p className={`text-xs ${o.tipo === "RETIRADA" ? "text-green-600 font-semibold" : "text-gray-400"}`}>{o.sub}</p>
+                  </button>
+                ))}
+              </div>
+
+              {deliveryType === "RETIRADA" && (
+                <div className="mb-6 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700">
+                  <p className="font-semibold text-gray-900">Retirada na loja</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Rua Desembargador Omar Dutra, 60 — avisamos por e-mail quando estiver pronto para retirada.</p>
+                </div>
+              )}
+
+              {deliveryType === "ENTREGA" && (<>
               {/* Endereço salvo: card compacto com opção de trocar */}
               {savedAddresses.length > 0 && !trocandoEndereco && (() => {
                 const atual = savedAddresses.find((a) => a.id === selectedAddressId) ?? savedAddresses[0];
@@ -523,7 +577,7 @@ export default function CheckoutPage() {
                         type="radio"
                         name="savedAddress"
                         checked={selectedAddressId === "new"}
-                        onChange={() => { setSelectedAddressId("new"); setAddress({ name: "Casa", cpf: "", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" }); setCpfError(""); setShippingOptions([]); setSelectedShipping(null); }}
+                        onChange={() => { setSelectedAddressId("new"); setAddress((p) => ({ name: "Casa", cpf: p.cpf, street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" })); setShippingOptions([]); setSelectedShipping(null); }}
                         className="accent-brand-700"
                       />
                       <span className="text-sm font-semibold text-gray-700">Usar outro endereço</span>
@@ -531,31 +585,6 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               )}
-
-              {/* CPF do destinatário (sempre visível, independe do endereço escolhido) */}
-              <div className="mb-6">
-                <label className="label">CPF do destinatário *</label>
-                <input
-                  className="input-field max-w-xs"
-                  value={address.cpf}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, "").slice(0, 11);
-                    const formatted = v.length > 9
-                      ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
-                      : v.length > 6
-                      ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
-                      : v.length > 3
-                      ? `${v.slice(0, 3)}.${v.slice(3)}`
-                      : v;
-                    setAddress((p) => ({ ...p, cpf: formatted }));
-                    setCpfError("");
-                  }}
-                  placeholder="000.000.000-00"
-                  maxLength={14}
-                />
-                {cpfError && <p className="text-xs text-red-600 mt-1">{cpfError}</p>}
-                <p className="text-xs text-gray-400 mt-1">Necessário para emitir a etiqueta de envio.</p>
-              </div>
 
               {/* Formulário (sempre visível para edição) */}
               {(selectedAddressId === "new" || savedAddresses.length === 0) && (
@@ -567,10 +596,13 @@ export default function CheckoutPage() {
                       className="input-field pr-10"
                       value={address.zipCode}
                       onChange={(e) => {
-                        const v = e.target.value.replace(/\D/g, "").slice(0, 8);
-                        setAddress((p) => ({ ...p, zipCode: v.length > 5 ? `${v.slice(0, 5)}-${v.slice(5)}` : v }));
+                        const novo = formatCep(e.target.value);
+                        // Completou o CEP: preenche o endereço e calcula o frete na hora
+                        if (novo.length === 9 && novo !== address.zipCode) preencherPorCep(novo);
+                        else setAddress((p) => ({ ...p, zipCode: novo }));
                       }}
-                      onBlur={handleCepBlur}
+                      inputMode="numeric"
+                      autoComplete="postal-code"
                       placeholder="00000-000"
                       maxLength={9}
                     />
@@ -613,36 +645,39 @@ export default function CheckoutPage() {
               </div>
               )}
 
+              {/* CPF do destinatário (sempre visível, independe do endereço escolhido) */}
+              <div className="mb-6">
+                <label className="label">CPF do destinatário *</label>
+                <input
+                  inputMode="numeric"
+                  className="input-field max-w-xs"
+                  value={address.cpf}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, 11);
+                    const formatted = v.length > 9
+                      ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
+                      : v.length > 6
+                      ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
+                      : v.length > 3
+                      ? `${v.slice(0, 3)}.${v.slice(3)}`
+                      : v;
+                    setAddress((p) => ({ ...p, cpf: formatted }));
+                    setCpfError("");
+                  }}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                />
+                {cpfError && <p className="text-xs text-red-600 mt-1">{cpfError}</p>}
+                <p className="text-xs text-gray-400 mt-1">Necessário para emitir a etiqueta de envio.</p>
+              </div>
+
               {/* Frete */}
               <div className="mb-6 border-t border-gray-100 pt-5">
                   <p className="label mb-3 flex items-center gap-2">
-                    <Truck size={15} className="text-brand-700" /> Opções de entrega
+                    <Truck size={15} className="text-brand-700" /> Frete
                   </p>
 
                   <div className="space-y-2">
-                    <label
-                      className={`flex items-center justify-between gap-3 border-2 rounded-xl px-4 py-3 cursor-pointer transition-all ${
-                        deliveryType === "RETIRADA"
-                          ? "border-brand-700 bg-brand-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="frete"
-                          checked={deliveryType === "RETIRADA"}
-                          onChange={() => { setDeliveryType("RETIRADA"); setSelectedShipping(null); }}
-                          className="accent-brand-700"
-                        />
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">Retirar na loja</p>
-                          <p className="text-xs text-gray-400">Rua Desembargador Omar Dutra, 60</p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-bold text-green-600 flex-shrink-0">Grátis</span>
-                    </label>
-
                     {loadingFrete && (
                       <div className="flex items-center gap-2 text-sm text-gray-400 px-1 py-1">
                         <Loader2 size={15} className="animate-spin" /> Calculando frete...
@@ -684,7 +719,7 @@ export default function CheckoutPage() {
                             type="radio"
                             name="frete"
                             checked={deliveryType === "ENTREGA" && selectedShipping?.id === opt.id}
-                            onChange={() => { setDeliveryType("ENTREGA"); setSelectedShipping(opt); }}
+                            onChange={() => { setSelectedShipping(opt); savePrefill({ freteId: opt.id }); }}
                             className="accent-brand-700"
                           />
                           <div>
@@ -701,6 +736,7 @@ export default function CheckoutPage() {
                     ))}
                   </div>
                 </div>
+              </>)}
 
               {/* Cupom */}
               <div className="mb-6 border-t border-gray-100 pt-5">

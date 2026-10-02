@@ -9,6 +9,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useMounted } from "@/lib/useMounted";
 import { formatCurrency, getMaxInstallments } from "@/lib/utils";
 import { type FreteOption } from "@/lib/frete";
+import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
 import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } from "lucide-react";
 
 export default function CarrinhoPage() {
@@ -79,8 +80,45 @@ export default function CarrinhoPage() {
   const total = sub - desconto + freteTotal;
   const maxInstallments = getMaxInstallments(total);
 
-  async function handleCalcularFrete() {
-    if (cep.replace(/\D/g, "").length !== 8) {
+  // Volta com o CEP/entrega da última vez (ou o CEP do endereço salvo) e já calcula o frete
+  const [prefillFeito, setPrefillFeito] = useState(false);
+  useEffect(() => {
+    if (prefillFeito || status === "loading" || items.length === 0) return;
+    setPrefillFeito(true);
+    const prefill = loadPrefill();
+    if (prefill.deliveryType === "RETIRADA") setDeliveryType("RETIRADA");
+    if (prefill.cep) {
+      setCep(formatCep(prefill.cep));
+      handleCalcularFrete(prefill.cep, prefill.deliveryType === "RETIRADA" ? undefined : prefill.freteId);
+    } else if (status === "authenticated") {
+      fetch("/api/clientes/me/enderecos")
+        .then((r) => r.json())
+        .then((data: { name: string; zipCode: string; isDefault: boolean }[]) => {
+          const enderecos = Array.isArray(data) ? data.filter((a) => a.name !== "Retirada na loja" && a.zipCode) : [];
+          const def = enderecos.find((a) => a.isDefault) ?? enderecos[0];
+          if (!def) return;
+          setCep(formatCep(def.zipCode));
+          handleCalcularFrete(def.zipCode);
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, items.length, prefillFeito]);
+
+  function escolherRetirada() {
+    setDeliveryType("RETIRADA");
+    setSelectedFrete(null);
+    savePrefill({ deliveryType: "RETIRADA" });
+  }
+
+  function escolherFrete(opt: FreteOption) {
+    setDeliveryType("ENTREGA");
+    setSelectedFrete(opt);
+    savePrefill({ deliveryType: "ENTREGA", freteId: opt.id });
+  }
+
+  async function handleCalcularFrete(cepAlvo: string = cep, preferId?: number) {
+    if (cepAlvo.replace(/\D/g, "").length !== 8) {
       setFreteError("CEP inválido. Digite os 8 dígitos.");
       return;
     }
@@ -92,12 +130,14 @@ export default function CarrinhoPage() {
       const res = await fetch("/api/frete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cep, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
+        body: JSON.stringify({ cep: cepAlvo, totalItems: items.reduce((s, i) => s + i.quantity, 0) }),
       });
       const data = await res.json();
       if (!res.ok || !Array.isArray(data)) throw new Error(data.error ?? "Erro");
       setFreteOptions(data);
-      setSelectedFrete(data[0] ?? null);
+      const escolhido = (data as FreteOption[]).find((o) => o.id === preferId) ?? data[0] ?? null;
+      setSelectedFrete(escolhido);
+      savePrefill({ cep: formatCep(cepAlvo), freteId: escolhido?.id });
     } catch {
       setFreteError("Não foi possível calcular o frete. Verifique o CEP.");
     } finally {
@@ -310,15 +350,20 @@ export default function CarrinhoPage() {
                   type="text"
                   value={cep}
                   onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, "").slice(0, 8);
-                    setCep(v.length > 5 ? `${v.slice(0, 5)}-${v.slice(5)}` : v);
+                    const novo = formatCep(e.target.value);
+                    setCep(novo);
+                    // Calcula sozinho ao completar o CEP, sem precisar clicar
+                    if (novo.length === 9 && novo !== cep) handleCalcularFrete(novo);
                   }}
+                  onKeyDown={(e) => e.key === "Enter" && handleCalcularFrete()}
+                  inputMode="numeric"
+                  autoComplete="postal-code"
                   placeholder="00000-000"
                   className="input-field flex-1 min-w-0 text-sm py-2.5"
                   maxLength={9}
                 />
                 <button
-                  onClick={handleCalcularFrete}
+                  onClick={() => handleCalcularFrete()}
                   disabled={loadingFrete}
                   className="btn-primary text-sm px-4 py-2.5 min-w-[90px]"
                 >
@@ -334,7 +379,7 @@ export default function CarrinhoPage() {
                       type="radio"
                       name="frete"
                       checked={deliveryType === "RETIRADA"}
-                      onChange={() => { setDeliveryType("RETIRADA"); setSelectedFrete(null); }}
+                      onChange={escolherRetirada}
                       className="accent-brand-700"
                     />
                     <div>
@@ -352,11 +397,11 @@ export default function CarrinhoPage() {
                         type="radio"
                         name="frete"
                         checked={deliveryType === "ENTREGA" && selectedFrete?.id === opt.id}
-                        onChange={() => { setDeliveryType("ENTREGA"); setSelectedFrete(opt); }}
+                        onChange={() => escolherFrete(opt)}
                         className="accent-brand-700"
                       />
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">{opt.company} — {opt.name}</p>
+                        <p className="text-sm font-semibold text-gray-900">{opt.fallback ? opt.customerLabel : `${opt.company} — ${opt.name}`}</p>
                         <p className="text-xs text-gray-500">{opt.days} dias úteis</p>
                       </div>
                     </div>

@@ -3,20 +3,25 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { X, Copy, CheckCheck, Gift } from "lucide-react";
 
 const COUPON_CODE = "BEMVINDO";
 const DISMISS_KEY = "welcomeCouponDismissed";
 const GUEST_DELAY_MS = 2000;
+// No meio da compra o popup cobre o formulário — o checkout já mostra o cupom num aviso próprio
+const SEM_POPUP = ["/checkout", "/login", "/cadastro"];
 
 export function WelcomeCouponPopup() {
   const { status } = useSession();
+  const pathname = usePathname();
+  const bloqueado = SEM_POPUP.some((r) => pathname?.startsWith(r));
   const [show, setShow] = useState(false);
   const [variant, setVariant] = useState<"customer" | "guest">("customer");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || bloqueado) return;
     if (localStorage.getItem(DISMISS_KEY)) return;
 
     if (status === "unauthenticated") {
@@ -33,7 +38,7 @@ export function WelcomeCouponPopup() {
         if (d.isFirstPurchase) { setVariant("customer"); setShow(true); }
       })
       .catch(() => {});
-  }, [status]);
+  }, [status, bloqueado]);
 
   function dismiss() {
     setShow(false);
@@ -46,7 +51,7 @@ export function WelcomeCouponPopup() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (!show) return null;
+  if (!show || bloqueado) return null;
 
   return (
     <div
