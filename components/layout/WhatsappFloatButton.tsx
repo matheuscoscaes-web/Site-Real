@@ -8,10 +8,10 @@ export function WhatsappFloatButton() {
 
   return (
     <a
-      href="https://chat.whatsapp.com/CM2CTpnNOp6IsQZk0MUzCT?mode=gi_t"
+      href="https://wa.me/5521995991200"
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Entrar no grupo do WhatsApp"
+      aria-label="Falar no WhatsApp"
       className={`fixed right-4 md:right-6 z-50 w-14 h-14 rounded-full bg-[#25D366] shadow-lg shadow-green-900/20 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform ${
         onProductPage ? "bottom-24 lg:bottom-6" : "bottom-4 md:bottom-6"
       }`}
