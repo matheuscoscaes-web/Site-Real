@@ -26,9 +26,29 @@ export function parseProductImages(raw: string): ProductImage[] {
 export type CardProduct = Pick<
   Product,
   "id" | "name" | "slug" | "price" | "categories" | "images" | "featured" | "permiteCupom"
-> & { variants: { color: string | null; size: string | null; stock: number }[] };
+> & {
+  variants: { color: string | null; size: string | null; stock: number }[];
+  /** Cor da variante a destacar (filtro de cor): o card abre o produto ja nela */
+  preferredColor?: string | null;
+};
 
-export function toCardProduct(p: Product): CardProduct {
+/**
+ * `matchesColor` vem do filtro de cor da vitrine: quando informado, o card
+ * mostra a foto da variante daquela cor (e nao a foto principal, que pode ser
+ * de outra cor) e o link abre o produto ja com ela selecionada.
+ */
+export function toCardProduct(p: Product, matchesColor?: (color: string) => boolean): CardProduct {
+  const allImages = parseProductImages(p.images);
+  let images = allImages;
+  let preferredColor: string | null = null;
+  if (matchesColor) {
+    const variants = (p.variants ?? []).filter((v) => v.color && matchesColor(v.color));
+    preferredColor = (variants.find((v) => v.stock > 0) ?? variants[0])?.color ?? null;
+    if (preferredColor) {
+      const own = allImages.filter((i) => i.color === preferredColor);
+      if (own.length > 0) images = [...own, ...allImages.filter((i) => i.color !== preferredColor)];
+    }
+  }
   return {
     id: p.id,
     name: p.name,
@@ -36,10 +56,11 @@ export function toCardProduct(p: Product): CardProduct {
     price: p.price,
     categories: p.categories,
     // so as 2 primeiras fotos (principal + a do hover)
-    images: JSON.stringify(parseProductImages(p.images).slice(0, 2).map((i) => i.url)),
+    images: JSON.stringify(images.slice(0, 2).map((i) => i.url)),
     featured: p.featured,
     permiteCupom: p.permiteCupom,
     variants: (p.variants ?? []).map((v) => ({ color: v.color, size: v.size, stock: v.stock })),
+    preferredColor,
   };
 }
 

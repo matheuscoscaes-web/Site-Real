@@ -8,14 +8,6 @@ export default function FretePage() {
 
       <div className="space-y-8">
         <section>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Frete grátis</h2>
-          <div className="p-5 bg-green-50 rounded-2xl border border-green-100">
-            <p className="text-green-800 font-semibold">Frete grátis em compras acima de R$ 299,90</p>
-            <p className="text-green-700 text-sm mt-1">Válido para todo o Brasil via PAC ou SEDEX (conforme disponibilidade).</p>
-          </div>
-        </section>
-
-        <section>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Primeira compra</h2>
           <div className="p-5 bg-brand-50 rounded-2xl border border-brand-100">
             <p className="text-brand-800 font-semibold">40% de desconto + frete grátis na primeira compra</p>

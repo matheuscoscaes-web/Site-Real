@@ -8,7 +8,7 @@ import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { useCouponStore, couponUnitPrice } from "@/store/couponStore";
 import { formatCurrency, parseProductImages, isCupomElegivel, getMaxInstallments, sortSizes } from "@/lib/utils";
-import { ShoppingBag, Truck, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingBag, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
 
@@ -68,6 +68,13 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     const keep = sizesFor(color).find((s) => s.size === selectedSize && s.stock > 0);
     if (!keep) setSelectedSize(firstAvailableSize(color));
   }
+
+  // Veio do filtro de cor da vitrine (?cor=Preto): abre ja na cor escolhida
+  useEffect(() => {
+    const cor = new URLSearchParams(window.location.search).get("cor");
+    if (cor && cor !== selectedColor && colors.includes(cor)) handleColorSelect(cor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleSizeSelect(size: string) {
     setSelectedSize(size);
@@ -435,7 +442,6 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
         {/* Garantias */}
         <div className="space-y-2.5 mb-6 p-5 border border-gray-100 rounded-2xl">
           {[
-            { icon: Truck, text: "Frete grátis acima de R$ 299,90" },
             { icon: Shield, text: "Compra 100% segura e protegida" },
             { icon: RefreshCw, text: "Troca ou devolução em 30 dias" },
           ].map(({ icon: Icon, text }) => (

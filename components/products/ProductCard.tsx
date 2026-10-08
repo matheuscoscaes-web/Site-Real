@@ -59,7 +59,7 @@ export function ProductCard({
 
   return (
     <div className="group relative">
-      <Link href={`/produtos/${product.slug}`} className="block">
+      <Link href={`/produtos/${product.slug}${product.preferredColor ? `?cor=${encodeURIComponent(product.preferredColor)}` : ""}`} className="block">
         {/* Imagem */}
         <div className="relative overflow-hidden rounded-2xl bg-cream-50 aspect-[3/4]">
           <Image
@@ -151,9 +151,6 @@ export function ProductCard({
           <p className="text-[11px] text-gray-500">
             {installments}x de {formatCurrency((couponPrice ?? product.price) / installments)} sem juros
           </p>
-          {product.price >= 299.9 && (
-            <p className="text-[11px] text-green-700 font-medium mt-0.5">Frete grátis</p>
-          )}
           {hasMultipleColors && (
             <p className="text-[11px] text-gray-400 mt-0.5 [@media(hover:hover)]:hidden">{colorCount} cores</p>
           )}

@@ -10,10 +10,15 @@ interface FilterLink {
   active: boolean;
 }
 
+interface ColorLink extends FilterLink {
+  swatch: string;
+}
+
 interface FilterSidebarProps {
   categories: FilterLink[];
   subcategories?: FilterLink[];
   priceRanges: FilterLink[];
+  colors?: ColorLink[];
   clearHref: string | null;
 }
 
@@ -39,7 +44,34 @@ function FilterGroup({ title, links, indent }: { title: string; links: FilterLin
   );
 }
 
-export function FilterSidebar({ categories, subcategories, priceRanges, clearHref }: FilterSidebarProps) {
+function ColorGroup({ links }: { links: ColorLink[] }) {
+  return (
+    <div className="mb-6">
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.2em] mb-3">Cor</p>
+      <div className="space-y-0.5">
+        {links.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            className={`flex items-center gap-3 text-sm px-3 py-2.5 rounded-xl transition-colors ${
+              l.active ? "bg-brand-50 text-brand-800 font-semibold" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            }`}
+          >
+            <span
+              className={`w-4 h-4 rounded-full flex-shrink-0 ring-1 ring-black/10 ${l.active ? "ring-2 ring-brand-600 ring-offset-2" : ""}`}
+              style={{ backgroundColor: l.swatch }}
+              aria-hidden
+            />
+            <span className="flex-1">{l.label}</span>
+            {l.active && <span className="w-1.5 h-1.5 rounded-full bg-brand-600" />}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function FilterSidebar({ categories, subcategories, priceRanges, colors, clearHref }: FilterSidebarProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -57,6 +89,7 @@ export function FilterSidebar({ categories, subcategories, priceRanges, clearHre
   const groups = (
     <>
       {subcategories && subcategories.length > 0 && <FilterGroup title="Seções" links={subcategories} indent />}
+      {colors && colors.length > 0 && <ColorGroup links={colors} />}
       <FilterGroup title="Faixa de preço" links={priceRanges} />
     </>
   );

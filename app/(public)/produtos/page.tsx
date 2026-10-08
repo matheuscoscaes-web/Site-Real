@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { ProductGrid } from "./ProductGrid";
 import { sortOutOfStockLast, toCardProduct } from "@/lib/utils";
 import { getProductCategoryTree } from "@/lib/product-categories";
+import { COLOR_FAMILIES, productColorFamilies, colorFamiliesOf } from "@/lib/colorFamilies";
 import { Filter } from "lucide-react";
 import { SortSelect } from "./SortSelect";
 import { FilterSidebar } from "./FilterSidebar";
@@ -15,6 +16,7 @@ interface SearchParams {
   preco_max?: string;
   ordem?: string;
   novidades?: string;
+  cor?: string;
 }
 
 const getProducts = unstable_cache(
@@ -76,11 +78,22 @@ export default async function ProdutosPage({
       )
     : undefined;
 
+  // A cor e filtrada aqui (e nao no banco): o nome da cor e texto livre e o
+  // agrupamento em familias acontece no codigo. Fica fora da chave do cache.
+  const { cor: corParam, ...queryParams } = params;
+  // Cor desconhecida (link velho, digitado errado, ?cor= repetido) e ignorada
+  const cor = COLOR_FAMILIES.some((f) => f.slug === corParam) ? corParam : undefined;
+  const allProducts = await getProducts(
+    queryParams,
+    activeParent && activeParent.name === params.categoria ? activeParent.children.map((c) => c.name) : []
+  );
+  const familiesByProduct = new Map(allProducts.map((p) => [p.id, productColorFamilies(p.variants)]));
+  // So oferece as cores que existem no resultado atual (categoria/preco/busca)
+  const availableFamilies = COLOR_FAMILIES.filter((f) => f.slug === cor ||
+    allProducts.some((p) => familiesByProduct.get(p.id)!.has(f.slug))
+  );
   const products = sortOutOfStockLast(
-    await getProducts(
-      params,
-      activeParent && activeParent.name === params.categoria ? activeParent.children.map((c) => c.name) : []
-    )
+    cor ? allProducts.filter((p) => familiesByProduct.get(p.id)!.has(cor)) : allProducts
   );
 
   const title = params.categoria
@@ -118,6 +131,7 @@ export default async function ProdutosPage({
           <h1 className="text-[1.75rem] md:text-5xl font-bold text-gray-900 leading-tight break-words">{title}</h1>
           <p className="text-sm text-gray-500 mt-1.5">
             {products.length} produto{products.length !== 1 ? "s" : ""}
+            {cor && COLOR_FAMILIES.find((f) => f.slug === cor) && ` · cor ${COLOR_FAMILIES.find((f) => f.slug === cor)!.label}`}
           </p>
         </div>
         <SortSelect currentValue={params.ordem} />
@@ -147,7 +161,14 @@ export default async function ProdutosPage({
             href: buildUrl({ preco_min: range.min, preco_max: range.max }),
             active: params.preco_min === range.min && params.preco_max === range.max,
           }))}
-          clearHref={(params.categoria || params.preco_min || params.busca) ? "/produtos" : null}
+          colors={availableFamilies.map((f) => ({
+            label: f.label,
+            swatch: f.swatch,
+            // Clicar na cor ja escolhida desmarca
+            href: buildUrl({ cor: cor === f.slug ? undefined : f.slug }),
+            active: cor === f.slug,
+          }))}
+          clearHref={(params.categoria || params.preco_min || params.busca || cor) ? "/produtos" : null}
         />
 
         {/* Lista de produtos */}
@@ -160,7 +181,7 @@ export default async function ProdutosPage({
               <Link href="/produtos" className="btn-primary">Ver todos os produtos</Link>
             </div>
           ) : (
-            <ProductGrid products={products.map(toCardProduct)} />
+            <ProductGrid products={products.map((p) => toCardProduct(p, cor ? (c) => colorFamiliesOf(c).includes(cor) : undefined))} />
           )}
         </div>
       </div>
