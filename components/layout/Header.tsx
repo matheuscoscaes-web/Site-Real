@@ -13,6 +13,7 @@ import {
 import { cn, formatCurrency } from "@/lib/utils";
 import { useMounted } from "@/lib/useMounted";
 import type { ProductCategoryNode } from "@/lib/product-categories";
+import { CouponMenuButton } from "@/components/layout/ActiveCoupon";
 
 type NavLink = { label: string; href: string; className?: string; children?: { label: string; href: string }[] };
 
@@ -194,6 +195,9 @@ export function Header({ categories }: { categories: ProductCategoryNode[] }) {
               <button onClick={() => setSearchOpen(true)} className={iconBtn} aria-label="Buscar">
                 <Search size={20} />
               </button>
+
+              {/* Cupom: ativa o desconto nos precos do site todo */}
+              <CouponMenuButton className={iconBtn} />
 
               {/* Favoritos */}
               <div ref={wishlistRef} className="relative hidden md:block" onClick={closeOnLink(() => setWishlistOpen(false))}>

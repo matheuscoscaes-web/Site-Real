@@ -9,6 +9,7 @@ import { formatCurrency, parseProductImages, isCupomElegivel, getMaxInstallments
 import { useCartStore } from "@/store/cartStore";
 import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
+import { useCouponStore, couponUnitPrice } from "@/store/couponStore";
 
 interface ProductCardProps {
   product: CardProduct;
@@ -37,7 +38,9 @@ export function ProductCard({
   const sizeCount = new Set((product.variants ?? []).map((v) => v.size).filter(Boolean)).size;
   const needsChoice = hasMultipleColors || sizeCount > 0;
   const totalStock = (product.variants ?? []).reduce((s, v) => s + v.stock, 0);
-  const installments = getMaxInstallments(product.price);
+  const coupon = useCouponStore((s) => s.coupon);
+  const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.categories, product.permiteCupom)) : null;
+  const installments = getMaxInstallments(couponPrice ?? product.price);
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
@@ -136,9 +139,17 @@ export function ProductCard({
           <h3 className="text-sm font-medium text-gray-900 group-hover:text-brand-700 transition-colors line-clamp-2 leading-snug mb-1.5">
             {product.name}
           </h3>
-          <p className="text-[15px] font-bold text-gray-900">{formatCurrency(product.price)}</p>
+          {couponPrice !== null ? (
+            <div className="flex flex-wrap items-baseline gap-x-1.5">
+              <p className="text-[15px] font-bold text-brand-700">{formatCurrency(couponPrice)}</p>
+              <p className="text-[11px] text-gray-400 line-through">{formatCurrency(product.price)}</p>
+              <span className="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-px rounded-full self-center">-{coupon!.discountValue}%</span>
+            </div>
+          ) : (
+            <p className="text-[15px] font-bold text-gray-900">{formatCurrency(product.price)}</p>
+          )}
           <p className="text-[11px] text-gray-500">
-            {installments}x de {formatCurrency(product.price / installments)} sem juros
+            {installments}x de {formatCurrency((couponPrice ?? product.price) / installments)} sem juros
           </p>
           {product.price >= 299.9 && (
             <p className="text-[11px] text-green-700 font-medium mt-0.5">Frete grátis</p>

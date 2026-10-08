@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
+import { useCouponStore, toActiveCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
 import { formatCurrency, getMaxInstallments } from "@/lib/utils";
 import { type FreteOption } from "@/lib/frete";
@@ -28,6 +29,9 @@ export default function CarrinhoPage() {
   const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discountType: "PERCENT" | "FIXED"; discountValue: number; ownerName: string; freeShipping?: boolean } | null>(null);
   const [cupomError, setCupomError] = useState("");
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
+  const cupomAtivo = useCouponStore((s) => s.coupon);
+  const setCupomAtivo = useCouponStore((s) => s.setCoupon);
+  const limparCupomAtivo = useCouponStore((s) => s.clearCoupon);
   const [avisoEstoque, setAvisoEstoque] = useState<string[]>([]);
 
   useEffect(() => {
@@ -145,20 +149,34 @@ export default function CarrinhoPage() {
     }
   }
 
-  async function handleCupom() {
-    if (!cupomInput.trim()) return;
+  async function handleCupom(codigo = cupomInput) {
+    if (!codigo.trim()) return;
     setCupomLoading(true);
     setCupomError("");
-    const res = await fetch(`/api/cupom?code=${encodeURIComponent(cupomInput.trim())}&subtotal=${sub}`);
+    const res = await fetch(`/api/cupom?code=${encodeURIComponent(codigo.trim())}&subtotal=${sub}`);
     const data = await res.json();
     setCupomLoading(false);
     if (data.valid) {
-      setCupomAplicado({ code: cupomInput.trim().toUpperCase(), discountType: data.discountType, discountValue: data.discountValue, ownerName: data.ownerName, freeShipping: !!data.freeShipping });
+      const code = codigo.trim().toUpperCase();
+      setCupomAplicado({ code, discountType: data.discountType, discountValue: data.discountValue, ownerName: data.ownerName, freeShipping: !!data.freeShipping });
+      setCupomAtivo(toActiveCoupon(code, data));
       setCupomInput("");
     } else {
       setCupomError(data.error || "Cupom inválido ou expirado.");
     }
   }
+
+  function removerCupom() {
+    setCupomAplicado(null);
+    limparCupomAtivo();
+  }
+
+  // Cupom ativado no menu ou pelo link: ja entra aplicado no carrinho
+  useEffect(() => {
+    if (!mounted || !cupomAtivo || cupomAplicado || items.length === 0) return;
+    handleCupom(cupomAtivo.code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, cupomAtivo?.code]);
 
   function handleCheckout() {
     const url = cupomAplicado ? `/checkout?cupom=${encodeURIComponent(cupomAplicado.code)}` : "/checkout";
@@ -273,12 +291,25 @@ export default function CarrinhoPage() {
                     </button>
                   </div>
 
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>
-                    {item.quantity > 1 && (
-                      <p className="text-xs text-gray-400">{formatCurrency(item.price)} cada</p>
-                    )}
-                  </div>
+                  {(() => {
+                    // Cupom percentual aplicado: mostra o preco da peca ja com desconto, igual a vitrine
+                    const unitario = cupomAplicado?.discountType === "PERCENT" && item.cupomElegivel !== false
+                      ? Math.round(item.price * (100 - cupomAplicado.discountValue)) / 100
+                      : null;
+                    return (
+                      <div className="text-right">
+                        {unitario !== null && (
+                          <p className="text-xs text-gray-400 line-through">{formatCurrency(item.price * item.quantity)}</p>
+                        )}
+                        <p className={`font-bold ${unitario !== null ? "text-brand-700" : "text-gray-900"}`}>
+                          {formatCurrency((unitario ?? item.price) * item.quantity)}
+                        </p>
+                        {item.quantity > 1 && (
+                          <p className="text-xs text-gray-400">{formatCurrency(unitario ?? item.price)} cada</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -305,7 +336,7 @@ export default function CarrinhoPage() {
                     {cupomAplicado.freeShipping && " + frete grátis"}
                   </p>
                 </div>
-                <button onClick={() => setCupomAplicado(null)} className="text-gray-400 hover:text-red-500 ml-3">
+                <button onClick={removerCupom} className="text-gray-400 hover:text-red-500 ml-3" aria-label="Remover cupom">
                   <X size={16} />
                 </button>
               </div>
@@ -325,7 +356,7 @@ export default function CarrinhoPage() {
                     placeholder="Digite o cupom"
                     className="input-field flex-1 min-w-0 text-sm py-2.5 font-mono uppercase"
                   />
-                  <button onClick={handleCupom} disabled={cupomLoading} className="btn-primary text-sm px-4 py-2.5 min-w-[90px]">
+                  <button onClick={() => handleCupom()} disabled={cupomLoading} className="btn-primary text-sm px-4 py-2.5 min-w-[90px]">
                     {cupomLoading ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Aplicar"}
                   </button>
                 </div>

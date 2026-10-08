@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
+import { useCouponStore, toActiveCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
 import { formatCurrency, getMaxInstallments } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
@@ -164,14 +165,18 @@ export default function CheckoutPage() {
   }, [status, enderecosCarregados]);
 
   useEffect(() => {
+    // Cupom vindo do carrinho/link (?cupom=) ou ativado no menu do site
     const params = new URLSearchParams(window.location.search);
-    const code = params.get("cupom");
+    const code = params.get("cupom") || useCouponStore.getState().coupon?.code;
     if (!code) return;
     fetch(`/api/cupom?code=${encodeURIComponent(code)}&subtotal=${subtotal()}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.valid) {
           setCoupon((p) => ({ ...p, applied: true, code: code.toUpperCase(), discountType: data.discountType, discountValue: data.discountValue, freeShipping: !!data.freeShipping, error: "" }));
+          useCouponStore.getState().setCoupon(toActiveCoupon(code, data));
+        } else if (data.error) {
+          setCoupon((p) => ({ ...p, input: code.toUpperCase(), error: data.error }));
         }
       })
       .catch(() => {});
@@ -265,6 +270,7 @@ export default function CheckoutPage() {
     const data = await res.json();
     if (data.valid) {
       setCoupon((p) => ({ ...p, loading: false, applied: true, code: coupon.input.trim().toUpperCase(), discountType: data.discountType, discountValue: data.discountValue, freeShipping: !!data.freeShipping, error: "" }));
+      useCouponStore.getState().setCoupon(toActiveCoupon(coupon.input, data));
     } else {
       setCoupon((p) => ({ ...p, loading: false, error: data.error || "Cupom inválido", applied: false, discountValue: 0, freeShipping: false }));
     }
@@ -750,7 +756,7 @@ export default function CheckoutPage() {
                         — {coupon.discountType === "FIXED" ? formatCurrency(coupon.discountValue) : `${coupon.discountValue}%`} de desconto{coupon.freeShipping && " + frete grátis"}
                       </span>
                     </div>
-                    <button onClick={() => setCoupon({ code: "", input: "", discountType: "PERCENT", discountValue: 0, loading: false, error: "", applied: false, freeShipping: false })} className="text-gray-400 hover:text-red-500">
+                    <button onClick={() => { setCoupon({ code: "", input: "", discountType: "PERCENT", discountValue: 0, loading: false, error: "", applied: false, freeShipping: false }); useCouponStore.getState().clearCoupon(); }} className="text-gray-400 hover:text-red-500" aria-label="Remover cupom">
                       <X size={16} />
                     </button>
                   </div>

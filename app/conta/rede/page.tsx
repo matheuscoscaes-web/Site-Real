@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { CopyCouponLinkButton } from "@/components/CopyCouponLinkButton";
 import {
   Tag, Users, Plus, X, Loader2, Check, Copy, CheckCheck,
   TrendingUp, Pencil, ChevronDown, ChevronUp, DollarSign,
@@ -192,6 +193,7 @@ export default function MinhaRedePage() {
                       <button onClick={() => copyCoupon(c.code)} className="mt-1 text-gray-400 hover:text-brand-600 mx-auto flex items-center justify-center">
                         {copied ? <CheckCheck size={14} className="text-green-500" /> : <Copy size={14} />}
                       </button>
+                      <CopyCouponLinkButton code={c.code} label="Link" className="mt-1.5 mx-auto inline-flex items-center gap-1 text-[11px] font-medium text-brand-700 hover:text-brand-800" />
                     </div>
                   ))}
                 </div>
@@ -341,7 +343,7 @@ export default function MinhaRedePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><Tag size={16} className="text-gray-600" /></div>
-                    <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Código do cupom</p><p className="font-mono font-bold text-gray-900">{vendor.couponCode}</p></div>
+                    <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Código do cupom</p><p className="font-mono font-bold text-gray-900">{vendor.couponCode}</p><CopyCouponLinkButton code={vendor.couponCode!} label="Copiar link com cupom" className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-800" /></div>
                     <button onClick={() => copyCoupon(vendor.couponCode!)} className="text-gray-400 hover:text-brand-600 flex-shrink-0">
                       {copied ? <CheckCheck size={16} className="text-green-500" /> : <Copy size={16} />}
                     </button>
@@ -620,7 +622,7 @@ export default function MinhaRedePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-xl border border-gray-100 p-4 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0"><Tag size={16} className="text-gray-600" /></div>
-                    <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Código do cupom</p><p className="font-mono font-bold text-gray-900">{ownVendor!.couponCode}</p></div>
+                    <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Código do cupom</p><p className="font-mono font-bold text-gray-900">{ownVendor!.couponCode}</p><CopyCouponLinkButton code={ownVendor!.couponCode!} label="Copiar link com cupom" className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-800" /></div>
                     <button onClick={() => copyCoupon(ownVendor!.couponCode!)} className="text-gray-400 hover:text-brand-600 flex-shrink-0">
                       {copied ? <CheckCheck size={16} className="text-green-500" /> : <Copy size={16} />}
                     </button>

@@ -5,6 +5,7 @@ import { ArrowLeft, Mail, Phone, Tag, Percent, Users, ShoppingBag } from "lucide
 import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
 import { ResellerForm } from "./ResellerForm";
 import { VendorToggle } from "./VendorToggle";
+import { CopyCouponLinkButton } from "@/components/CopyCouponLinkButton";
 import { RemoveVendorButton } from "./RemoveVendorButton";
 
 const CONFIRMED_STATUSES = ["PAID", "PREPARING", "SHIPPED", "DELIVERED"];
@@ -98,7 +99,7 @@ export default async function AdminVendedorDetailPage({ params }: { params: Prom
                 <div>
                   <p className="text-xs text-gray-400">Código do cupom</p>
                   {vendor.couponCode
-                    ? <p className="font-mono font-bold text-gray-900">{vendor.couponCode}</p>
+                    ? <><p className="font-mono font-bold text-gray-900">{vendor.couponCode}</p><CopyCouponLinkButton code={vendor.couponCode} label="Copiar link com cupom" /></>
                     : <p className="text-xs text-amber-500 italic">Não configurado</p>
                   }
                 </div>

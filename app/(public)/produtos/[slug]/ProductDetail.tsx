@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
+import { useCouponStore, couponUnitPrice } from "@/store/couponStore";
 import { formatCurrency, parseProductImages, isCupomElegivel, getMaxInstallments, sortSizes } from "@/lib/utils";
 import { ShoppingBag, Truck, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
@@ -127,8 +128,13 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     setTimeout(() => setAdded(false), 3000);
   }
 
-  const maxInstallments = getMaxInstallments(product.price);
-  const installment = product.price / maxInstallments;
+  // Cupom ativado no menu: mostra o preco ja com o desconto
+  const coupon = useCouponStore((s) => s.coupon);
+  const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.categories, product.permiteCupom)) : null;
+  const finalPrice = couponPrice ?? product.price;
+
+  const maxInstallments = getMaxInstallments(finalPrice);
+  const installment = finalPrice / maxInstallments;
 
   const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
 
@@ -260,16 +266,29 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
 
         {/* Preço */}
         <div className="mb-6 p-5 bg-cream-50 rounded-2xl">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-3xl font-bold text-gray-900">{formatCurrency(product.price)}</span>
-            <span className="text-lg text-gray-400 line-through">{formatCurrency(product.price * 1.2)}</span>
-            <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap self-center">17% off</span>
-          </div>
+          {couponPrice !== null ? (
+            <>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-3xl font-bold text-brand-700">{formatCurrency(couponPrice)}</span>
+                <span className="text-lg text-gray-400 line-through">{formatCurrency(product.price)}</span>
+                <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap self-center">-{coupon!.discountValue}%</span>
+              </div>
+              <p className="text-xs text-green-700 font-medium mt-1">
+                Preço com o cupom <span className="font-mono font-bold">{coupon!.code}</span>
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-3xl font-bold text-gray-900">{formatCurrency(product.price)}</span>
+              <span className="text-lg text-gray-400 line-through">{formatCurrency(product.price * 1.2)}</span>
+              <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap self-center">17% off</span>
+            </div>
+          )}
           <p className="text-sm text-gray-500 mt-1">
             ou <strong>{maxInstallments}x de {formatCurrency(installment)}</strong> sem juros no cartão
           </p>
           <p className="text-sm text-brand-700 font-medium mt-1">
-            5% de desconto no PIX: {formatCurrency(product.price * 0.95)}
+            5% de desconto no PIX: {formatCurrency(finalPrice * 0.95)}
           </p>
         </div>
 
@@ -380,7 +399,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
             ) : availableStock === 0 ? (
               "Produto esgotado"
             ) : (
-              <><ShoppingBag size={18} className="shrink-0" /> Adicionar ao carrinho — {formatCurrency(product.price * quantity)}</>
+              <><ShoppingBag size={18} className="shrink-0" /> Adicionar ao carrinho — {formatCurrency(finalPrice * quantity)}</>
             )}
           </button>
           <Link href="/carrinho" className="btn-outline w-full text-sm sm:text-base py-4">
@@ -400,7 +419,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
               <p className="text-xs text-gray-500 truncate">
                 {product.name}{selectedColor ? ` · ${selectedColor}` : ""}
               </p>
-              <p className="text-base font-bold text-gray-900">{formatCurrency(product.price)}</p>
+              <p className={`text-base font-bold ${couponPrice !== null ? "text-brand-700" : "text-gray-900"}`}>{formatCurrency(finalPrice)}</p>
             </div>
             <button
               onClick={handleAddToCart}
