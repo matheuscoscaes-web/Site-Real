@@ -122,6 +122,29 @@ export function FilterSidebar({ categories, subcategories, priceRanges, colors, 
         </button>
       </div>
 
+      {/* Mobile: cores sempre a mostra (sem precisar abrir a gaveta) */}
+      {colors && colors.length > 0 && (
+        <div className="lg:hidden -mx-4 mt-2">
+          <div className="snap-row gap-2 pl-4 scroll-pl-4 py-1">
+            {colors.map((c) => (
+              <Link
+                key={c.href}
+                href={c.href}
+                aria-label={c.active ? `Remover filtro ${c.label}` : `Filtrar por ${c.label}`}
+                className={`flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 rounded-full text-[13px] whitespace-nowrap border transition-colors ${
+                  c.active ? "bg-brand-50 border-brand-600 text-brand-800 font-semibold" : "bg-white border-gray-200 text-gray-700 active:bg-gray-50"
+                }`}
+              >
+                <span className="w-5 h-5 rounded-full ring-1 ring-black/10 flex-shrink-0" style={{ backgroundColor: c.swatch }} aria-hidden />
+                {c.label}
+                {c.active && <X size={13} className="-mr-1 text-brand-700" />}
+              </Link>
+            ))}
+            <span className="w-2" aria-hidden />
+          </div>
+        </div>
+      )}
+
       {/* Mobile: gaveta de filtros */}
       <div className={`lg:hidden fixed inset-0 z-[60] ${open ? "visible" : "invisible pointer-events-none"}`} aria-hidden={!open}>
         <div

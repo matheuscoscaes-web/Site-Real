@@ -3,6 +3,7 @@ import Image from "next/image";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/products/ProductCard";
+import { ShopByColor } from "@/components/products/ShopByColor";
 import { Truck, Shield, RefreshCw, Headphones, ArrowRight, Instagram } from "lucide-react";
 import { sortOutOfStockLast, toCardProduct } from "@/lib/utils";
 
@@ -177,6 +178,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* COMPRE POR COR */}
+      <ShopByColor />
 
       {/* CATEGORIAS */}
       {categories.length > 0 && (
