@@ -9,7 +9,7 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useCouponStore, toActiveCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
-import { formatCurrency, getMaxInstallments } from "@/lib/utils";
+import { formatCurrency, getMaxInstallments, carrinhoLiberaFreteGratis } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
 import {
@@ -104,7 +104,9 @@ export default function CheckoutPage() {
   const couponAmount = coupon.applied
     ? (coupon.discountType === "FIXED" ? Math.min(coupon.discountValue, eligibleSubtotal()) : (eligibleSubtotal() * coupon.discountValue) / 100)
     : 0;
-  const effectiveShipping = deliveryType === "RETIRADA" || coupon.freeShipping ? 0 : (selectedShipping?.price ?? 0);
+  // Frete grátis do cupom não vale pra pedido só de acessórios (servidor aplica a mesma regra)
+  const freteGratisCupom = coupon.freeShipping && carrinhoLiberaFreteGratis(items);
+  const effectiveShipping = deliveryType === "RETIRADA" || freteGratisCupom ? 0 : (selectedShipping?.price ?? 0);
   const total = sub - couponAmount + effectiveShipping;
   const maxInstallments = getMaxInstallments(total);
 
@@ -735,8 +737,8 @@ export default function CheckoutPage() {
                             <p className="text-xs text-gray-400">Prazo: até {opt.days} {opt.days === 1 ? "dia útil" : "dias úteis"}</p>
                           </div>
                         </div>
-                        <span className={`text-sm font-bold flex-shrink-0 ${coupon.freeShipping ? "text-green-600" : "text-gray-900"}`}>
-                          {coupon.freeShipping ? "Grátis" : formatCurrency(opt.price)}
+                        <span className={`text-sm font-bold flex-shrink-0 ${freteGratisCupom ? "text-green-600" : "text-gray-900"}`}>
+                          {freteGratisCupom ? "Grátis" : formatCurrency(opt.price)}
                         </span>
                       </label>
                     ))}
@@ -753,7 +755,7 @@ export default function CheckoutPage() {
                       <Tag size={16} className="text-green-600" />
                       <span className="font-mono font-bold text-green-700">{coupon.code}</span>
                       <span className="text-sm text-green-600">
-                        — {coupon.discountType === "FIXED" ? formatCurrency(coupon.discountValue) : `${coupon.discountValue}%`} de desconto{coupon.freeShipping && " + frete grátis"}
+                        — {coupon.discountType === "FIXED" ? formatCurrency(coupon.discountValue) : `${coupon.discountValue}%`} de desconto{freteGratisCupom && " + frete grátis"}
                       </span>
                     </div>
                     <button onClick={() => { setCoupon({ code: "", input: "", discountType: "PERCENT", discountValue: 0, loading: false, error: "", applied: false, freeShipping: false }); useCouponStore.getState().clearCoupon(); }} className="text-gray-400 hover:text-red-500" aria-label="Remover cupom">
@@ -1060,8 +1062,8 @@ export default function CheckoutPage() {
                       ? "Retirada na loja"
                       : `Frete${selectedShipping ? ` (${selectedShipping.company} ${selectedShipping.name})` : ""}`}
                   </span>
-                  <span className={coupon.freeShipping || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
-                    {coupon.freeShipping || deliveryType === "RETIRADA"
+                  <span className={freteGratisCupom || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
+                    {freteGratisCupom || deliveryType === "RETIRADA"
                       ? "Grátis"
                       : selectedShipping
                       ? formatCurrency(selectedShipping.price)

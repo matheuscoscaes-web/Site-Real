@@ -13,6 +13,7 @@ interface CartStore {
   totalItems: () => number;
   subtotal: () => number;
   eligibleSubtotal: () => number;
+  syncCouponFlags: (productId: string, flags: Pick<CartItem, "cupomElegivel" | "freteGratisElegivel">) => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -57,6 +58,14 @@ export const useCartStore = create<CartStore>()(
       },
 
       clearCart: () => set({ items: [] }),
+
+      // O carrinho fica salvo no navegador: atualiza as regras de cupom/frete
+      // com o que o produto tem hoje (podem ter mudado desde que foi adicionado).
+      syncCouponFlags: (productId, flags) => {
+        const items = get().items;
+        if (!items.some((i) => i.productId === productId && (i.cupomElegivel !== flags.cupomElegivel || i.freteGratisElegivel !== flags.freteGratisElegivel))) return;
+        set({ items: items.map((i) => (i.productId === productId ? { ...i, ...flags } : i)) });
+      },
 
       totalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
 

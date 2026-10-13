@@ -8,7 +8,7 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useCouponStore, toActiveCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
-import { formatCurrency, getMaxInstallments } from "@/lib/utils";
+import { formatCurrency, getMaxInstallments, isCupomElegivel, isFreteGratisElegivel, carrinhoLiberaFreteGratis } from "@/lib/utils";
 import { type FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
 import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } from "lucide-react";
@@ -16,7 +16,7 @@ import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } 
 export default function CarrinhoPage() {
   const router = useRouter();
   const { status } = useSession();
-  const { items, removeItem, updateQuantity, subtotal, eligibleSubtotal } = useCartStore();
+  const { items, removeItem, updateQuantity, subtotal, eligibleSubtotal, syncCouponFlags } = useCartStore();
   const mounted = useMounted();
   const [cep, setCep] = useState("");
   const [freteOptions, setFreteOptions] = useState<FreteOption[]>([]);
@@ -56,6 +56,10 @@ export default function CarrinhoPage() {
       for (const item of items) {
         const produto = estoqueMap.get(item.productId);
         if (!produto) continue; // produto removido do catálogo — checkout barra na hora de pagar
+        syncCouponFlags(item.productId, {
+          cupomElegivel: isCupomElegivel(produto.permiteCupom),
+          freteGratisElegivel: isFreteGratisElegivel(produto.categories ?? []),
+        });
         const variantes = (produto.variants as { color: string | null; size: string | null; stock: number }[]).filter(
           (v) => (!item.color || v.color === item.color) && (!item.size || v.size === item.size)
         );
@@ -77,7 +81,10 @@ export default function CarrinhoPage() {
 
   const sub = subtotal();
   const temItemNaoElegivel = items.some((i) => i.cupomElegivel === false);
-  const freteTotal = cupomAplicado?.freeShipping ? 0 : deliveryType === "RETIRADA" ? 0 : (selectedFrete?.price ?? 0);
+  // Frete grátis do cupom não vale pra pedido só de acessórios
+  const freteGratisCupom = !!cupomAplicado?.freeShipping && carrinhoLiberaFreteGratis(items);
+  const freteGratisBloqueado = !!cupomAplicado?.freeShipping && !freteGratisCupom;
+  const freteTotal = freteGratisCupom ? 0 : deliveryType === "RETIRADA" ? 0 : (selectedFrete?.price ?? 0);
   const desconto = cupomAplicado
     ? (cupomAplicado.discountType === "FIXED" ? Math.min(cupomAplicado.discountValue, eligibleSubtotal()) : (eligibleSubtotal() * cupomAplicado.discountValue) / 100)
     : 0;
@@ -333,8 +340,11 @@ export default function CarrinhoPage() {
                   <p className="font-mono font-bold text-green-700 text-sm">{cupomAplicado.code}</p>
                   <p className="text-xs text-green-600">
                     {cupomAplicado.discountType === "FIXED" ? formatCurrency(cupomAplicado.discountValue) : `${cupomAplicado.discountValue}%`} de desconto — economia de {formatCurrency(desconto)}
-                    {cupomAplicado.freeShipping && " + frete grátis"}
+                    {freteGratisCupom && " + frete grátis"}
                   </p>
+                  {freteGratisBloqueado && (
+                    <p className="text-[11px] text-amber-600 mt-1">O frete grátis do cupom não vale para pedido só de acessórios — adicione uma bolsa ou outra peça para ganhar.</p>
+                  )}
                 </div>
                 <button onClick={removerCupom} className="text-gray-400 hover:text-red-500 ml-3" aria-label="Remover cupom">
                   <X size={16} />
@@ -366,7 +376,7 @@ export default function CarrinhoPage() {
           </div>
 
           {/* Frete */}
-          {cupomAplicado?.freeShipping ? (
+          {freteGratisCupom ? (
             <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex items-center gap-3">
               <Truck size={18} className="text-green-700 flex-shrink-0" />
               <p className="text-sm font-semibold text-green-800">Frete grátis com o cupom {cupomAplicado.code}!</p>
@@ -460,9 +470,9 @@ export default function CarrinhoPage() {
                 </div>
               )}
               <div className="flex justify-between text-gray-600">
-                <span>Frete{deliveryType === "RETIRADA" && !cupomAplicado?.freeShipping ? " (retirada na loja)" : ""}</span>
-                <span className={cupomAplicado?.freeShipping || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
-                  {cupomAplicado?.freeShipping
+                <span>Frete{deliveryType === "RETIRADA" && !freteGratisCupom ? " (retirada na loja)" : ""}</span>
+                <span className={freteGratisCupom || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
+                  {freteGratisCupom
                     ? "Grátis"
                     : deliveryType === "RETIRADA"
                     ? "Grátis"

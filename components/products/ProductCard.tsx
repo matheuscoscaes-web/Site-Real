@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Heart, ShoppingBag, Check } from "lucide-react";
-import { formatCurrency, parseProductImages, isCupomElegivel, getMaxInstallments, type CardProduct } from "@/lib/utils";
+import { formatCurrency, parseProductImages, isCupomElegivel, isFreteGratisElegivel, getMaxInstallments, type CardProduct } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
 import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
@@ -39,7 +39,7 @@ export function ProductCard({
   const needsChoice = hasMultipleColors || sizeCount > 0;
   const totalStock = (product.variants ?? []).reduce((s, v) => s + v.stock, 0);
   const coupon = useCouponStore((s) => s.coupon);
-  const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.categories, product.permiteCupom)) : null;
+  const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.permiteCupom)) : null;
   const installments = getMaxInstallments(couponPrice ?? product.price);
 
   function handleAddToCart(e: React.MouseEvent) {
@@ -51,7 +51,8 @@ export function ProductCard({
       image: mainImage,
       quantity: 1,
       slug: product.slug,
-      cupomElegivel: isCupomElegivel(product.categories, product.permiteCupom),
+      cupomElegivel: isCupomElegivel(product.permiteCupom),
+      freteGratisElegivel: isFreteGratisElegivel(product.categories),
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);

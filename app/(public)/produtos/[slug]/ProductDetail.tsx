@@ -7,7 +7,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { useCouponStore, couponUnitPrice } from "@/store/couponStore";
-import { formatCurrency, parseProductImages, isCupomElegivel, getMaxInstallments, sortSizes } from "@/lib/utils";
+import { formatCurrency, parseProductImages, isCupomElegivel, isFreteGratisElegivel, getMaxInstallments, sortSizes } from "@/lib/utils";
 import { ShoppingBag, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
@@ -129,7 +129,8 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
       color: selectedColor || undefined,
       size: selectedSize || undefined,
       slug: product.slug,
-      cupomElegivel: isCupomElegivel(product.categories, product.permiteCupom),
+      cupomElegivel: isCupomElegivel(product.permiteCupom),
+      freteGratisElegivel: isFreteGratisElegivel(product.categories),
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 3000);
@@ -137,7 +138,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
 
   // Cupom ativado no menu: mostra o preco ja com o desconto
   const coupon = useCouponStore((s) => s.coupon);
-  const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.categories, product.permiteCupom)) : null;
+  const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.permiteCupom)) : null;
   const finalPrice = couponPrice ?? product.price;
 
   const maxInstallments = getMaxInstallments(finalPrice);

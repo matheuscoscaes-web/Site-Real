@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveCoupon, computeDiscountAmount, CouponExhaustedError } from "@/lib/coupons";
 import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
-import { isCupomElegivel, formatCurrency } from "@/lib/utils";
+import { isCupomElegivel, isFreteGratisElegivel, formatCurrency } from "@/lib/utils";
 import { updateOrderStatus } from "@/lib/orders";
 
 export async function GET() {
@@ -63,7 +63,6 @@ export async function POST(request: NextRequest) {
     }
 
     appliedCoupon = couponCode.toUpperCase().trim();
-    freeShipping = !!result.freeShipping;
     vendorId = result.vendorId ?? null;
     resellerId = result.resellerId ?? null;
     couponId = result.couponId ?? null;
@@ -78,9 +77,13 @@ export async function POST(request: NextRequest) {
     const productMap = new Map(products.map((p) => [p.id, p]));
     const eligibleSubtotal = items.reduce((sum: number, item: { productId: string; price: number; quantity: number }) => {
       const product = productMap.get(item.productId);
-      const elegivel = product ? isCupomElegivel(product.categories, product.permiteCupom) : true;
+      const elegivel = product ? isCupomElegivel(product.permiteCupom) : true;
       return elegivel ? sum + item.price * item.quantity : sum;
     }, 0);
+
+    // Frete grátis do cupom só vale se tiver ao menos uma peça fora de Acessórios
+    // (acessório sozinho ganha o desconto, mas paga o frete).
+    freeShipping = !!result.freeShipping && products.some((p) => isFreteGratisElegivel(p.categories));
 
     couponDiscountAmount = computeDiscountAmount(result.discountType!, result.discountValue!, eligibleSubtotal);
 

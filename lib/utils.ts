@@ -167,12 +167,23 @@ export function hasRealEmail(email: string): boolean {
   return !email.endsWith(PLACEHOLDER_EMAIL_DOMAIN);
 }
 
-/** Categoria que nunca recebe desconto de cupom, independente do produto. */
-export const COUPON_EXCLUDED_CATEGORY = "Acessórios";
+/** Categoria que recebe o desconto do cupom, mas sozinha não libera o frete grátis do cupom. */
+export const FREE_SHIPPING_EXCLUDED_CATEGORY = "Acessórios";
 
-/** Um produto só participa de desconto de cupom se permitir e não estiver na categoria excluída. */
-export function isCupomElegivel(categories: string[], permiteCupom?: boolean | null): boolean {
-  return permiteCupom !== false && !categories.includes(COUPON_EXCLUDED_CATEGORY);
+/** Um produto só participa de desconto de cupom se permitir (toggle no admin). */
+export function isCupomElegivel(permiteCupom?: boolean | null): boolean {
+  return permiteCupom !== false;
+}
+
+/** Produto que "segura" o frete grátis do cupom: tudo menos acessório. */
+export function isFreteGratisElegivel(categories: string[]): boolean {
+  return !categories.includes(FREE_SHIPPING_EXCLUDED_CATEGORY);
+}
+
+/** Frete grátis do cupom só vale se o pedido tiver ao menos uma peça fora de Acessórios
+ *  (ex: 1 bolsa + 1 acessório ganha; só acessório paga frete). */
+export function carrinhoLiberaFreteGratis(items: { freteGratisElegivel?: boolean }[]): boolean {
+  return items.some((i) => i.freteGratisElegivel !== false);
 }
 
 const LETTER_SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XG", "XXG", "U"];

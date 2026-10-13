@@ -39,6 +39,8 @@ export interface CartItem {
   size?: string;
   slug: string;
   cupomElegivel: boolean;
+  /** false = acessório: tem desconto do cupom, mas sozinho não libera o frete grátis. */
+  freteGratisElegivel?: boolean;
 }
 
 export interface Address {

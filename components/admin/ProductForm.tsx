@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { slugify, COLORS, sortSizes, COUPON_EXCLUDED_CATEGORY, getMaxInstallments } from "@/lib/utils";
+import { slugify, COLORS, sortSizes, FREE_SHIPPING_EXCLUDED_CATEGORY, getMaxInstallments } from "@/lib/utils";
 import type { ProductCategoryNode } from "@/lib/product-categories";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
@@ -962,24 +962,23 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
               </div>
             </label>
 
-            <label className={`flex items-center gap-3 p-3 rounded-xl border border-gray-100 mt-3 transition-colors ${categories.includes(COUPON_EXCLUDED_CATEGORY) ? "opacity-50" : "hover:bg-gray-50 cursor-pointer"}`}>
+            <label className={`flex items-center gap-3 p-3 rounded-xl border border-gray-100 mt-3 transition-colors hover:bg-gray-50 cursor-pointer`}>
               <div className="relative">
                 <input
                   type="checkbox"
-                  checked={form.permiteCupom && !categories.includes(COUPON_EXCLUDED_CATEGORY)}
-                  disabled={categories.includes(COUPON_EXCLUDED_CATEGORY)}
+                  checked={form.permiteCupom}
                   onChange={(e) => set("permiteCupom", e.target.checked)}
                   className="sr-only"
                 />
-                <div className={`w-10 h-6 rounded-full transition-colors ${form.permiteCupom && !categories.includes(COUPON_EXCLUDED_CATEGORY) ? "bg-brand-600" : "bg-gray-300"}`}>
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${form.permiteCupom && !categories.includes(COUPON_EXCLUDED_CATEGORY) ? "left-5" : "left-1"}`} />
+                <div className={`w-10 h-6 rounded-full transition-colors ${form.permiteCupom ? "bg-brand-600" : "bg-gray-300"}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${form.permiteCupom ? "left-5" : "left-1"}`} />
                 </div>
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">Permite cupom de desconto</p>
                 <p className="text-xs text-gray-400">
-                  {categories.includes(COUPON_EXCLUDED_CATEGORY)
-                    ? `Produtos em "${COUPON_EXCLUDED_CATEGORY}" nunca recebem desconto de cupom`
+                  {categories.includes(FREE_SHIPPING_EXCLUDED_CATEGORY)
+                    ? `Desmarque para não receber desconto. Em "${FREE_SHIPPING_EXCLUDED_CATEGORY}", o frete grátis do cupom só vale junto com outra peça`
                     : "Desmarque para este produto nunca receber desconto de cupom"}
                 </p>
               </div>
