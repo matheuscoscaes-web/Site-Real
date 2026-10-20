@@ -35,11 +35,15 @@ export async function resolveCoupon(code: string, userId: string | null): Promis
   const normalized = code.toUpperCase().trim();
 
   if (normalized === WELCOME_COUPON_CODE) {
-    if (!userId) return { valid: false, error: "Faça login para usar este cupom." };
-    const orderCount = await prisma.order.count({
-      where: { userId, status: { notIn: ["PENDING", "CANCELLED"] } },
-    });
-    if (orderCount > 0) return { valid: false, error: "Este cupom é válido apenas na primeira compra." };
+    // Sem login (ex: chegou pelo link ?cupom=) o cupom ja ativa na vitrine; a
+    // regra de primeira compra e conferida no checkout e na criacao do pedido,
+    // que sempre tem userId.
+    if (userId) {
+      const orderCount = await prisma.order.count({
+        where: { userId, status: { notIn: ["PENDING", "CANCELLED"] } },
+      });
+      if (orderCount > 0) return { valid: false, error: "Este cupom é válido apenas na primeira compra." };
+    }
     return {
       valid: true,
       type: "welcome",
