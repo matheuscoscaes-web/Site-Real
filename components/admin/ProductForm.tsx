@@ -178,6 +178,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
   const [uploadError, setUploadError] = useState("");
   const [uploadingMulti, setUploadingMulti] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
   const [dragSource, setDragSource] = useState<{ row: number; slot: "main" | number } | null>(null);
   const [dragOverRow, setDragOverRow] = useState<number | null>(null);
 
@@ -386,16 +387,47 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
   async function handleVideoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingVideo(true);
-    setUploadError("");
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const data = await res.json();
-    setUploadingVideo(false);
-    if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
-    set("video", data.url);
     e.target.value = "";
+    setUploadError("");
+    if (file.size > 100 * 1024 * 1024) {
+      setUploadError(`Vídeo com ${(file.size / 1024 / 1024).toFixed(0)}MB, o máximo é 100MB. Diminua a resolução (720p ou 1080p) ou corte o vídeo.`);
+      return;
+    }
+    setUploadingVideo(true);
+    setVideoProgress(0);
+    try {
+      // Pede ao servidor uma URL assinada e manda o arquivo direto ao Supabase
+      const res = await fetch("/api/upload/video-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: file.type, size: file.size }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setUploadError(data.error || "Erro no upload"); return; }
+
+      // XHR em vez de fetch para ter a porcentagem do envio
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", data.uploadUrl);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.setRequestHeader("x-upsert", "true");
+        xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) setVideoProgress(Math.round((ev.loaded / ev.total) * 100)); };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) return resolve();
+          console.error("Supabase video upload error:", xhr.status, xhr.responseText);
+          reject(new Error(xhr.status === 413
+            ? "O Supabase recusou: arquivo acima do limite configurado lá (ajuste para 100MB em Storage)."
+            : "Erro ao enviar o vídeo. Tente de novo."));
+        };
+        xhr.onerror = () => reject(new Error("Falha de conexão ao enviar o vídeo. Tente de novo."));
+        xhr.send(file);
+      });
+      set("video", data.publicUrl);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Erro no upload");
+    } finally {
+      setUploadingVideo(false);
+    }
   }
 
   const totalStock = rows.reduce((s, r) => s + rowStock(r), 0);
@@ -879,7 +911,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
           {/* VÍDEO DO PRODUTO */}
           <Section title="Vídeo do Produto" icon={Video} defaultOpen={false}>
             <p className="text-xs text-gray-500 -mt-1 mb-2">
-              Opcional. Um vídeo curto mostrando o produto (MP4, WebM ou MOV, máx 60MB).
+              Opcional. Um vídeo curto mostrando o produto (MP4, WebM ou MOV, máx 100MB).
             </p>
             {uploadError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{uploadError}</div>
@@ -911,6 +943,14 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
                 {uploadingVideo ? <Loader2 size={15} className="animate-spin text-gray-400" /> : <Upload size={15} />}
               </label>
             </div>
+            {uploadingVideo && (
+              <div className="space-y-1">
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full bg-brand-500 transition-all" style={{ width: `${videoProgress}%` }} />
+                </div>
+                <p className="text-xs text-gray-500">Enviando vídeo… {videoProgress}% (não feche a página)</p>
+              </div>
+            )}
           </Section>
 
         </div>
