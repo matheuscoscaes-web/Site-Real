@@ -94,7 +94,7 @@ export default async function AdminCuponsPage() {
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <CupomRowActions couponId={c.id} code={c.code} active={c.active} />
+                      <CupomRowActions coupon={c} />
                     </td>
                   </tr>
                 );

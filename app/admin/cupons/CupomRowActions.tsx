@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Power, Trash2 } from "lucide-react";
 import { CopyCouponLinkButton } from "@/components/CopyCouponLinkButton";
+import { CupomForm, type EditableCoupon } from "./CupomForm";
 
-export function CupomRowActions({ couponId, code, active }: { couponId: string; code: string; active: boolean }) {
+export function CupomRowActions({ coupon }: { coupon: EditableCoupon & { active: boolean } }) {
+  const { id: couponId, code, active } = coupon;
   const router = useRouter();
   const [loading, setLoading] = useState<"toggle" | "delete" | null>(null);
 
@@ -31,6 +33,7 @@ export function CupomRowActions({ couponId, code, active }: { couponId: string; 
   return (
     <div className="flex items-center justify-end gap-2">
       <CopyCouponLinkButton code={code} label={null} className="p-2 rounded-lg text-brand-700 hover:bg-brand-50 transition-colors" />
+      <CupomForm coupon={coupon} />
       <button
         onClick={toggle}
         disabled={loading !== null}
