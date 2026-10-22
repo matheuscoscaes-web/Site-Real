@@ -1,7 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { prisma } from "./prisma";
+import { findUserByEmail } from "./userEmail";
 import { rateLimit, getClientIp } from "./rateLimit";
 
 export const authOptions: NextAuthOptions = {
@@ -20,9 +20,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Muitas tentativas de login. Tente novamente em alguns minutos.");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        const user = await findUserByEmail(credentials.email);
 
         if (!user) return null;
 

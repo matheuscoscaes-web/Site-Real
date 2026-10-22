@@ -51,10 +51,14 @@ export function validateGuestContact(raw: unknown): { contact: GuestContact | nu
  * Os dados de uma conta que já existe nunca são alterados aqui.
  */
 export async function findOrCreateGuestUser(contact: GuestContact): Promise<{ id: string; isNew: boolean }> {
-  const existing = await prisma.user.findFirst({
-    where: { email: { equals: contact.email, mode: "insensitive" } },
-    select: { id: true },
-  });
+  // E-mail exato primeiro; se só existir com outra maiúscula, usa a conta mais recente
+  const existing =
+    (await prisma.user.findUnique({ where: { email: contact.email }, select: { id: true } })) ??
+    (await prisma.user.findFirst({
+      where: { email: { equals: contact.email, mode: "insensitive" } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    }));
   if (existing) return { id: existing.id, isNew: false };
 
   try {

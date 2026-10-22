@@ -27,3 +27,32 @@ export function passwordResetEmail(name: string, resetUrl: string) {
       </div>`,
   };
 }
+
+/** Quem comprou sem login ainda não tem senha: mesmo link do "esqueci a senha", mas falando em criar. */
+export function passwordCreateEmail(name: string, createUrl: string) {
+  return {
+    subject: "Crie sua senha — Hearts Couro",
+    html: `
+      <div style="font-family: Arial, Helvetica, sans-serif; background:#f9f3e8; padding:32px 16px;">
+        <div style="max-width:520px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #f0e6d2;">
+          <div style="background:${BRAND}; padding:24px 28px;">
+            <h1 style="color:#fff; font-size:20px; margin:0;">Hearts Couro</h1>
+          </div>
+          <div style="padding:28px;">
+            <h2 style="color:#1c1c1c; font-size:18px; margin:0 0 12px;">Crie sua senha</h2>
+            <p style="color:#555; font-size:14px; line-height:1.6;">
+              Olá, ${name.split(" ")[0]}! Obrigada pela sua compra. Clique no botão abaixo para criar a senha da sua conta e acompanhar seus pedidos pelo site, em "Meus Pedidos". Este link expira em 1 hora.
+            </p>
+            <p style="margin-top:24px;">
+              <a href="${createUrl}" style="background:${BRAND}; color:#fff; text-decoration:none; padding:12px 24px; border-radius:999px; font-weight:bold; font-size:14px; display:inline-block;">
+                Criar minha senha
+              </a>
+            </p>
+            <p style="color:#999; font-size:12px; line-height:1.6; margin-top:24px;">
+              Se você não pediu isso, pode ignorar este e-mail com segurança.
+            </p>
+          </div>
+        </div>
+      </div>`,
+  };
+}

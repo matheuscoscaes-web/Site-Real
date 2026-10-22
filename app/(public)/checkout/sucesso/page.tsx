@@ -60,7 +60,7 @@ export default async function SucessoPage({
               ? <>Seu pagamento foi confirmado e enviamos um e-mail para <strong>{order.user.email}</strong> com os detalhes.</>
               : <>Assim que o pagamento for confirmado, você recebe um e-mail em <strong>{order.user.email}</strong>.</>
             } Quando o pedido for postado, avisamos por e-mail de novo — mas você também pode acompanhar tudo a qualquer momento pelo site, em "Meus Pedidos".
-            {!session && <> Para entrar no site, crie uma senha em &quot;Criar senha para acompanhar&quot; usando o e-mail <strong>{order.user.email}</strong>.</>}
+            {!session && <> Para entrar no site, é só criar sua senha no botão &quot;Criar senha para acompanhar&quot; aqui embaixo.</>}
           </p>
         </div>
       </div>
@@ -135,7 +135,7 @@ export default async function SucessoPage({
       {/* Ações */}
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Comprou sem login: a conta existe, mas ainda sem senha que a pessoa conheça */}
-        <Link href={session ? "/conta/pedidos" : "/recuperar-senha"} className="btn-outline flex-1 justify-center">
+        <Link href={session ? "/conta/pedidos" : `/recuperar-senha?criar=1&email=${encodeURIComponent(order.user.email)}`} className="btn-outline flex-1 justify-center">
           <Package size={18} /> {session ? "Acompanhar pedido" : "Criar senha para acompanhar"}
         </Link>
         <Link href="/produtos" className="btn-primary flex-1 justify-center">

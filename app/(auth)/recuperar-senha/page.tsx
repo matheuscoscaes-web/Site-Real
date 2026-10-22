@@ -1,11 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Loader2, CheckCircle } from "lucide-react";
 
 export default function RecuperarSenhaPage() {
-  const [email, setEmail] = useState("");
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-brand-50 to-cream-50 flex items-center justify-center"><div className="text-brand-700">Carregando...</div></div>}>
+      <RecuperarSenhaForm />
+    </Suspense>
+  );
+}
+
+function RecuperarSenhaForm() {
+  const searchParams = useSearchParams();
+  // ?criar=1: veio de "Criar senha" depois de comprar sem login — a pessoa nunca teve senha
+  const criar = searchParams.get("criar") === "1";
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -18,7 +30,7 @@ export default function RecuperarSenhaPage() {
       const res = await fetch("/api/auth/recuperar-senha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, criar }),
       });
       if (res.status === 429) {
         setError("Muitas tentativas. Tente novamente mais tarde.");
@@ -51,7 +63,9 @@ export default function RecuperarSenhaPage() {
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">E-mail enviado!</h2>
               <p className="text-sm text-gray-500 mb-6">
-                Se existe uma conta com <strong>{email}</strong>, você receberá as instruções em breve.
+                {criar
+                  ? <>Enviamos para <strong>{email}</strong> um link para você criar sua senha. Confira também a caixa de spam.</>
+                  : <>Se existe uma conta com <strong>{email}</strong>, você receberá as instruções em breve.</>}
               </p>
               <Link href="/login" className="btn-primary w-full">
                 Voltar para o login
@@ -63,10 +77,12 @@ export default function RecuperarSenhaPage() {
                 <Mail size={22} className="text-brand-700" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1" style={{ fontFamily: "Playfair Display, serif" }}>
-                Recuperar senha
+                {criar ? "Crie sua senha" : "Recuperar senha"}
               </h1>
               <p className="text-sm text-gray-500 mb-6">
-                Digite seu e-mail e enviaremos instruções para redefinir sua senha.
+                {criar
+                  ? "Enviaremos um link para o e-mail da sua compra. Com a senha, você acompanha seus pedidos pelo site."
+                  : "Digite seu e-mail e enviaremos instruções para redefinir sua senha."}
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,7 +92,7 @@ export default function RecuperarSenhaPage() {
                   </div>
                 )}
                 <div>
-                  <label className="label">E-mail cadastrado</label>
+                  <label className="label">{criar ? "E-mail da compra" : "E-mail cadastrado"}</label>
                   <input
                     type="email"
                     required
@@ -87,14 +103,14 @@ export default function RecuperarSenhaPage() {
                   />
                 </div>
                 <button type="submit" disabled={loading} className="btn-primary w-full">
-                  {loading ? <><Loader2 size={18} className="animate-spin" /> Enviando...</> : "Enviar instruções"}
+                  {loading ? <><Loader2 size={18} className="animate-spin" /> Enviando...</> : criar ? "Enviar link" : "Enviar instruções"}
                 </button>
               </form>
 
               <p className="text-center text-sm text-gray-500 mt-6">
-                Lembrou?{" "}
+                {criar ? "Já tem senha?" : "Lembrou?"}{" "}
                 <Link href="/login" className="text-brand-700 font-semibold hover:underline">
-                  Voltar para o login
+                  {criar ? "Entrar" : "Voltar para o login"}
                 </Link>
               </p>
             </>

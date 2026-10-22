@@ -9,6 +9,8 @@ export function RedefinirSenhaForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  // Link do e-mail "Crie sua senha" (comprou sem login): mesmo fluxo, texto de criar
+  const criar = searchParams.get("criar") === "1";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,7 +30,7 @@ export function RedefinirSenhaForm() {
     setError("");
 
     if (!token) {
-      setError("Link inválido. Solicite a recuperação de senha novamente.");
+      setError(criar ? "Link inválido. Peça um novo link para criar sua senha." : "Link inválido. Solicite a recuperação de senha novamente.");
       return;
     }
     if (password !== confirmPassword) {
@@ -49,13 +51,13 @@ export function RedefinirSenhaForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Erro ao redefinir senha.");
+        setError(data.error || (criar ? "Erro ao criar senha." : "Erro ao redefinir senha."));
         return;
       }
       setDone(true);
       setTimeout(() => router.push("/login"), 2000);
     } catch {
-      setError("Erro ao redefinir senha. Tente novamente.");
+      setError(criar ? "Erro ao criar senha. Tente novamente." : "Erro ao redefinir senha. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -78,15 +80,15 @@ export function RedefinirSenhaForm() {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="text-green-600" size={32} />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Senha redefinida!</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">{criar ? "Senha criada!" : "Senha redefinida!"}</h2>
               <p className="text-sm text-gray-500 mb-6">Redirecionando para o login...</p>
             </div>
           ) : (
             <>
               <h1 className="text-2xl font-bold text-gray-900 mb-1" style={{ fontFamily: "Playfair Display, serif" }}>
-                Definir nova senha
+                {criar ? "Crie sua senha" : "Definir nova senha"}
               </h1>
-              <p className="text-sm text-gray-500 mb-6">Escolha uma nova senha para sua conta</p>
+              <p className="text-sm text-gray-500 mb-6">{criar ? "Escolha a senha para entrar no site e acompanhar seus pedidos" : "Escolha uma nova senha para sua conta"}</p>
 
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-5">
@@ -96,7 +98,7 @@ export function RedefinirSenhaForm() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="label">Nova senha *</label>
+                  <label className="label">{criar ? "Senha *" : "Nova senha *"}</label>
                   <div className="relative">
                     <input
                       type={showPass ? "text" : "password"}
@@ -122,7 +124,7 @@ export function RedefinirSenhaForm() {
                 </div>
 
                 <div>
-                  <label className="label">Confirmar nova senha *</label>
+                  <label className="label">{criar ? "Confirmar senha *" : "Confirmar nova senha *"}</label>
                   <input
                     type={showPass ? "text" : "password"}
                     required
@@ -137,7 +139,7 @@ export function RedefinirSenhaForm() {
                 </div>
 
                 <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-base">
-                  {loading ? <><Loader2 size={18} className="animate-spin" /> Salvando...</> : "Redefinir senha"}
+                  {loading ? <><Loader2 size={18} className="animate-spin" /> Salvando...</> : criar ? "Criar senha" : "Redefinir senha"}
                 </button>
               </form>
             </>
