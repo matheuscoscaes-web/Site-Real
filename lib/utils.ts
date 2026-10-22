@@ -167,21 +167,21 @@ export function hasRealEmail(email: string): boolean {
   return !email.endsWith(PLACEHOLDER_EMAIL_DOMAIN);
 }
 
-/** Categoria que recebe o desconto do cupom, mas sozinha não libera o frete grátis do cupom. */
-export const FREE_SHIPPING_EXCLUDED_CATEGORY = "Acessórios";
+/** Categorias que recebem o desconto do cupom, mas sozinhas não liberam o frete grátis do cupom. */
+export const FREE_SHIPPING_EXCLUDED_CATEGORIES = ["Acessórios", "Calçados"];
 
 /** Um produto só participa de desconto de cupom se permitir (toggle no admin). */
 export function isCupomElegivel(permiteCupom?: boolean | null): boolean {
   return permiteCupom !== false;
 }
 
-/** Produto que "segura" o frete grátis do cupom: tudo menos acessório. */
+/** Produto que "segura" o frete grátis do cupom: tudo menos acessório e calçado. */
 export function isFreteGratisElegivel(categories: string[]): boolean {
-  return !categories.includes(FREE_SHIPPING_EXCLUDED_CATEGORY);
+  return !categories.some((c) => FREE_SHIPPING_EXCLUDED_CATEGORIES.includes(c));
 }
 
-/** Frete grátis do cupom só vale se o pedido tiver ao menos uma peça fora de Acessórios
- *  (ex: 1 bolsa + 1 acessório ganha; só acessório paga frete). */
+/** Frete grátis do cupom só vale se o pedido tiver ao menos uma peça fora de Acessórios/Calçados
+ *  (ex: 1 bolsa + 1 calçado ganha; só calçado, só acessório ou calçado + acessório paga frete). */
 export function carrinhoLiberaFreteGratis(items: { freteGratisElegivel?: boolean }[]): boolean {
   return items.some((i) => i.freteGratisElegivel !== false);
 }

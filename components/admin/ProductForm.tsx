@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { slugify, COLORS, sortSizes, FREE_SHIPPING_EXCLUDED_CATEGORY, getMaxInstallments } from "@/lib/utils";
+import { slugify, COLORS, sortSizes, FREE_SHIPPING_EXCLUDED_CATEGORIES, getMaxInstallments } from "@/lib/utils";
 import type { ProductCategoryNode } from "@/lib/product-categories";
 import {
   Plus, Trash2, Loader2, Save, Image as ImageIcon, X,
@@ -1017,8 +1017,8 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
               <div>
                 <p className="text-sm font-semibold text-gray-900">Permite cupom de desconto</p>
                 <p className="text-xs text-gray-400">
-                  {categories.includes(FREE_SHIPPING_EXCLUDED_CATEGORY)
-                    ? `Desmarque para não receber desconto. Em "${FREE_SHIPPING_EXCLUDED_CATEGORY}", o frete grátis do cupom só vale junto com outra peça`
+                  {categories.some((c) => FREE_SHIPPING_EXCLUDED_CATEGORIES.includes(c))
+                    ? "Desmarque para não receber desconto. Em Acessórios e Calçados, o frete grátis do cupom só vale junto com uma bolsa, mochila ou outra peça"
                     : "Desmarque para este produto nunca receber desconto de cupom"}
                 </p>
               </div>

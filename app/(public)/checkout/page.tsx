@@ -104,7 +104,7 @@ export default function CheckoutPage() {
   const couponAmount = coupon.applied
     ? (coupon.discountType === "FIXED" ? Math.min(coupon.discountValue, eligibleSubtotal()) : (eligibleSubtotal() * coupon.discountValue) / 100)
     : 0;
-  // Frete grátis do cupom não vale pra pedido só de acessórios (servidor aplica a mesma regra)
+  // Frete grátis do cupom não vale pra pedido só de acessórios/calçados (servidor aplica a mesma regra)
   const freteGratisCupom = coupon.freeShipping && carrinhoLiberaFreteGratis(items);
   const effectiveShipping = deliveryType === "RETIRADA" || freteGratisCupom ? 0 : (selectedShipping?.price ?? 0);
   const total = sub - couponAmount + effectiveShipping;

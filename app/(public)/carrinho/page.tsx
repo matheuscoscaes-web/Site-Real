@@ -81,7 +81,7 @@ export default function CarrinhoPage() {
 
   const sub = subtotal();
   const temItemNaoElegivel = items.some((i) => i.cupomElegivel === false);
-  // Frete grátis do cupom não vale pra pedido só de acessórios
+  // Frete grátis do cupom não vale pra pedido só de acessórios/calçados
   const freteGratisCupom = !!cupomAplicado?.freeShipping && carrinhoLiberaFreteGratis(items);
   const freteGratisBloqueado = !!cupomAplicado?.freeShipping && !freteGratisCupom;
   const freteTotal = freteGratisCupom ? 0 : deliveryType === "RETIRADA" ? 0 : (selectedFrete?.price ?? 0);
@@ -343,7 +343,7 @@ export default function CarrinhoPage() {
                     {freteGratisCupom && " + frete grátis"}
                   </p>
                   {freteGratisBloqueado && (
-                    <p className="text-[11px] text-amber-600 mt-1">O frete grátis do cupom não vale para pedido só de acessórios — adicione uma bolsa ou outra peça para ganhar.</p>
+                    <p className="text-[11px] text-amber-600 mt-1">O frete grátis do cupom não vale para pedido só de acessórios ou calçados — adicione uma bolsa, mochila ou outra peça para ganhar.</p>
                   )}
                 </div>
                 <button onClick={removerCupom} className="text-gray-400 hover:text-red-500 ml-3" aria-label="Remover cupom">
