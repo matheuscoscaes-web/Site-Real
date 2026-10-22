@@ -4,6 +4,7 @@ import { MercadoPagoConfig, Payment } from "mercadopago";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateOrderStatus } from "@/lib/orders";
+import { ownsOrder } from "@/lib/guestOrder";
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
@@ -16,14 +17,14 @@ const STATUS_MAP: Record<string, string> = {
   pending: "PENDING",
 };
 
-export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { orderToken } = await request.json().catch(() => ({}));
 
   const { id } = await params;
   const order = await prisma.order.findUnique({ where: { id } });
   if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
-  if (session.user.role !== "ADMIN" && order.userId !== session.user.id) {
+  if (session?.user.role !== "ADMIN" && !ownsOrder(order, session?.user.id, orderToken)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 

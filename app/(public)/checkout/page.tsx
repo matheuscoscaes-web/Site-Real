@@ -93,6 +93,10 @@ export default function CheckoutPage() {
   const [enderecosCarregados, setEnderecosCarregados] = useState(false);
   const [inAppBrowser, setInAppBrowser] = useState(false);
   const [freteApiError, setFreteApiError] = useState(false);
+  // Compra sem login
+  const [guest, setGuest] = useState({ name: "", email: "", phone: "" });
+  const [guestError, setGuestError] = useState("");
+  const [guestToken, setGuestToken] = useState<string | null>(null);
 
   useEffect(() => {
     // Navegador interno do WhatsApp/Instagram/Facebook às vezes perde a sessão de
@@ -111,9 +115,7 @@ export default function CheckoutPage() {
   const maxInstallments = getMaxInstallments(total);
 
   useEffect(() => {
-    // Mantém o ?cupom= depois do login — antes o cupom aplicado no carrinho se perdia aqui
-    if (status === "unauthenticated") router.push(`/login?redirect=${encodeURIComponent(`/checkout${window.location.search}`)}`);
-    if (items.length === 0 && status === "authenticated") router.push("/carrinho");
+    if (items.length === 0 && status !== "loading") router.push("/carrinho");
   }, [status, items.length, router]);
 
   // Se o total cair (cupom, troca de frete...) e a pessoa tiver escolhido mais
@@ -133,6 +135,19 @@ export default function CheckoutPage() {
   // Só carrega o endereço salvo uma vez: sem o guard, a revalidação de sessão do NextAuth
   // (ex: ao voltar o foco pra aba) refaz esse fetch e sobrescreve o que a pessoa digitou
   // em "Usar outro endereço" com o endereço padrão salvo.
+  // Sem login não tem endereço salvo: volta com os dados de contato da última
+  // vez e já começa com o CEP que a pessoa digitou no carrinho
+  useEffect(() => {
+    if (status !== "unauthenticated" || enderecosCarregados) return;
+    setEnderecosCarregados(true);
+    const prefill = loadPrefill();
+    if (prefill.guest) setGuest(prefill.guest);
+    if (prefill.deliveryType === "RETIRADA") setDeliveryType("RETIRADA");
+    const cepCarrinho = (prefill.cep ?? "").replace(/\D/g, "");
+    if (cepCarrinho.length === 8) preencherPorCep(formatCep(cepCarrinho), prefill.freteId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, enderecosCarregados]);
+
   useEffect(() => {
     if (status !== "authenticated" || enderecosCarregados) return;
     fetch("/api/clientes/me/enderecos")
@@ -191,7 +206,11 @@ export default function CheckoutPage() {
     if (!pixDireto || !currentOrderId) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/pedidos/${currentOrderId}/verificar-pagamento`, { method: "POST" });
+        const res = await fetch(`/api/pedidos/${currentOrderId}/verificar-pagamento`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderToken: guestToken }),
+        });
         const data = await res.json();
         if (data.status === "PAID") {
           clearCart();
@@ -200,7 +219,7 @@ export default function CheckoutPage() {
       } catch { /* tenta de novo no próximo ciclo */ }
     }, 5000);
     return () => clearInterval(interval);
-  }, [pixDireto, currentOrderId, clearCart, router]);
+  }, [pixDireto, currentOrderId, guestToken, clearCart, router]);
 
   if (status === "loading" || !mounted) {
     return (
@@ -279,6 +298,21 @@ export default function CheckoutPage() {
   }
 
   async function handleGoToPayment() {
+    if (!session) {
+      const phoneDigits = guest.phone.replace(/\D/g, "");
+      const problema =
+        guest.name.trim().length < 3 ? "Digite seu nome completo."
+        : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email.trim()) ? "Digite um e-mail válido."
+        : phoneDigits.length < 10 || phoneDigits.length > 11 ? "Digite um WhatsApp válido com DDD."
+        : "";
+      setGuestError(problema);
+      if (problema) {
+        // Os dados de contato ficam no topo, longe do botão: leva a pessoa até o erro
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      savePrefill({ guest });
+    }
     if (deliveryType === "ENTREGA") {
       if (!address.street || !address.number || !address.city || !address.state || !address.zipCode) {
         alert("Preencha todos os campos obrigatórios.");
@@ -294,7 +328,6 @@ export default function CheckoutPage() {
         return;
       }
     }
-    if (!session) return;
 
     setProcessing(true);
     setErro("");
@@ -315,6 +348,7 @@ export default function CheckoutPage() {
           shippingServiceId: deliveryType === "RETIRADA" ? null : (selectedShipping?.id ?? null),
           shippingService: deliveryType === "RETIRADA" ? "Retirada no balcão" : (selectedShipping?.name ?? null),
           shippingCarrier: deliveryType === "RETIRADA" ? "Loja" : (selectedShipping?.company ?? null),
+          ...(session ? {} : { guest, previousGuestOrder: loadPrefill().lastGuestOrder }),
         }),
       });
 
@@ -329,6 +363,10 @@ export default function CheckoutPage() {
       }
       const order = await orderRes.json();
       setCurrentOrderId(order.id);
+      if (order.guestToken) {
+        setGuestToken(order.guestToken);
+        savePrefill({ lastGuestOrder: { id: order.id, token: order.guestToken } });
+      }
       // CPF já foi digitado no endereço: o PIX não precisa pedir de novo
       if (deliveryType === "ENTREGA") setPixCpf((p) => p || address.cpf);
       setStep(2);
@@ -340,14 +378,14 @@ export default function CheckoutPage() {
   }
 
   async function handlePaymentSubmit(formData: Record<string, unknown>) {
-    if (!currentOrderId || !session) return;
+    if (!currentOrderId) return;
     setErro("");
 
     try {
       const res = await fetch("/api/mercadopago/payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formData, orderId: currentOrderId, total }),
+        body: JSON.stringify({ formData, orderId: currentOrderId, total, orderToken: guestToken }),
       });
 
       const data = await res.json();
@@ -390,7 +428,7 @@ export default function CheckoutPage() {
       const res = await fetch("/api/pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ valor: total, orderId: currentOrderId, cpf: cpfDigits }),
+        body: JSON.stringify({ valor: total, orderId: currentOrderId, cpf: cpfDigits, orderToken: guestToken }),
       });
       const data = await res.json();
       if (data.qrCode) setPixDireto(data);
@@ -479,6 +517,66 @@ export default function CheckoutPage() {
           {/* Passo 1: Endereço + Cupom */}
           {step === 1 && (
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              {/* Sem login: só os dados de contato, sem criar senha */}
+              {!session && (
+                <div className="mb-6 pb-6 border-b border-gray-100">
+                  <div className="flex items-baseline justify-between gap-3 mb-4">
+                    <h2 className="text-xl font-bold text-gray-900">Seus dados</h2>
+                    <Link
+                      href={`/login?redirect=${encodeURIComponent(`/checkout${typeof window !== "undefined" ? window.location.search : ""}`)}`}
+                      className="text-brand-700 text-xs font-semibold whitespace-nowrap hover:underline"
+                    >
+                      Já tem conta? Entrar
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="label">Nome completo *</label>
+                      <input
+                        className="input-field"
+                        autoComplete="name"
+                        value={guest.name}
+                        onChange={(e) => { setGuest((p) => ({ ...p, name: e.target.value })); setGuestError(""); }}
+                      />
+                    </div>
+                    <div>
+                      <label className="label">E-mail *</label>
+                      <input
+                        type="email"
+                        className="input-field"
+                        autoComplete="email"
+                        value={guest.email}
+                        onChange={(e) => { setGuest((p) => ({ ...p, email: e.target.value })); setGuestError(""); }}
+                        placeholder="seu@email.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="label">WhatsApp *</label>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        className="input-field"
+                        autoComplete="tel"
+                        value={guest.phone}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, "").slice(0, 11);
+                          const formatted = v.length > 7
+                            ? `(${v.slice(0, 2)}) ${v.slice(2, v.length - 4)}-${v.slice(-4)}`
+                            : v.length > 2
+                            ? `(${v.slice(0, 2)}) ${v.slice(2)}`
+                            : v;
+                          setGuest((p) => ({ ...p, phone: formatted }));
+                          setGuestError("");
+                        }}
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                  </div>
+                  {guestError && <p className="text-xs text-red-600 mt-2">{guestError}</p>}
+                  <p className="text-xs text-gray-400 mt-2">Não precisa criar senha. Enviamos a confirmação e o rastreio para esse e-mail.</p>
+                </div>
+              )}
+
               <h2 className="text-xl font-bold text-gray-900 mb-4">Como você quer receber?</h2>
 
               {/* Primeiro a forma de entrega: quem retira na loja não precisa preencher endereço */}

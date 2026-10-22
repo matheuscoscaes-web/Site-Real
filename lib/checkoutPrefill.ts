@@ -7,6 +7,9 @@ export interface CheckoutPrefill {
   cep?: string;
   deliveryType?: "ENTREGA" | "RETIRADA";
   freteId?: number;
+  // Compra sem login: dados de contato e o último pedido criado (pra cancelar se a pessoa refizer)
+  guest?: { name: string; email: string; phone: string };
+  lastGuestOrder?: { id: string; token: string };
 }
 
 export function loadPrefill(): CheckoutPrefill {

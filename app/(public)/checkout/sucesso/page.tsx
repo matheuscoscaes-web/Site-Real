@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import Link from "next/link";
 import { CheckCircle, Package, ArrowRight, Mail } from "lucide-react";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS } from "@/lib/utils";
@@ -10,6 +12,7 @@ export default async function SucessoPage({
   searchParams: Promise<{ pedido?: string }>;
 }) {
   const { pedido } = await searchParams;
+  const session = await getServerSession(authOptions);
 
   const order = pedido
     ? await prisma.order.findUnique({
@@ -57,6 +60,7 @@ export default async function SucessoPage({
               ? <>Seu pagamento foi confirmado e enviamos um e-mail para <strong>{order.user.email}</strong> com os detalhes.</>
               : <>Assim que o pagamento for confirmado, você recebe um e-mail em <strong>{order.user.email}</strong>.</>
             } Quando o pedido for postado, avisamos por e-mail de novo — mas você também pode acompanhar tudo a qualquer momento pelo site, em "Meus Pedidos".
+            {!session && <> Para entrar no site, crie uma senha em &quot;Criar senha para acompanhar&quot; usando o e-mail <strong>{order.user.email}</strong>.</>}
           </p>
         </div>
       </div>
@@ -130,8 +134,9 @@ export default async function SucessoPage({
 
       {/* Ações */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <Link href="/conta/pedidos" className="btn-outline flex-1 justify-center">
-          <Package size={18} /> Acompanhar pedido
+        {/* Comprou sem login: a conta existe, mas ainda sem senha que a pessoa conheça */}
+        <Link href={session ? "/conta/pedidos" : "/recuperar-senha"} className="btn-outline flex-1 justify-center">
+          <Package size={18} /> {session ? "Acompanhar pedido" : "Criar senha para acompanhar"}
         </Link>
         <Link href="/produtos" className="btn-primary flex-1 justify-center">
           Continuar comprando <ArrowRight size={18} />

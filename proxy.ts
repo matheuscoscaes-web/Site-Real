@@ -9,7 +9,8 @@ export default withAuth({
         return token?.role === "ADMIN";
       }
 
-      if (pathname.startsWith("/conta") || pathname.startsWith("/checkout")) {
+      // Checkout fica aberto: dá pra comprar sem login
+      if (pathname.startsWith("/conta")) {
         return !!token;
       }
 
@@ -22,5 +23,5 @@ export default withAuth({
 });
 
 export const config = {
-  matcher: ["/conta/:path*", "/checkout/:path*", "/admin/:path*"],
+  matcher: ["/conta/:path*", "/admin/:path*"],
 };

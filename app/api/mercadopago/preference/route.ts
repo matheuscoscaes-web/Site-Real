@@ -3,18 +3,17 @@ import { MercadoPagoConfig, Preference } from "mercadopago";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ownsOrder } from "@/lib/guestOrder";
 import { reserveStockForRetry } from "@/lib/orders";
 import { InsufficientStockError } from "@/lib/stock";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const { orderId, orderToken } = await request.json();
 
-  const { orderId } = await request.json();
-
-  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true, user: { select: { email: true } } } });
   if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
-  if (order.userId !== session.user.id) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
+  if (!ownsOrder(order, session?.user.id, orderToken)) return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   if (order.status !== "PENDING" && order.status !== "CANCELLED") {
     return NextResponse.json({ error: "Pedido não está mais pendente de pagamento" }, { status: 409 });
   }
@@ -45,7 +44,7 @@ export async function POST(request: NextRequest) {
         unit_price: order.total,
         currency_id: "BRL",
       }],
-      payer: { email: session.user.email },
+      payer: { email: order.user.email },
       back_urls: {
         success: `${baseUrl}/checkout/sucesso?pedido=${orderId}`,
         failure: `${baseUrl}/checkout?erro=pagamento`,

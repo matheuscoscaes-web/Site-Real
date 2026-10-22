@@ -6,6 +6,8 @@ import { resolveCoupon, computeDiscountAmount, CouponExhaustedError } from "@/li
 import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
 import { isCupomElegivel, isFreteGratisElegivel, formatCurrency } from "@/lib/utils";
 import { updateOrderStatus } from "@/lib/orders";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { validateGuestContact, findOrCreateGuestUser, guestOrderToken, isValidGuestOrderToken } from "@/lib/guestOrder";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -24,19 +26,42 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-
   const body = await request.json();
   const { address, addressId, paymentMethod, items, subtotal, shipping, couponCode, shippingServiceId, shippingService, shippingCarrier } = body;
+
+  // Sem login: o pedido fica na conta do e-mail digitado (criada na hora se não existir)
+  let userId: string;
+  let isGuest = false;
+  let guestIsNewUser = false;
+  if (session) {
+    userId = session.user.id;
+  } else {
+    if (!rateLimit(`guest-order:${getClientIp(request.headers)}`, 10, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." }, { status: 429 });
+    }
+    const { contact, error } = validateGuestContact(body.guest);
+    if (!contact) return NextResponse.json({ error }, { status: 400 });
+    const guestUser = await findOrCreateGuestUser(contact);
+    userId = guestUser.id;
+    isGuest = true;
+    guestIsNewUser = guestUser.isNew;
+  }
 
   // Se a pessoa saiu do checkout sem nunca ter tentado pagar (voltou pro carrinho pra
   // adicionar outra peça, fechou a aba, etc.) e volta a "Continuar para pagamento", um
   // pedido novo seria criado sem cancelar o antigo — a mesma peça ficaria com estoque
   // descontado duas vezes. Cancela qualquer pendente sem tentativa de pagamento antes.
-  const pedidosAbandonados = await prisma.order.findMany({
-    where: { userId: session.user.id, status: "PENDING", mpPaymentId: null },
-    select: { id: true },
-  });
+  // Sem login, o pedido anterior só é reconhecido pela chave dele: o e-mail digitado
+  // pode ser de outra pessoa, então nunca cancela pelo userId nesse caso.
+  const previous = body.previousGuestOrder as { id?: unknown; token?: unknown } | undefined;
+  const pedidosAbandonados = isGuest
+    ? typeof previous?.id === "string" && isValidGuestOrderToken(previous.id, previous.token)
+      ? await prisma.order.findMany({ where: { id: previous.id, status: "PENDING", mpPaymentId: null }, select: { id: true } })
+      : []
+    : await prisma.order.findMany({
+        where: { userId, status: "PENDING", mpPaymentId: null },
+        select: { id: true },
+      });
   for (const pedido of pedidosAbandonados) {
     await updateOrderStatus(pedido.id, "CANCELLED");
   }
@@ -54,7 +79,7 @@ export async function POST(request: NextRequest) {
   let couponMaxUses: number | null = null;
 
   if (couponCode) {
-    const result = await resolveCoupon(couponCode, session.user.id);
+    const result = await resolveCoupon(couponCode, userId);
     if (!result.valid) {
       return NextResponse.json({ error: result.error || "Cupom inválido" }, { status: 400 });
     }
@@ -81,8 +106,8 @@ export async function POST(request: NextRequest) {
       return elegivel ? sum + item.price * item.quantity : sum;
     }, 0);
 
-    // Frete grátis do cupom só vale se tiver ao menos uma peça fora de Acessórios
-    // (acessório sozinho ganha o desconto, mas paga o frete).
+    // Frete grátis do cupom só vale se tiver ao menos uma peça fora de Acessórios/Calçados
+    // (acessório ou calçado sozinho ganha o desconto, mas paga o frete).
     freeShipping = !!result.freeShipping && products.some((p) => isFreteGratisElegivel(p.categories));
 
     couponDiscountAmount = computeDiscountAmount(result.discountType!, result.discountValue!, eligibleSubtotal);
@@ -115,31 +140,35 @@ export async function POST(request: NextRequest) {
       let finalAddressId: string;
       if (address?.name === "Retirada na loja") {
         const pickupAddress = await tx.address.findFirst({
-          where: { userId: session.user.id, name: "Retirada na loja" },
+          where: { userId, name: "Retirada na loja" },
         });
         finalAddressId = pickupAddress
           ? pickupAddress.id
-          : (await tx.address.create({ data: { userId: session.user.id, ...address, isDefault: false } })).id;
+          : (await tx.address.create({ data: { userId, ...address, isDefault: false } })).id;
+      } else if (isGuest) {
+        // Sem login nunca reaproveita nem troca o endereço padrão de uma conta que já existia
+        const created = await tx.address.create({ data: { userId, ...address, isDefault: guestIsNewUser } });
+        finalAddressId = created.id;
       } else {
         const reused = addressId
-          ? await tx.address.findFirst({ where: { id: addressId, userId: session.user.id } })
+          ? await tx.address.findFirst({ where: { id: addressId, userId } })
           : null;
         if (reused) {
           finalAddressId = reused.id;
           if (!reused.isDefault) {
-            await tx.address.updateMany({ where: { userId: session.user.id, isDefault: true }, data: { isDefault: false } });
+            await tx.address.updateMany({ where: { userId, isDefault: true }, data: { isDefault: false } });
             await tx.address.update({ where: { id: reused.id }, data: { isDefault: true } });
           }
         } else {
-          await tx.address.updateMany({ where: { userId: session.user.id, isDefault: true }, data: { isDefault: false } });
-          const created = await tx.address.create({ data: { userId: session.user.id, ...address, isDefault: true } });
+          await tx.address.updateMany({ where: { userId, isDefault: true }, data: { isDefault: false } });
+          const created = await tx.address.create({ data: { userId, ...address, isDefault: true } });
           finalAddressId = created.id;
         }
       }
 
       return tx.order.create({
         data: {
-          userId: session.user.id,
+          userId,
           addressId: finalAddressId,
           paymentMethod,
           status: "PENDING",
@@ -169,7 +198,7 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    return NextResponse.json(order, { status: 201 });
+    return NextResponse.json(isGuest ? { ...order, guestToken: guestOrderToken(order.id) } : order, { status: 201 });
   } catch (err) {
     if (err instanceof InsufficientStockError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
