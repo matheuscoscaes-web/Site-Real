@@ -25,7 +25,7 @@ export function parseProductImages(raw: string): ProductImage[] {
  * card e deixavam a pagina de produtos com ~500KB. */
 export type CardProduct = Pick<
   Product,
-  "id" | "name" | "slug" | "price" | "categories" | "images" | "featured" | "permiteCupom"
+  "id" | "name" | "slug" | "price" | "categories" | "images" | "featured" | "permiteCupom" | "freteGratis"
 > & {
   variants: { color: string | null; size: string | null; stock: number }[];
   /** Cor da variante a destacar (filtro de cor): o card abre o produto ja nela */
@@ -59,6 +59,7 @@ export function toCardProduct(p: Product, matchesColor?: (color: string) => bool
     images: JSON.stringify(images.slice(0, 2).map((i) => i.url)),
     featured: p.featured,
     permiteCupom: p.permiteCupom,
+    freteGratis: p.freteGratis,
     variants: (p.variants ?? []).map((v) => ({ color: v.color, size: v.size, stock: v.stock })),
     preferredColor,
   };
@@ -184,6 +185,12 @@ export function isFreteGratisElegivel(categories: string[]): boolean {
  *  (ex: 1 bolsa + 1 calçado ganha; só calçado, só acessório ou calçado + acessório paga frete). */
 export function carrinhoLiberaFreteGratis(items: { freteGratisElegivel?: boolean }[]): boolean {
   return items.some((i) => i.freteGratisElegivel !== false);
+}
+
+/** Produto marcado com frete grátis no admin: se tiver um no carrinho, o pedido
+ *  inteiro sai sem frete, com ou sem cupom. */
+export function carrinhoTemProdutoFreteGratis(items: { freteGratis?: boolean }[]): boolean {
+  return items.some((i) => i.freteGratis === true);
 }
 
 const LETTER_SIZE_ORDER = ["PP", "P", "M", "G", "GG", "XG", "XXG", "U"];

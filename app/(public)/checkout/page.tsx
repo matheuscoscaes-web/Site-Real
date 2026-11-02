@@ -9,7 +9,7 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useCouponStore, toActiveCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
-import { formatCurrency, getMaxInstallments, carrinhoLiberaFreteGratis } from "@/lib/utils";
+import { formatCurrency, getMaxInstallments, carrinhoLiberaFreteGratis, carrinhoTemProdutoFreteGratis } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
 import {
@@ -110,7 +110,9 @@ export default function CheckoutPage() {
     : 0;
   // Frete grátis do cupom não vale pra pedido só de acessórios/calçados (servidor aplica a mesma regra)
   const freteGratisCupom = coupon.freeShipping && carrinhoLiberaFreteGratis(items);
-  const effectiveShipping = deliveryType === "RETIRADA" || freteGratisCupom ? 0 : (selectedShipping?.price ?? 0);
+  // Produto com frete grátis (admin) libera o frete do pedido todo, com ou sem cupom
+  const freteGratis = freteGratisCupom || carrinhoTemProdutoFreteGratis(items);
+  const effectiveShipping = deliveryType === "RETIRADA" || freteGratis ? 0 : (selectedShipping?.price ?? 0);
   const total = sub - couponAmount + effectiveShipping;
   const maxInstallments = getMaxInstallments(total);
 
@@ -835,8 +837,8 @@ export default function CheckoutPage() {
                             <p className="text-xs text-gray-400">Prazo: até {opt.days} {opt.days === 1 ? "dia útil" : "dias úteis"}</p>
                           </div>
                         </div>
-                        <span className={`text-sm font-bold flex-shrink-0 ${freteGratisCupom ? "text-green-600" : "text-gray-900"}`}>
-                          {freteGratisCupom ? "Grátis" : formatCurrency(opt.price)}
+                        <span className={`text-sm font-bold flex-shrink-0 ${freteGratis ? "text-green-600" : "text-gray-900"}`}>
+                          {freteGratis ? "Grátis" : formatCurrency(opt.price)}
                         </span>
                       </label>
                     ))}
@@ -1160,8 +1162,8 @@ export default function CheckoutPage() {
                       ? "Retirada na loja"
                       : `Frete${selectedShipping ? ` (${selectedShipping.company} ${selectedShipping.name})` : ""}`}
                   </span>
-                  <span className={freteGratisCupom || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
-                    {freteGratisCupom || deliveryType === "RETIRADA"
+                  <span className={freteGratis || deliveryType === "RETIRADA" ? "text-green-600 font-medium" : ""}>
+                    {freteGratis || deliveryType === "RETIRADA"
                       ? "Grátis"
                       : selectedShipping
                       ? formatCurrency(selectedShipping.price)

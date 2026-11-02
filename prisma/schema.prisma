@@ -197,6 +197,7 @@ model Product {
   active       Boolean  @default(true)
   featured     Boolean  @default(false)
   permiteCupom Boolean  @default(true)
+  freteGratis  Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

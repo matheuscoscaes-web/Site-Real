@@ -119,6 +119,14 @@ export async function POST(request: NextRequest) {
     else if (vendorId) commissionValue = valorPagoPelosProdutos * 0.05;
   }
 
+  // Produto marcado com frete grátis no admin libera o frete do pedido inteiro, com ou sem cupom
+  if (!freeShipping) {
+    const comFreteGratis = await prisma.product.count({
+      where: { id: { in: items.map((item: { productId: string }) => item.productId) }, freteGratis: true },
+    });
+    freeShipping = comFreteGratis > 0;
+  }
+
   const finalShipping = freeShipping ? 0 : shipping;
   const finalTotal = subtotal - couponDiscountAmount + finalShipping;
 

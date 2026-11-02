@@ -28,6 +28,7 @@ interface ProductData {
   active?: boolean;
   featured?: boolean;
   permiteCupom?: boolean;
+  freteGratis?: boolean;
   variants?: Variant[];
 }
 
@@ -160,6 +161,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
     active: product?.active ?? true,
     featured: product?.featured ?? false,
     permiteCupom: product?.permiteCupom ?? true,
+    freteGratis: product?.freteGratis ?? false,
     video: product?.video || "",
   });
 
@@ -1021,6 +1023,24 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
                     ? "Desmarque para não receber desconto. Em Acessórios e Calçados, o frete grátis do cupom só vale junto com uma bolsa, mochila ou outra peça"
                     : "Desmarque para este produto nunca receber desconto de cupom"}
                 </p>
+              </div>
+            </label>
+
+            <label className={`flex items-center gap-3 p-3 rounded-xl border border-gray-100 mt-3 transition-colors hover:bg-gray-50 cursor-pointer`}>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={form.freteGratis}
+                  onChange={(e) => set("freteGratis", e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={`w-10 h-6 rounded-full transition-colors ${form.freteGratis ? "bg-brand-600" : "bg-gray-300"}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${form.freteGratis ? "left-5" : "left-1"}`} />
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Frete grátis</p>
+                <p className="text-xs text-gray-400">Quem colocar este produto no carrinho não paga frete no pedido, com ou sem cupom</p>
               </div>
             </label>
           </div>

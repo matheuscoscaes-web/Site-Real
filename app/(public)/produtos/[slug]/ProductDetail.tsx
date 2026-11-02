@@ -8,7 +8,7 @@ import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { useCouponStore, couponUnitPrice } from "@/store/couponStore";
 import { formatCurrency, parseProductImages, isCupomElegivel, isFreteGratisElegivel, getMaxInstallments, sortSizes } from "@/lib/utils";
-import { ShoppingBag, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingBag, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight, Truck } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
 
@@ -131,6 +131,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
       slug: product.slug,
       cupomElegivel: isCupomElegivel(product.permiteCupom),
       freteGratisElegivel: isFreteGratisElegivel(product.categories),
+      freteGratis: !!product.freteGratis,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 3000);
@@ -295,6 +296,11 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
           <p className="text-sm text-gray-500 mt-1">
             ou <strong>{maxInstallments}x de {formatCurrency(installment)}</strong> sem juros no cartão
           </p>
+          {product.freteGratis && (
+            <p className="text-sm text-green-700 font-semibold mt-1 flex items-center gap-1.5">
+              <Truck size={15} /> Frete grátis
+            </p>
+          )}
           <p className="text-sm text-brand-700 font-medium mt-1">
             5% de desconto no PIX: {formatCurrency(finalPrice * 0.95)}
           </p>

@@ -53,6 +53,7 @@ export function ProductCard({
       slug: product.slug,
       cupomElegivel: isCupomElegivel(product.permiteCupom),
       freteGratisElegivel: isFreteGratisElegivel(product.categories),
+      freteGratis: !!product.freteGratis,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -97,6 +98,11 @@ export function ProductCard({
           {product.featured && totalStock > 0 && (
             <span className="absolute top-3 left-3 z-20 bg-white/90 backdrop-blur text-brand-800 text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">
               Destaque
+            </span>
+          )}
+          {product.freteGratis && totalStock > 0 && (
+            <span className={`absolute ${product.featured ? "top-10" : "top-3"} left-3 z-20 bg-green-600/90 backdrop-blur text-white text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider`}>
+              Frete grátis
             </span>
           )}
 

@@ -15,6 +15,7 @@ export interface Product {
   active: boolean;
   featured: boolean;
   permiteCupom: boolean;
+  freteGratis: boolean;
   createdAt: Date;
   updatedAt: Date;
   variants?: ProductVariant[];
@@ -41,6 +42,8 @@ export interface CartItem {
   cupomElegivel: boolean;
   /** false = acessório: tem desconto do cupom, mas sozinho não libera o frete grátis. */
   freteGratisElegivel?: boolean;
+  /** true = produto com frete grátis (toggle no admin): libera o frete do pedido inteiro, com ou sem cupom. */
+  freteGratis?: boolean;
 }
 
 export interface Address {
