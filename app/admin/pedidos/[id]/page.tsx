@@ -74,7 +74,8 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
             <div className="divide-y divide-gray-100">
               {order.items.map((item) => {
                 const imgs = item.product ? parseProductImages(item.product.images) : [];
-                const img = imgs.find((i) => item.color && i.color === item.color) ?? imgs[0];
+                // Item avulso (ex: peça do Outlet do WhatsApp) traz a própria foto em customImage.
+                const img = imgs.find((i) => item.color && i.color === item.color) ?? imgs[0] ?? (item.customImage ? { url: item.customImage } : undefined);
                 const name = item.product?.name ?? item.customName ?? "Item avulso";
                 return (
                   <div key={item.id} className="flex items-center gap-4 p-4">
@@ -96,7 +97,7 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
                       </p>
                       {!item.product ? (
                         <span className="inline-block text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5 mt-1">
-                          Bolsa nova (fora do catálogo)
+                          {item.customName?.includes("(Outlet") ? "Outlet (WhatsApp)" : "Bolsa nova (fora do catálogo)"}
                         </span>
                       ) : item.skipStock && (
                         <span className="inline-block text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 mt-1">
