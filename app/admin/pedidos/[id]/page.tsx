@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages, isManualSale } from "@/lib/utils";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { UpdateStatusButton } from "./UpdateStatusButton";
@@ -10,6 +9,7 @@ import { DefinirFreteForm } from "./DefinirFreteForm";
 import { VerificarPagamentoButton } from "./VerificarPagamentoButton";
 import { ConfirmarPedidoButton } from "./ConfirmarPedidoButton";
 import { VendorAssignForm } from "./VendorAssignForm";
+import { ZoomableImage } from "./ZoomableImage";
 
 const STATUS_OPTIONS = ["PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
@@ -80,7 +80,7 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
                 return (
                   <div key={item.id} className="flex items-center gap-4 p-4">
                     <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
-                      {img?.url && <Image src={img.url} alt={name} fill className="object-cover" />}
+                      {img?.url && <ZoomableImage src={img.url} alt={name} />}
                     </div>
                     <div className="flex-1 min-w-0">
                       {item.product ? (
