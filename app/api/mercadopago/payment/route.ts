@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ownsOrder } from "@/lib/guestOrder";
 import { updateOrderStatus, reserveStockForRetry } from "@/lib/orders";
 import { InsufficientStockError } from "@/lib/stock";
+import { fullOrderTotal } from "@/lib/pixDiscount";
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
@@ -30,13 +31,15 @@ export async function POST(request: NextRequest) {
   }
 
   const payment = new Payment(client);
+  // Cartão/boleto pagam o total cheio — se antes a cliente gerou um PIX (com 5% off), volta ao cheio.
+  const fullTotal = fullOrderTotal(order);
 
   let result;
   try {
     result = await payment.create({
       body: {
         ...formData,
-        transaction_amount: order.total,
+        transaction_amount: fullTotal,
         description: "Hearts Couro",
         external_reference: orderId,
         notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,
@@ -62,7 +65,7 @@ export async function POST(request: NextRequest) {
 
   await prisma.order.update({
     where: { id: orderId },
-    data: { mpPaymentId: result.id ? String(result.id) : null },
+    data: { mpPaymentId: result.id ? String(result.id) : null, total: fullTotal },
   });
   await updateOrderStatus(orderId, statusMap[result.status ?? ""] ?? "PENDING");
 

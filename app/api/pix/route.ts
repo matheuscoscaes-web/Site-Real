@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ownsOrder } from "@/lib/guestOrder";
 import { reserveStockForRetry } from "@/lib/orders";
 import { InsufficientStockError } from "@/lib/stock";
+import { pixOrderTotal } from "@/lib/pixDiscount";
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
@@ -30,13 +31,14 @@ export async function POST(request: NextRequest) {
   }
 
   const payment = new Payment(client);
+  const pixTotal = pixOrderTotal(order);
 
   let result;
   try {
     result = await payment.create({
       body: {
         payment_method_id: "pix",
-        transaction_amount: order.total,
+        transaction_amount: pixTotal,
         description: "Hearts Couro",
         external_reference: orderId,
         notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,
@@ -45,7 +47,8 @@ export async function POST(request: NextRequest) {
           ...(cpf ? { identification: { type: "CPF", number: cpf } } : {}),
         },
       },
-      requestOptions: { idempotencyKey: `pix-${orderId}` },
+      // Chave com o valor: o mesmo pedido pode ter tido um PIX gerado antes com outro valor.
+      requestOptions: { idempotencyKey: `pix-${orderId}-${pixTotal.toFixed(2)}` },
     });
   } catch (err) {
     console.error("Erro ao criar pagamento PIX no Mercado Pago:", err);
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   await prisma.order.update({
     where: { id: orderId },
-    data: { status: "PENDING", mpPaymentId: result.id ? String(result.id) : null },
+    data: { status: "PENDING", mpPaymentId: result.id ? String(result.id) : null, total: pixTotal },
   });
 
   const qrCode = result.point_of_interaction?.transaction_data?.qr_code ?? null;
@@ -66,5 +69,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Erro ao gerar PIX" }, { status: 500 });
   }
 
-  return NextResponse.json({ qrCode, qrBase64 });
+  return NextResponse.json({ qrCode, qrBase64, total: pixTotal });
 }

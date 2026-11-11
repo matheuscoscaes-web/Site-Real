@@ -12,6 +12,7 @@ import { useMounted } from "@/lib/useMounted";
 import { formatCurrency, getMaxInstallments, carrinhoLiberaFreteGratis, carrinhoTemProdutoFreteGratis } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
+import { pixDiscountAmount, PIX_DISCOUNT_PERCENT } from "@/lib/pixDiscount";
 import {
   Lock, ChevronDown, ChevronUp, Check, Loader2, Tag, X, AlertCircle, Copy, CheckCheck, Truck,
 } from "lucide-react";
@@ -114,6 +115,9 @@ export default function CheckoutPage() {
   const freteGratis = freteGratisCupom || carrinhoTemProdutoFreteGratis(items);
   const effectiveShipping = deliveryType === "RETIRADA" || freteGratis ? 0 : (selectedShipping?.price ?? 0);
   const total = sub - couponAmount + effectiveShipping;
+  // PIX: 5% off nos produtos (sem o frete) — o servidor faz a mesma conta (lib/pixDiscount.ts)
+  const pixDiscount = pixDiscountAmount(sub - couponAmount);
+  const pixTotal = Math.round((total - pixDiscount) * 100) / 100;
   const maxInstallments = getMaxInstallments(total);
 
   useEffect(() => {
@@ -936,7 +940,7 @@ export default function CheckoutPage() {
                   {!pixDireto && (
                     <div className="space-y-4">
                       <p className="text-sm text-gray-600">
-                        Pague <span className="font-bold text-gray-900">{formatCurrency(total)}</span> via PIX e envie o comprovante no WhatsApp para confirmar seu pedido.
+                        Pague <span className="font-bold text-gray-900">{formatCurrency(pixTotal)}</span> via PIX <span className="text-green-600 font-medium">({PIX_DISCOUNT_PERCENT}% de desconto)</span> e envie o comprovante no WhatsApp para confirmar seu pedido.
                       </p>
                       <div className="text-left max-w-xs mx-auto">
                         <label className="label">CPF do titular *</label>
@@ -980,7 +984,7 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <p className="text-sm font-semibold text-gray-700">
-                        Valor: <span className="text-brand-700">{formatCurrency(total)}</span>
+                        Valor: <span className="text-brand-700">{formatCurrency(pixTotal)}</span>
                       </p>
                       <p className="text-xs text-gray-500 mb-1">Ou copie o código PIX (copia e cola):</p>
                       <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs font-mono text-gray-700 break-all text-left">
@@ -1173,6 +1177,11 @@ export default function CheckoutPage() {
                 <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900 text-base">
                   <span>Total</span><span>{formatCurrency(total)}</span>
                 </div>
+                {pixDiscount > 0 && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>No PIX ({PIX_DISCOUNT_PERCENT}% off)</span><span>{formatCurrency(pixTotal)}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
