@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, Playfair_Display, Anton } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -18,6 +18,14 @@ const playfair = Playfair_Display({
   weight: ["400", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-playfair",
+  display: "swap",
+});
+
+// Fonte condensada da campanha Black November (faixa do topo e selos)
+const anton = Anton({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-black",
   display: "swap",
 });
 
@@ -55,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${playfair.variable} ${anton.variable}`}>
       <body>
         {GOOGLE_ADS_ID && (
           <>

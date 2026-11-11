@@ -7,6 +7,7 @@ import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
 import { isCupomElegivel, isFreteGratisElegivel, formatCurrency } from "@/lib/utils";
 import { updateOrderStatus } from "@/lib/orders";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { currentPrice, isFlashSaleActive } from "@/lib/black";
 import { validateGuestContact, findOrCreateGuestUser, guestOrderToken, isValidGuestOrderToken } from "@/lib/guestOrder";
 
 export async function GET() {
@@ -27,7 +28,38 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   const body = await request.json();
-  const { address, addressId, paymentMethod, items, subtotal, shipping, couponCode, shippingServiceId, shippingService, shippingCarrier } = body;
+  const { address, addressId, paymentMethod, items, shipping, couponCode, shippingServiceId, shippingService, shippingCarrier } = body;
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return NextResponse.json({ error: "Carrinho vazio" }, { status: 400 });
+  }
+
+  // Preco de cada item sempre vem do banco (com a oferta relampago, se estiver
+  // valendo), nunca do navegador. Se o carrinho da pessoa estiver com um preco
+  // diferente (oferta comecou/acabou, preco mudou), pede pra ela revisar antes.
+  const flashSale = isFlashSaleActive();
+  const dbProducts = await prisma.product.findMany({
+    where: { id: { in: items.map((item: { productId: string }) => item.productId) } },
+    select: { id: true, price: true },
+  });
+  const unitPriceMap = new Map(dbProducts.map((p) => [p.id, currentPrice(p.price)]));
+  for (const item of items as { productId: string; price: number; quantity: number; skipStock?: boolean }[]) {
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      return NextResponse.json({ error: "Quantidade inválida no carrinho." }, { status: 400 });
+    }
+    item.skipStock = false; // so o admin (venda manual) pode vender sem baixar estoque
+    const unit = unitPriceMap.get(item.productId);
+    if (unit === undefined) {
+      return NextResponse.json({ error: "Um dos produtos do carrinho não está mais disponível. Volte ao carrinho para revisar." }, { status: 409 });
+    }
+    if (Math.abs(unit - Number(item.price)) > 0.009) {
+      return NextResponse.json({ error: "Os preços de alguns produtos foram atualizados. Volte ao carrinho para ver os valores novos." }, { status: 409 });
+    }
+    item.price = unit;
+  }
+  const subtotal = Math.round(
+    (items as { productId: string; price: number; quantity: number }[]).reduce((sum, item) => sum + item.price * item.quantity, 0) * 100
+  ) / 100;
 
   // Sem login: o pedido fica na conta do e-mail digitado (criada na hora se não existir)
   let userId: string;
@@ -120,7 +152,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Produto marcado com frete grátis no admin libera o frete do pedido inteiro, com ou sem cupom
-  if (!freeShipping) {
+  // (menos na oferta relampago: nela o frete e cobrado normalmente)
+  if (!freeShipping && !flashSale) {
     const comFreteGratis = await prisma.product.count({
       where: { id: { in: items.map((item: { productId: string }) => item.productId) }, freteGratis: true },
     });

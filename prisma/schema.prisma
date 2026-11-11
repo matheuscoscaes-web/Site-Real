@@ -191,6 +191,8 @@ model Product {
   slug         String   @unique
   description  String
   price        Float
+  /// Preco "de" (riscado). Quando maior que price, o site mostra o selo de desconto.
+  precoAntigo  Float?
   categories   String[] @default([])
   images       String
   video        String?

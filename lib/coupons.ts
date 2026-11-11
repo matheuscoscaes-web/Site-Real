@@ -1,3 +1,4 @@
+import { isFlashSaleActive, FLASH_SALE_COUPON_ERROR } from "@/lib/black";
 import { prisma } from "./prisma";
 
 export const WELCOME_COUPON_CODE = "BEMVINDO";
@@ -33,6 +34,9 @@ export interface CouponResolution {
  */
 export async function resolveCoupon(code: string, userId: string | null): Promise<CouponResolution> {
   const normalized = code.toUpperCase().trim();
+
+  // Oferta relampago (site inteiro 50% off): nenhum cupom vale enquanto ela durar
+  if (isFlashSaleActive()) return { valid: false, error: FLASH_SALE_COUPON_ERROR };
 
   if (normalized === WELCOME_COUPON_CODE) {
     // Sem login (ex: chegou pelo link ?cupom=) o cupom ja ativa na vitrine; a

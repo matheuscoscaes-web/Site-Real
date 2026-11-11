@@ -60,6 +60,7 @@ export default function CarrinhoPage() {
           cupomElegivel: isCupomElegivel(produto.permiteCupom),
           freteGratisElegivel: isFreteGratisElegivel(produto.categories ?? []),
           freteGratis: !!produto.freteGratis,
+          price: typeof produto.price === "number" ? produto.price : undefined,
         });
         const variantes = (produto.variants as { color: string | null; size: string | null; stock: number }[]).filter(
           (v) => (!item.color || v.color === item.color) && (!item.size || v.size === item.size)

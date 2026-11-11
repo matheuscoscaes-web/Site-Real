@@ -1,3 +1,4 @@
+import { withFlashSale } from "@/lib/black";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,10 +19,11 @@ export async function generateStaticParams() {
 }
 
 async function getProduct(slug: string) {
-  return prisma.product.findFirst({
+  const product = await prisma.product.findFirst({
     where: { slug, active: true },
     include: { variants: true },
   });
+  return product ? withFlashSale(product) : null;
 }
 
 export async function generateMetadata({

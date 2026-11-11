@@ -165,3 +165,196 @@
 .toast-error {
   @apply bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg font-medium;
 }
+
+/* ============================================================
+   BLACK NOVEMBER
+   Tema preto + dourado. So vale dentro de .black-mode (layout
+   publico), entao admin e conta continuam como sempre.
+   Liga/desliga em lib/black.ts (variavel BLACK_MODE).
+   ============================================================ */
+body:has(.black-mode) {
+  background-color: #161412;
+  color: #f5f5f5;
+}
+
+.black-mode {
+  /* Grafite quente em vez de preto puro: deixa o tema mais leve */
+  --bk-bg: #161412;
+  --bk-surface: #1e1b18;
+  --bk-surface-2: #272320;
+  --bk-border: #35302b;
+  --bk-text: #f5f1ea;
+  --bk-muted: #b3aca2;
+  --bk-gold: #e8bf6a;
+  --bk-gold-2: #dba84a;
+  --bk-gold-grad: linear-gradient(135deg, #efd08f 0%, #dba84a 100%);
+  background-color: var(--bk-bg);
+  color: var(--bk-text);
+}
+
+.black-mode ::selection { background: #e8bf6a; color: #1a1612; }
+
+/* Fundos */
+.black-mode .bg-white,
+.black-mode .bg-cream-50,
+.black-mode .bg-gray-50,
+.black-mode .card { background-color: var(--bk-surface); }
+.black-mode .bg-cream-100,
+.black-mode .bg-cream-200,
+.black-mode .bg-gray-100,
+.black-mode .bg-brand-50,
+.black-mode .bg-brand-100 { background-color: var(--bk-surface-2); }
+.black-mode .bg-gray-200 { background-color: #35302b; }
+.black-mode .bg-white\/95,
+.black-mode .bg-white\/90 { background-color: rgba(30, 27, 24, 0.9); }
+.black-mode .hover\:bg-gray-50:hover,
+.black-mode .hover\:bg-brand-50:hover,
+.black-mode .hover\:bg-cream-100:hover { background-color: var(--bk-surface-2); }
+.black-mode .bg-green-50,
+.black-mode .bg-green-100 { background-color: rgba(34, 197, 94, 0.14); }
+.black-mode .bg-amber-50,
+.black-mode .bg-yellow-100 { background-color: rgba(245, 158, 11, 0.14); }
+.black-mode .bg-red-50,
+.black-mode .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.14); }
+
+/* Textos */
+.black-mode .text-gray-900,
+.black-mode .text-gray-800 { color: var(--bk-text); }
+.black-mode .text-gray-700 { color: #e8e2d8; }
+.black-mode .text-gray-600 { color: #cdc6bb; }
+.black-mode .text-gray-500 { color: var(--bk-muted); }
+.black-mode .text-gray-400 { color: #958e84; }
+.black-mode .text-gray-300 { color: #6b655d; }
+.black-mode .text-brand-600,
+.black-mode .text-brand-700,
+.black-mode .text-brand-800,
+.black-mode .text-brand-900,
+.black-mode .hover\:text-brand-700:hover,
+.black-mode .group:hover .group-hover\:text-brand-700 { color: var(--bk-gold); }
+.black-mode .hover\:text-gray-900:hover { color: #fff; }
+.black-mode .text-green-700,
+.black-mode .text-green-800 { color: #4ade80; }
+.black-mode .text-amber-700,
+.black-mode .text-amber-800 { color: #fbbf24; }
+.black-mode .text-red-600,
+.black-mode .text-red-700 { color: #f87171; }
+.black-mode .fill-brand-700 { fill: var(--bk-gold); }
+
+/* Bordas */
+.black-mode .border-gray-50,
+.black-mode .border-gray-100,
+.black-mode .border-gray-200,
+.black-mode .border-brand-100,
+.black-mode .divide-gray-50 > * + *,
+.black-mode .divide-gray-100 > * + * { border-color: var(--bk-border); }
+.black-mode .hover\:border-gray-300:hover,
+.black-mode .hover\:border-gray-400:hover { border-color: #4a443d; }
+.black-mode .ring-white { --tw-ring-color: var(--bk-bg); }
+
+/* Campos de formulario */
+.black-mode .input-field,
+.black-mode input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.black-mode select,
+.black-mode textarea {
+  background-color: var(--bk-surface-2);
+  border-color: #3d3832;
+  color: var(--bk-text);
+}
+.black-mode .input-field::placeholder,
+.black-mode input::placeholder,
+.black-mode textarea::placeholder { color: #857e74; }
+
+/* Botoes */
+.black-mode .btn-primary {
+  background: var(--bk-gold-grad);
+  color: #1a1612;
+}
+.black-mode .btn-primary:hover { filter: brightness(1.06); }
+.black-mode .btn-outline { border-color: var(--bk-gold-2); color: var(--bk-gold); }
+.black-mode .btn-outline:hover { background: var(--bk-gold-2); color: #1a1612; }
+.black-mode .btn-ghost { color: #c4c4c4; }
+.black-mode .eyebrow { color: var(--bk-gold); }
+.black-mode .section-title { color: var(--bk-text); }
+
+/* Faixa do topo: letreiro + contagem regressiva */
+.black-bar {
+  background: #1e1b18;
+  border-bottom: 1px solid #35302b;
+  color: var(--bk-text);
+}
+.black-marquee {
+  overflow: hidden;
+  background: var(--bk-gold-grad);
+  color: #1a1612;
+}
+.black-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: blackMarquee 45s linear infinite;
+}
+.black-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.25rem 1rem;
+  font-family: var(--font-black), var(--font-inter), sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.black-marquee-dot { font-size: 0.7rem; opacity: 0.7; }
+@keyframes blackMarquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.black-countdown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.4rem 1rem;
+  text-align: center;
+}
+.black-countdown-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bk-muted);
+}
+.black-countdown-digits {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.black-countdown-digits b {
+  font-family: var(--font-black), var(--font-inter), sans-serif;
+  font-weight: 400;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--bk-gold);
+}
+.black-countdown-digits small {
+  font-size: 10px;
+  color: var(--bk-muted);
+  margin-right: 0.45rem;
+}
+
+/* Selo BLACK -X% nos produtos */
+.black-badge {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 6px;
+  font-family: var(--font-black), var(--font-inter), sans-serif;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  box-shadow: 0 2px 8px -3px rgba(0, 0, 0, 0.35);
+}
+.black-badge > span { padding: 5px 7px; }
+.black-badge-tag { background: #1a1612; color: var(--bk-gold, #edb94a); }
+.black-badge > span:last-child { background: linear-gradient(135deg, #efd08f 0%, #dba84a 100%); color: #1a1612; }

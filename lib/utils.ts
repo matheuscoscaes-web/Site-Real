@@ -1,3 +1,4 @@
+import { withFlashSale } from "@/lib/black";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Product, ProductImage } from "@/types";
@@ -25,7 +26,7 @@ export function parseProductImages(raw: string): ProductImage[] {
  * card e deixavam a pagina de produtos com ~500KB. */
 export type CardProduct = Pick<
   Product,
-  "id" | "name" | "slug" | "price" | "categories" | "images" | "featured" | "permiteCupom" | "freteGratis"
+  "id" | "name" | "slug" | "price" | "precoAntigo" | "categories" | "images" | "featured" | "permiteCupom" | "freteGratis"
 > & {
   variants: { color: string | null; size: string | null; stock: number }[];
   /** Cor da variante a destacar (filtro de cor): o card abre o produto ja nela */
@@ -38,6 +39,10 @@ export type CardProduct = Pick<
  * de outra cor) e o link abre o produto ja com ela selecionada.
  */
 export function toCardProduct(p: Product, matchesColor?: (color: string) => boolean): CardProduct {
+  return withFlashSale(buildCardProduct(p, matchesColor));
+}
+
+function buildCardProduct(p: Product, matchesColor?: (color: string) => boolean): CardProduct {
   const allImages = parseProductImages(p.images);
   let images = allImages;
   let preferredColor: string | null = null;
@@ -54,6 +59,7 @@ export function toCardProduct(p: Product, matchesColor?: (color: string) => bool
     name: p.name,
     slug: p.slug,
     price: p.price,
+    precoAntigo: p.precoAntigo ?? null,
     categories: p.categories,
     // so as 2 primeiras fotos (principal + a do hover)
     images: JSON.stringify(images.slice(0, 2).map((i) => i.url)),

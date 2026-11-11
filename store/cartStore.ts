@@ -13,7 +13,7 @@ interface CartStore {
   totalItems: () => number;
   subtotal: () => number;
   eligibleSubtotal: () => number;
-  syncCouponFlags: (productId: string, flags: Pick<CartItem, "cupomElegivel" | "freteGratisElegivel" | "freteGratis">) => void;
+  syncCouponFlags: (productId: string, flags: Pick<CartItem, "cupomElegivel" | "freteGratisElegivel" | "freteGratis"> & { price?: number }) => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -63,7 +63,8 @@ export const useCartStore = create<CartStore>()(
       // com o que o produto tem hoje (podem ter mudado desde que foi adicionado).
       syncCouponFlags: (productId, flags) => {
         const items = get().items;
-        if (!items.some((i) => i.productId === productId && (i.cupomElegivel !== flags.cupomElegivel || i.freteGratisElegivel !== flags.freteGratisElegivel || i.freteGratis !== flags.freteGratis))) return;
+        // (o preco tambem: oferta relampago comeca/acaba, admin muda o preco)
+        if (!items.some((i) => i.productId === productId && (i.cupomElegivel !== flags.cupomElegivel || i.freteGratisElegivel !== flags.freteGratisElegivel || i.freteGratis !== flags.freteGratis || (flags.price !== undefined && i.price !== flags.price)))) return;
         set({ items: items.map((i) => (i.productId === productId ? { ...i, ...flags } : i)) });
       },
 

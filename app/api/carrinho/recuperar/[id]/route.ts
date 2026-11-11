@@ -1,3 +1,4 @@
+import { currentPrice, isFlashSaleActive } from "@/lib/black";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseProductImages, isCupomElegivel, isFreteGratisElegivel } from "@/lib/utils";
@@ -53,7 +54,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     items.push({
       productId: p.id,
       name: p.name,
-      price: p.price,
+      price: currentPrice(p.price),
       image,
       quantity: p.variants.length > 0 ? Math.min(it.quantity, disponivel) : it.quantity,
       color: it.color || undefined,
@@ -61,7 +62,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       slug: p.slug,
       cupomElegivel: isCupomElegivel(p.permiteCupom),
       freteGratisElegivel: isFreteGratisElegivel(p.categories),
-      freteGratis: !!p.freteGratis,
+      freteGratis: !!p.freteGratis && !isFlashSaleActive(),
     });
   }
 

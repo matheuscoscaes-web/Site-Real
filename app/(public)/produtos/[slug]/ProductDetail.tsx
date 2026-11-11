@@ -11,6 +11,8 @@ import { formatCurrency, parseProductImages, isCupomElegivel, isFreteGratisElegi
 import { ShoppingBag, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight, Truck } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
+import { DiscountBadge } from "@/components/layout/BlackMode";
+import { discountPercent } from "@/lib/black";
 
 interface ProductWithVariants extends Product {
   variants: ProductVariant[];
@@ -141,6 +143,9 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const coupon = useCouponStore((s) => s.coupon);
   const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.permiteCupom)) : null;
   const finalPrice = couponPrice ?? product.price;
+  // Preco "de" cadastrado no admin (campanha Black / promocoes)
+  const oldPrice = product.precoAntigo && product.precoAntigo > product.price ? product.precoAntigo : null;
+  const oldPricePct = discountPercent(oldPrice, finalPrice);
 
   const maxInstallments = getMaxInstallments(finalPrice);
   const installment = finalPrice / maxInstallments;
@@ -279,13 +284,23 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
             <>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="text-3xl font-bold text-brand-700">{formatCurrency(couponPrice)}</span>
-                <span className="text-lg text-gray-400 line-through">{formatCurrency(product.price)}</span>
-                <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap self-center">-{coupon!.discountValue}%</span>
+                <span className="text-lg text-gray-400 line-through">{formatCurrency(oldPrice ?? product.price)}</span>
+                {oldPricePct !== null ? (
+                  <DiscountBadge percent={oldPricePct} className="self-center" />
+                ) : (
+                  <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap self-center">-{coupon!.discountValue}%</span>
+                )}
               </div>
               <p className="text-xs text-green-700 font-medium mt-1">
                 Preço com o cupom <span className="font-mono font-bold">{coupon!.code}</span>
               </p>
             </>
+          ) : oldPrice !== null && oldPricePct !== null ? (
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-3xl font-bold text-brand-700">{formatCurrency(product.price)}</span>
+              <span className="text-lg text-gray-400 line-through">{formatCurrency(oldPrice)}</span>
+              <DiscountBadge percent={oldPricePct} className="self-center" />
+            </div>
           ) : (
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-3xl font-bold text-gray-900">{formatCurrency(product.price)}</span>

@@ -9,6 +9,7 @@ export interface Product {
   slug: string;
   description: string;
   price: number;
+  precoAntigo?: number | null;
   categories: string[];
   images: string;
   video?: string | null;

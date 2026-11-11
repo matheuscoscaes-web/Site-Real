@@ -10,6 +10,8 @@ import { useCartStore } from "@/store/cartStore";
 import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { useCouponStore, couponUnitPrice } from "@/store/couponStore";
+import { DiscountBadge } from "@/components/layout/BlackMode";
+import { discountPercent } from "@/lib/black";
 
 interface ProductCardProps {
   product: CardProduct;
@@ -41,6 +43,10 @@ export function ProductCard({
   const coupon = useCouponStore((s) => s.coupon);
   const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.permiteCupom)) : null;
   const installments = getMaxInstallments(couponPrice ?? product.price);
+  // Preco "de" cadastrado no admin: o selo mostra o desconto total ate o preco final
+  const finalPrice = couponPrice ?? product.price;
+  const oldPrice = product.precoAntigo && product.precoAntigo > product.price ? product.precoAntigo : null;
+  const badgePct = discountPercent(oldPrice, finalPrice);
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
@@ -95,7 +101,9 @@ export function ProductCard({
           )}
 
           {/* Badges */}
-          {product.featured && totalStock > 0 && (
+          {badgePct !== null && totalStock > 0 ? (
+            <DiscountBadge percent={badgePct} className="absolute top-3 left-3 z-20" />
+          ) : product.featured && totalStock > 0 && (
             <span className="absolute top-3 left-3 z-20 bg-white/90 backdrop-blur text-brand-800 text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">
               Destaque
             </span>
@@ -149,8 +157,13 @@ export function ProductCard({
           {couponPrice !== null ? (
             <div className="flex flex-wrap items-baseline gap-x-1.5">
               <p className="text-[15px] font-bold text-brand-700">{formatCurrency(couponPrice)}</p>
-              <p className="text-[11px] text-gray-400 line-through">{formatCurrency(product.price)}</p>
-              <span className="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-px rounded-full self-center">-{coupon!.discountValue}%</span>
+              <p className="text-[11px] text-gray-400 line-through">{formatCurrency(oldPrice ?? product.price)}</p>
+              <span className="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-px rounded-full self-center">-{badgePct ?? coupon!.discountValue}%</span>
+            </div>
+          ) : oldPrice !== null ? (
+            <div className="flex flex-wrap items-baseline gap-x-1.5">
+              <p className="text-[15px] font-bold text-brand-700">{formatCurrency(product.price)}</p>
+              <p className="text-[11px] text-gray-400 line-through">{formatCurrency(oldPrice)}</p>
             </div>
           ) : (
             <p className="text-[15px] font-bold text-gray-900">{formatCurrency(product.price)}</p>

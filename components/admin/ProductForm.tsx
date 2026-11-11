@@ -22,6 +22,7 @@ interface ProductData {
   slug?: string;
   description?: string;
   price?: number;
+  precoAntigo?: number | null;
   categories?: string[];
   images?: string;
   video?: string | null;
@@ -158,6 +159,7 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
     slug: product?.slug || "",
     description: product?.description || "",
     price: product?.price?.toString() || "",
+    precoAntigo: product?.precoAntigo?.toString() || "",
     active: product?.active ?? true,
     featured: product?.featured ?? false,
     permiteCupom: product?.permiteCupom ?? true,
@@ -464,6 +466,8 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
       ...form,
       categories,
       price: parseFloat(form.price),
+      // Vazio ou menor/igual ao preco de venda = sem preco riscado
+      precoAntigo: form.precoAntigo && parseFloat(form.precoAntigo) > parseFloat(form.price) ? parseFloat(form.precoAntigo) : null,
       video: form.video.trim() || null,
       images: JSON.stringify(allImages),
       // Cor com numeração: uma variante por tamanho, cada uma com seu estoque.
@@ -1065,6 +1069,27 @@ export function ProductForm({ product, categoryTree }: { product?: ProductData; 
                     placeholder="0,00"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="label">Preço antigo / "de" (R$)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium text-sm">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="input-field pl-10"
+                    value={form.precoAntigo}
+                    onChange={(e) => set("precoAntigo", e.target.value)}
+                    placeholder="Opcional"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {form.precoAntigo && form.price && parseFloat(form.precoAntigo) > parseFloat(form.price)
+                    ? `Aparece riscado, com o selo BLACK -${Math.round((1 - parseFloat(form.price) / parseFloat(form.precoAntigo)) * 100)}% no produto`
+                    : "Se for maior que o preço de venda, aparece riscado com o selo de desconto (BLACK -X% durante a Black)"}
+                </p>
               </div>
 
               {form.price && parseFloat(form.price) > 0 && (

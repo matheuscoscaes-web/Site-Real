@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withFlashSale } from "@/lib/black";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -18,7 +19,8 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json(product);
+  // Preco que vale agora (oferta relampago), usado pelo carrinho pra se atualizar
+  return NextResponse.json(withFlashSale(product));
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
