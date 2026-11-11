@@ -309,6 +309,9 @@ export function Header({ categories }: { categories: ProductCategoryNode[] }) {
                 autoFocus
                 type="search"
                 enterKeyHint="search"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="O que você procura?"

@@ -42,8 +42,8 @@ const getProducts = unstable_cache(
     }
     if (params.busca) {
       where.OR = [
-        { name: { contains: params.busca } },
-        { description: { contains: params.busca } },
+        { name: { contains: params.busca, mode: "insensitive" } },
+        { description: { contains: params.busca, mode: "insensitive" } },
       ];
     }
     if (params.preco_min || params.preco_max) {
