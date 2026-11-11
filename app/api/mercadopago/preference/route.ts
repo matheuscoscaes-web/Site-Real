@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { ownsOrder } from "@/lib/guestOrder";
 import { reserveStockForRetry } from "@/lib/orders";
 import { InsufficientStockError } from "@/lib/stock";
-import { fullOrderTotal } from "@/lib/pixDiscount";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
         id: orderId,
         title: "Hearts Couro",
         quantity: 1,
-        unit_price: fullOrderTotal(order),
+        unit_price: order.total,
         currency_id: "BRL",
       }],
       payer: { email: order.user.email },
