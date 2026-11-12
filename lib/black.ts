@@ -12,8 +12,9 @@
  * SEM DESCONTO NENHUM (desde 12/11/2026): o preco cadastrado ja e o preco final
  * pra todo mundo. Desliga a oferta de 50%, todos os cupons (BEMVINDO, vendedoras,
  * revendedoras, personalizados), o "de/por" e o 5% no PIX. Pra voltar: false.
+ * (12/11 a tarde: desligado de novo -> voltou o site inteiro 50% off, sem cupom)
  */
-export const NO_DISCOUNT = true;
+export const NO_DISCOUNT = false;
 
 // Horarios em Brasilia (UTC-3)
 export const BLACK_FRIDAY = new Date("2026-11-27T00:00:00-03:00");

@@ -11,7 +11,7 @@ import { formatCurrency, parseProductImages, isCupomElegivel, isFreteGratisElegi
 import { ShoppingBag, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, PlayCircle, ChevronLeft, ChevronRight, Truck } from "lucide-react";
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
-import { DiscountBadge } from "@/components/layout/BlackMode";
+import { DiscountBadge, useFlashSale } from "@/components/layout/BlackMode";
 import { discountPercent, NO_DISCOUNT } from "@/lib/black";
 
 interface ProductWithVariants extends Product {
@@ -22,6 +22,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const addItem = useCartStore((s) => s.addItem);
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const mounted = useMounted();
+  const flashSale = useFlashSale();
   const liked = useWishlistStore((s) => s.items.some((i) => i.productId === product.id)) && mounted;
 
   const images = parseProductImages(product.images);
@@ -318,7 +319,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
               <Truck size={15} /> Frete grátis
             </p>
           )}
-          {!NO_DISCOUNT && (
+          {!NO_DISCOUNT && !flashSale && (
           <p className="text-sm text-brand-700 font-medium mt-1">
             5% de desconto no PIX: {formatCurrency(finalPrice * 0.95)}
           </p>
