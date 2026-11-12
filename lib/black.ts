@@ -27,23 +27,24 @@ export function discountPercent(oldPrice: number | null | undefined, price: numb
 }
 
 /* ------------------------------------------------------------------
- * Oferta relampago: SITE INTEIRO COM 50% OFF, so durante a janela abaixo.
+ * Oferta: SITE INTEIRO COM 50% OFF, a partir de FLASH_SALE_START.
  * - todos os precos pela metade (o preco cheio aparece riscado)
  * - cupons pausados
  * - frete normal (frete gratis de produto e de cupom nao valem)
- * Termina sozinha no fim da janela. Pra encerrar antes: FLASH_SALE=off
- * nas variaveis de ambiente (FLASH_SALE=on forca ligada).
+ * FLASH_SALE_END = null -> por tempo indeterminado (sem contagem regressiva).
+ * Pra encerrar: ponha uma data em FLASH_SALE_END ou FLASH_SALE=off nas
+ * variaveis de ambiente (FLASH_SALE=on forca ligada).
  * ------------------------------------------------------------------ */
-export const FLASH_SALE_START = new Date("2026-11-11T00:00:00-03:00");
-export const FLASH_SALE_END = new Date("2026-11-12T00:00:00-03:00");
+export const FLASH_SALE_START = new Date("2026-11-12T00:00:00-03:00");
+export const FLASH_SALE_END: Date | null = null;
 export const FLASH_SALE_PERCENT = 50;
-export const FLASH_SALE_COUPON_ERROR = "Hoje os cupons estão pausados: o site inteiro já está com 50% off 🖤";
+export const FLASH_SALE_COUPON_ERROR = "Os cupons estão pausados: o site inteiro já está com 50% off 🖤";
 
 export function isFlashSaleActive(now = Date.now()): boolean {
   const flag = process.env.FLASH_SALE?.trim().toLowerCase();
   if (flag === "off") return false;
   if (flag === "on") return true;
-  return now >= FLASH_SALE_START.getTime() && now < FLASH_SALE_END.getTime();
+  return now >= FLASH_SALE_START.getTime() && (FLASH_SALE_END === null || now < FLASH_SALE_END.getTime());
 }
 
 /** Preco com o desconto da oferta relampago (arredondado no centavo). */

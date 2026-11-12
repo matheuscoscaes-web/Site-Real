@@ -46,14 +46,14 @@ function useCountdown(flashSale: boolean) {
     return () => clearInterval(id);
   }, []);
   if (now === null) return null;
-  if (flashSale && now < FLASH_SALE_END.getTime()) return { label: `${FLASH_SALE_PERCENT}% off acaba em`, ...splitTime(FLASH_SALE_END.getTime() - now) };
+  if (flashSale && FLASH_SALE_END && now < FLASH_SALE_END.getTime()) return { label: `${FLASH_SALE_PERCENT}% off acaba em`, ...splitTime(FLASH_SALE_END.getTime() - now) };
   if (now < BLACK_FRIDAY.getTime()) return { label: "A Black Friday começa em", ...splitTime(BLACK_FRIDAY.getTime() - now) };
   if (now < BLACK_END.getTime()) return { label: "Últimas horas: acaba em", ...splitTime(BLACK_END.getTime() - now) };
   return { label: "", d: 0, h: 0, m: 0, s: 0, ended: true };
 }
 
 const MARQUEE_ITEMS = ["Black November", "Ofertas em couro legítimo", "Black November", "Parcele sem juros", "Black November", "5% off no PIX"];
-const FLASH_MARQUEE_ITEMS = [`Só hoje: site inteiro ${FLASH_SALE_PERCENT}% off`, "Black November", `Só hoje: site inteiro ${FLASH_SALE_PERCENT}% off`, "Parcele sem juros", `Só hoje: site inteiro ${FLASH_SALE_PERCENT}% off`, "Black November"];
+const FLASH_MARQUEE_ITEMS = [`Site inteiro ${FLASH_SALE_PERCENT}% off`, "Black November", `Site inteiro ${FLASH_SALE_PERCENT}% off`, "Parcele sem juros", `Site inteiro ${FLASH_SALE_PERCENT}% off`, "Black November"];
 
 /** Faixa animada + contagem regressiva no topo do site. */
 export function BlackBar() {
