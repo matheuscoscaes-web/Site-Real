@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { NO_DISCOUNT } from "@/lib/black";
 
 export interface ActiveCoupon {
   code: string;
@@ -28,10 +29,14 @@ export const useCouponStore = create<CouponStore>()(
   persist(
     (set) => ({
       coupon: null,
-      setCoupon: (coupon) => set({ coupon }),
+      setCoupon: (coupon) => set({ coupon: NO_DISCOUNT ? null : coupon }),
       clearCoupon: () => set({ coupon: null }),
     }),
-    { name: "hearts-cupom-ativo" }
+    {
+      name: "hearts-cupom-ativo",
+      // Sem desconto: descarta cupom que ficou salvo no navegador
+      merge: (persisted, current) => (NO_DISCOUNT ? current : { ...current, ...(persisted as Partial<CouponStore>) }),
+    }
   )
 );
 
@@ -59,7 +64,7 @@ export function toActiveCoupon(code: string, data: {
  * item) ou cupom com compra minima (so vale se o carrinho atingir o valor).
  */
 export function couponUnitPrice(coupon: ActiveCoupon | null, price: number, eligible: boolean): number | null {
-  if (!coupon || !eligible) return null;
+  if (NO_DISCOUNT || !coupon || !eligible) return null;
   if (coupon.discountType !== "PERCENT" || coupon.minPurchase || coupon.discountValue <= 0) return null;
   return Math.round(price * (100 - coupon.discountValue)) / 100;
 }

@@ -6,7 +6,7 @@ import { ProductCard } from "@/components/products/ProductCard";
 import { ShopByColor } from "@/components/products/ShopByColor";
 import { Truck, Shield, RefreshCw, Headphones, ArrowRight, Instagram } from "lucide-react";
 import { sortOutOfStockLast, toCardProduct } from "@/lib/utils";
-import { isFlashSaleActive, FLASH_SALE_PERCENT } from "@/lib/black";
+import { isFlashSaleActive, FLASH_SALE_PERCENT, NO_DISCOUNT } from "@/lib/black";
 
 const getFeaturedProducts = unstable_cache(
   async () => {
@@ -248,7 +248,7 @@ export default async function HomePage() {
       {/* BANNER PROMO */}
       <section className="pb-16 md:pb-24">
         <div className="container-main">
-          {flashSale ? (
+          {NO_DISCOUNT ? null : flashSale ? (
           <div className="reveal relative overflow-hidden rounded-[32px] bg-[#111] px-6 py-12 md:p-16">
             <div className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-amber-500/25 blur-3xl" />
             <div className="absolute -left-20 -bottom-28 w-72 h-72 rounded-full bg-amber-300/10 blur-3xl" />

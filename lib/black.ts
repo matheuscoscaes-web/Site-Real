@@ -8,6 +8,13 @@
  *   (vazia)         -> automatico pelas datas abaixo
  */
 
+/**
+ * SEM DESCONTO NENHUM (desde 12/11/2026): o preco cadastrado ja e o preco final
+ * pra todo mundo. Desliga a oferta de 50%, todos os cupons (BEMVINDO, vendedoras,
+ * revendedoras, personalizados), o "de/por" e o 5% no PIX. Pra voltar: false.
+ */
+export const NO_DISCOUNT = true;
+
 // Horarios em Brasilia (UTC-3)
 export const BLACK_FRIDAY = new Date("2026-11-27T00:00:00-03:00");
 export const BLACK_END = new Date("2026-12-01T00:00:00-03:00");
@@ -21,6 +28,7 @@ export function isBlackModeActive(now = Date.now()): boolean {
 
 /** Desconto em % do preco antigo pro preco atual (null se nao houver desconto). */
 export function discountPercent(oldPrice: number | null | undefined, price: number): number | null {
+  if (NO_DISCOUNT) return null;
   if (!oldPrice || oldPrice <= price) return null;
   const pct = Math.round((1 - price / oldPrice) * 100);
   return pct > 0 ? pct : null;
@@ -41,6 +49,7 @@ export const FLASH_SALE_PERCENT = 50;
 export const FLASH_SALE_COUPON_ERROR = "Os cupons estão pausados: o site inteiro já está com 50% off 🖤";
 
 export function isFlashSaleActive(now = Date.now()): boolean {
+  if (NO_DISCOUNT) return false;
   const flag = process.env.FLASH_SALE?.trim().toLowerCase();
   if (flag === "off") return false;
   if (flag === "on") return true;

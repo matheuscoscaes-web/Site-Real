@@ -13,6 +13,7 @@ import { formatCurrency, getMaxInstallments, isCupomElegivel, isFreteGratisElegi
 import { type FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
 import { Trash2, Plus, Minus, ShoppingBag, Truck, ArrowRight, Tag, X, Loader2 } from "lucide-react";
+import { NO_DISCOUNT } from "@/lib/black";
 
 export default function CarrinhoPage() {
   const router = useRouter();
@@ -237,7 +238,7 @@ export default function CarrinhoPage() {
         </div>
       )}
 
-      {isFirstPurchase && !cupomAplicado && !flashSale && (
+      {isFirstPurchase && !cupomAplicado && !flashSale && !NO_DISCOUNT && (
         <div className="bg-brand-50 border border-brand-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
           <span className="text-2xl">🎁</span>
           <div>
@@ -337,7 +338,7 @@ export default function CarrinhoPage() {
         {/* Resumo */}
         <div className="space-y-4">
           {/* Cupom */}
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <div className={`bg-white border border-gray-100 rounded-2xl p-5 shadow-sm${NO_DISCOUNT ? " hidden" : ""}`}>
             <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
               <Tag size={18} className="text-brand-700" /> Cupom de desconto
             </h3>

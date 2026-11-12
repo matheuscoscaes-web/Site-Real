@@ -12,7 +12,7 @@ import { ShoppingBag, Shield, RefreshCw, Minus, Plus, Heart, Share2, Check, Play
 import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
 import { DiscountBadge } from "@/components/layout/BlackMode";
-import { discountPercent } from "@/lib/black";
+import { discountPercent, NO_DISCOUNT } from "@/lib/black";
 
 interface ProductWithVariants extends Product {
   variants: ProductVariant[];
@@ -144,7 +144,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const couponPrice = mounted ? couponUnitPrice(coupon, product.price, isCupomElegivel(product.permiteCupom)) : null;
   const finalPrice = couponPrice ?? product.price;
   // Preco "de" cadastrado no admin (campanha Black / promocoes)
-  const oldPrice = product.precoAntigo && product.precoAntigo > product.price ? product.precoAntigo : null;
+  const oldPrice = !NO_DISCOUNT && product.precoAntigo && product.precoAntigo > product.price ? product.precoAntigo : null;
   const oldPricePct = discountPercent(oldPrice, finalPrice);
 
   const maxInstallments = getMaxInstallments(finalPrice);
@@ -304,8 +304,10 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
           ) : (
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-3xl font-bold text-gray-900">{formatCurrency(product.price)}</span>
+              {!NO_DISCOUNT && (<>
               <span className="text-lg text-gray-400 line-through">{formatCurrency(product.price * 1.2)}</span>
               <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full whitespace-nowrap self-center">17% off</span>
+              </>)}
             </div>
           )}
           <p className="text-sm text-gray-500 mt-1">
@@ -316,9 +318,11 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
               <Truck size={15} /> Frete grátis
             </p>
           )}
+          {!NO_DISCOUNT && (
           <p className="text-sm text-brand-700 font-medium mt-1">
             5% de desconto no PIX: {formatCurrency(finalPrice * 0.95)}
           </p>
+          )}
         </div>
 
         {/* Cores */}

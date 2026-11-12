@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { BLACK_END, BLACK_FRIDAY, FLASH_SALE_END, FLASH_SALE_PERCENT } from "@/lib/black";
+import { BLACK_END, BLACK_FRIDAY, FLASH_SALE_END, FLASH_SALE_PERCENT, NO_DISCOUNT } from "@/lib/black";
 import { useCouponStore } from "@/store/couponStore";
 
 const BlackModeContext = createContext({ active: false, flashSale: false });
@@ -52,7 +52,7 @@ function useCountdown(flashSale: boolean) {
   return { label: "", d: 0, h: 0, m: 0, s: 0, ended: true };
 }
 
-const MARQUEE_ITEMS = ["Black November", "Ofertas em couro legítimo", "Black November", "Parcele sem juros", "Black November", "5% off no PIX"];
+const MARQUEE_ITEMS = ["Black November", "Ofertas em couro legítimo", "Black November", "Parcele sem juros", "Black November", NO_DISCOUNT ? "Couro legítimo" : "5% off no PIX"];
 const FLASH_MARQUEE_ITEMS = [`Site inteiro ${FLASH_SALE_PERCENT}% off`, "Black November", `Site inteiro ${FLASH_SALE_PERCENT}% off`, "Parcele sem juros", `Site inteiro ${FLASH_SALE_PERCENT}% off`, "Black November"];
 
 /** Faixa animada + contagem regressiva no topo do site. */

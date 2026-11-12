@@ -6,6 +6,7 @@ import { Tag, X, Loader2, Check } from "lucide-react";
 import { useCouponStore, toActiveCoupon, describeCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
 import { cn, formatCurrency } from "@/lib/utils";
+import { NO_DISCOUNT } from "@/lib/black";
 import { useFlashSale } from "@/components/layout/BlackMode";
 
 /** Valida o codigo em /api/cupom e, se valer, ativa no site todo. */
@@ -29,7 +30,8 @@ export async function activateCoupon(code: string): Promise<{ ok: true } | { ok:
  */
 export function CouponMenuButton(props: { className?: string }) {
   // Oferta relampago: cupons pausados, nem mostra o botao
-  return useFlashSale() ? null : <CouponMenuButtonInner {...props} />;
+  const flashSale = useFlashSale();
+  return NO_DISCOUNT || flashSale ? null : <CouponMenuButtonInner {...props} />;
 }
 
 function CouponMenuButtonInner({ className }: { className?: string }) {
@@ -137,7 +139,8 @@ function CouponMenuButtonInner({ className }: { className?: string }) {
  * cupom que venceu, esgotou ou foi desativado.
  */
 export function ActiveCouponBar() {
-  return useFlashSale() ? null : <ActiveCouponBarInner />;
+  const flashSale = useFlashSale();
+  return NO_DISCOUNT || flashSale ? null : <ActiveCouponBarInner />;
 }
 
 function ActiveCouponBarInner() {

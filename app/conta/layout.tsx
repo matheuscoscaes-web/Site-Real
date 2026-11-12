@@ -8,6 +8,7 @@ import { WhatsappFloatButton } from "@/components/layout/WhatsappFloatButton";
 import { WelcomeCouponPopup } from "@/components/layout/WelcomeCouponPopup";
 import { getProductCategoryTree } from "@/lib/product-categories";
 import { User, Package, MapPin, Settings, ChevronRight, Network } from "lucide-react";
+import { NO_DISCOUNT } from "@/lib/black";
 
 const baseNavItems = [
   { href: "/conta", label: "Minha Conta", icon: User, exact: true },
@@ -62,7 +63,7 @@ export default async function ContaLayout({ children }: { children: React.ReactN
       </main>
       <Footer categories={categories} />
       <WhatsappFloatButton />
-      <WelcomeCouponPopup />
+      {!NO_DISCOUNT && <WelcomeCouponPopup />}
     </>
   );
 }

@@ -11,7 +11,7 @@ import { useMounted } from "@/lib/useMounted";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { useCouponStore, couponUnitPrice } from "@/store/couponStore";
 import { DiscountBadge } from "@/components/layout/BlackMode";
-import { discountPercent } from "@/lib/black";
+import { discountPercent, NO_DISCOUNT } from "@/lib/black";
 
 interface ProductCardProps {
   product: CardProduct;
@@ -45,7 +45,7 @@ export function ProductCard({
   const installments = getMaxInstallments(couponPrice ?? product.price);
   // Preco "de" cadastrado no admin: o selo mostra o desconto total ate o preco final
   const finalPrice = couponPrice ?? product.price;
-  const oldPrice = product.precoAntigo && product.precoAntigo > product.price ? product.precoAntigo : null;
+  const oldPrice = !NO_DISCOUNT && product.precoAntigo && product.precoAntigo > product.price ? product.precoAntigo : null;
   const badgePct = discountPercent(oldPrice, finalPrice);
 
   function handleAddToCart(e: React.MouseEvent) {

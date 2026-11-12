@@ -1,4 +1,4 @@
-import { isFlashSaleActive } from "@/lib/black";
+import { isFlashSaleActive, NO_DISCOUNT } from "@/lib/black";
 
 export default function FretePage() {
   const flashSale = isFlashSaleActive();
@@ -10,7 +10,7 @@ export default function FretePage() {
       <p className="text-gray-500 mb-8">Informações sobre envio dos seus pedidos</p>
 
       <div className="space-y-8">
-        {!flashSale && (
+        {!flashSale && !NO_DISCOUNT && (
         <section>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Primeira compra</h2>
           <div className="p-5 bg-brand-50 rounded-2xl border border-brand-100">

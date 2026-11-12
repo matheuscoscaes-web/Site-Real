@@ -13,6 +13,7 @@ import { useFlashSale } from "@/components/layout/BlackMode";
 import { formatCurrency, getMaxInstallments, carrinhoLiberaFreteGratis, carrinhoTemProdutoFreteGratis } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
+import { NO_DISCOUNT } from "@/lib/black";
 import {
   Lock, ChevronDown, ChevronUp, Check, Loader2, Tag, X, AlertCircle, Copy, CheckCheck, Truck,
 } from "lucide-react";
@@ -496,7 +497,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {isFirstPurchase && step === 1 && !coupon.applied && !flashSale && (
+      {isFirstPurchase && step === 1 && !coupon.applied && !flashSale && !NO_DISCOUNT && (
         <div className="bg-brand-50 border border-brand-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
           <span className="text-2xl">🎁</span>
           <div>
@@ -849,7 +850,7 @@ export default function CheckoutPage() {
               </>)}
 
               {/* Cupom */}
-              <div className="mb-6 border-t border-gray-100 pt-5">
+              <div className={`mb-6 border-t border-gray-100 pt-5${NO_DISCOUNT ? " hidden" : ""}`}>
                 <p className="label mb-1.5">Cupom de desconto</p>
                 {coupon.applied ? (
                   <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">

@@ -1,4 +1,4 @@
-import { isFlashSaleActive, FLASH_SALE_COUPON_ERROR } from "@/lib/black";
+import { isFlashSaleActive, FLASH_SALE_COUPON_ERROR, NO_DISCOUNT } from "@/lib/black";
 import { prisma } from "./prisma";
 
 export const WELCOME_COUPON_CODE = "BEMVINDO";
@@ -34,6 +34,9 @@ export interface CouponResolution {
  */
 export async function resolveCoupon(code: string, userId: string | null): Promise<CouponResolution> {
   const normalized = code.toUpperCase().trim();
+
+  // Sem desconto nenhum: os precos ja sao finais pra todo mundo
+  if (NO_DISCOUNT) return { valid: false, error: "Os preços do site já são os preços finais, sem cupom de desconto." };
 
   // Oferta relampago (site inteiro 50% off): nenhum cupom vale enquanto ela durar
   if (isFlashSaleActive()) return { valid: false, error: FLASH_SALE_COUPON_ERROR };
