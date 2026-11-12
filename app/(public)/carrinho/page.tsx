@@ -8,6 +8,7 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useCouponStore, toActiveCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
+import { useFlashSale } from "@/components/layout/BlackMode";
 import { formatCurrency, getMaxInstallments, isCupomElegivel, isFreteGratisElegivel, carrinhoLiberaFreteGratis, carrinhoTemProdutoFreteGratis } from "@/lib/utils";
 import { type FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
@@ -29,6 +30,7 @@ export default function CarrinhoPage() {
   const [cupomAplicado, setCupomAplicado] = useState<{ code: string; discountType: "PERCENT" | "FIXED"; discountValue: number; ownerName: string; freeShipping?: boolean } | null>(null);
   const [cupomError, setCupomError] = useState("");
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
+  const flashSale = useFlashSale();
   const cupomAtivo = useCouponStore((s) => s.coupon);
   const setCupomAtivo = useCouponStore((s) => s.setCoupon);
   const limparCupomAtivo = useCouponStore((s) => s.clearCoupon);
@@ -235,7 +237,7 @@ export default function CarrinhoPage() {
         </div>
       )}
 
-      {isFirstPurchase && !cupomAplicado && (
+      {isFirstPurchase && !cupomAplicado && !flashSale && (
         <div className="bg-brand-50 border border-brand-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
           <span className="text-2xl">🎁</span>
           <div>

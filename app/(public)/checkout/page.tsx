@@ -9,6 +9,7 @@ import Image from "next/image";
 import { useCartStore } from "@/store/cartStore";
 import { useCouponStore, toActiveCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
+import { useFlashSale } from "@/components/layout/BlackMode";
 import { formatCurrency, getMaxInstallments, carrinhoLiberaFreteGratis, carrinhoTemProdutoFreteGratis } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
@@ -76,6 +77,7 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
   const [isFirstPurchase, setIsFirstPurchase] = useState(false);
+  const flashSale = useFlashSale();
   const [erro, setErro] = useState("");
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [boletoData, setBoletoData] = useState<BoletoData | null>(null);
@@ -494,7 +496,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {isFirstPurchase && step === 1 && !coupon.applied && (
+      {isFirstPurchase && step === 1 && !coupon.applied && !flashSale && (
         <div className="bg-brand-50 border border-brand-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
           <span className="text-2xl">🎁</span>
           <div>

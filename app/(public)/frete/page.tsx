@@ -1,4 +1,7 @@
+import { isFlashSaleActive } from "@/lib/black";
+
 export default function FretePage() {
+  const flashSale = isFlashSaleActive();
   return (
     <div className="container-main py-12 max-w-3xl">
       <h1 className="text-3xl font-bold text-gray-900 mb-2" style={{ fontFamily: "Playfair Display, serif" }}>
@@ -7,6 +10,7 @@ export default function FretePage() {
       <p className="text-gray-500 mb-8">Informações sobre envio dos seus pedidos</p>
 
       <div className="space-y-8">
+        {!flashSale && (
         <section>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Primeira compra</h2>
           <div className="p-5 bg-brand-50 rounded-2xl border border-brand-100">
@@ -14,6 +18,7 @@ export default function FretePage() {
             <p className="text-brand-700 text-sm mt-1">Use o cupom de boas-vindas <span className="font-mono font-bold">BEMVINDO</span> no carrinho ou checkout para novos clientes.</p>
           </div>
         </section>
+        )}
 
         <section>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Modalidades de envio</h2>

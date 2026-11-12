@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/products/ProductCard";
 import { ShopByColor } from "@/components/products/ShopByColor";
 import { Truck, Shield, RefreshCw, Headphones, ArrowRight, Instagram } from "lucide-react";
 import { sortOutOfStockLast, toCardProduct } from "@/lib/utils";
+import { isFlashSaleActive, FLASH_SALE_PERCENT } from "@/lib/black";
 
 const getFeaturedProducts = unstable_cache(
   async () => {
@@ -75,6 +76,7 @@ const benefits = [
 ];
 
 export default async function HomePage() {
+  const flashSale = isFlashSaleActive();
   const [featuredProductsRaw, categories, heroImages] = await Promise.all([
     getFeaturedProducts(),
     getCategories(),
@@ -246,6 +248,26 @@ export default async function HomePage() {
       {/* BANNER PROMO */}
       <section className="pb-16 md:pb-24">
         <div className="container-main">
+          {flashSale ? (
+          <div className="reveal relative overflow-hidden rounded-[32px] bg-[#111] px-6 py-12 md:p-16">
+            <div className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-amber-500/25 blur-3xl" />
+            <div className="absolute -left-20 -bottom-28 w-72 h-72 rounded-full bg-amber-300/10 blur-3xl" />
+            <div className="relative flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+              <div className="text-white">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-300 mb-4">Black November</p>
+                <h3 className="text-3xl md:text-5xl font-bold leading-tight mb-4">
+                  Site inteiro com<br className="hidden md:block" /> <span className="italic text-amber-200">{FLASH_SALE_PERCENT}% off</span>
+                </h3>
+                <p className="text-white/70">
+                  O desconto já está no preço de todos os produtos. Cupons pausados por enquanto.
+                </p>
+              </div>
+              <Link href="/produtos" className="btn-primary bg-amber-300 text-black hover:bg-amber-200 px-8 py-4 flex-shrink-0 w-full md:w-auto">
+                Aproveitar agora <ArrowRight size={18} />
+              </Link>
+            </div>
+          </div>
+          ) : (
           <div className="reveal relative overflow-hidden rounded-[32px] bg-brand-950 px-6 py-12 md:p-16">
             <div className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-brand-700/40 blur-3xl" />
             <div className="absolute -left-20 -bottom-28 w-72 h-72 rounded-full bg-brand-500/20 blur-3xl" />
@@ -266,6 +288,7 @@ export default async function HomePage() {
               </Link>
             </div>
           </div>
+          )}
         </div>
       </section>
 
