@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buscarCodigoRastreio } from "@/lib/frete";
+import { buscarCodigoRastreio } from "@/lib/rastreio";
 
 const ME_URL = "https://melhorenvio.com.br/api/v2/me";
 

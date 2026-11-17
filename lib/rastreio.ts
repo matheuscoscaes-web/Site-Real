@@ -45,28 +45,50 @@ export async function applyShipmentInfo(orderId: string, info: MeShipmentInfo) {
   }
 }
 
-/** Consulta vários envios de uma vez no Melhor Envio. Nunca lança erro. */
-async function fetchShipments(meIds: string[]): Promise<Record<string, MeShipmentInfo>> {
+/**
+ * Consulta um envio no Melhor Envio (GET /me/orders/{id}). Usa esse endpoint e não
+ * o /shipment/tracking porque este último devolve `tracking: null` até o pacote ser
+ * postado, enquanto o código dos Correios já existe logo depois de gerar a etiqueta.
+ * Nunca lança erro: devolve null se não conseguir.
+ */
+export async function fetchShipment(meId: string): Promise<MeShipmentInfo | null> {
   const token = process.env.MELHOR_ENVIO_TOKEN;
-  if (!token || meIds.length === 0) return {};
+  if (!token) return null;
   try {
-    const res = await fetch(`${ME_URL}/shipment/tracking`, {
-      method: "POST",
+    const res = await fetch(`${ME_URL}/orders/${encodeURIComponent(meId)}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
         Accept: "application/json",
         "User-Agent": process.env.MELHOR_ENVIO_USER_AGENT ?? "HeartsCouro/1.0",
       },
-      body: JSON.stringify({ orders: meIds }),
       // Não deixa a página travar se o Melhor Envio estiver lento
       signal: AbortSignal.timeout(4000),
+      cache: "no-store",
     });
-    if (!res.ok) return {};
-    return (await res.json()) as Record<string, MeShipmentInfo>;
+    if (!res.ok) return null;
+    const data = (await res.json()) as MeShipmentInfo;
+    return { status: data.status ?? null, tracking: data.tracking ?? null };
   } catch {
-    return {};
+    return null;
   }
+}
+
+/** Código de rastreio de uma etiqueta, ou null se ainda não existir. */
+export async function buscarCodigoRastreio(meId: string): Promise<string | null> {
+  return (await fetchShipment(meId))?.tracking?.trim() || null;
+}
+
+/** Consulta vários envios, 5 de cada vez. */
+async function fetchShipments(meIds: string[]): Promise<Record<string, MeShipmentInfo>> {
+  const out: Record<string, MeShipmentInfo> = {};
+  for (let i = 0; i < meIds.length; i += 5) {
+    const chunk = meIds.slice(i, i + 5);
+    const results = await Promise.all(chunk.map(fetchShipment));
+    chunk.forEach((id, k) => {
+      if (results[k]) out[id] = results[k]!;
+    });
+  }
+  return out;
 }
 
 // Última consulta de cada pedido (por instância do servidor) — evita bater no
