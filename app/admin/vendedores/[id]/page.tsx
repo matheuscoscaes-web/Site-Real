@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Phone, Tag, Percent, Users, ShoppingBag } from "lucide-react";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, displayEmail } from "@/lib/utils";
 import { ResellerForm } from "./ResellerForm";
 import { VendorToggle } from "./VendorToggle";
 import { CopyCouponLinkButton } from "@/components/CopyCouponLinkButton";
@@ -186,7 +186,7 @@ export default async function AdminVendedorDetailPage({ params }: { params: Prom
                 <div key={r.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="font-semibold text-gray-900 text-sm">{r.user.name}</p>
-                    <p className="text-xs text-gray-400">{r.user.email}</p>
+                    {displayEmail(r.user.email) && <p className="text-xs text-gray-400">{r.user.email}</p>}
                     <p className="text-xs text-gray-400 mt-0.5">Cadastrado em {formatDate(r.createdAt)}</p>
                     <p className="text-xs font-semibold text-gray-700 mt-1">
                       {rSales.count} {rSales.count === 1 ? "venda" : "vendas"} · {formatCurrency(rSales.total)}

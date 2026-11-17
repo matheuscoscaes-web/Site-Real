@@ -174,6 +174,11 @@ export function hasRealEmail(email: string): boolean {
   return !email.endsWith(PLACEHOLDER_EMAIL_DOMAIN);
 }
 
+/** E-mail pra mostrar na tela: vazio quando é o e-mail interno de venda manual. */
+export function displayEmail(email: string | null | undefined): string {
+  return email && hasRealEmail(email) ? email : "";
+}
+
 /** Categorias que recebem o desconto do cupom, mas sozinhas não liberam o frete grátis do cupom. */
 export const FREE_SHIPPING_EXCLUDED_CATEGORIES = ["Acessórios", "Calçados"];
 

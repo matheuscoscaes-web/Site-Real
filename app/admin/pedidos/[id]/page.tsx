@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages, isManualSale } from "@/lib/utils";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages, isManualSale, displayEmail } from "@/lib/utils";
 import Link from "next/link";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { UpdateStatusButton } from "./UpdateStatusButton";
@@ -147,7 +147,7 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-bold text-gray-900 mb-4">Cliente</h2>
             <p className="font-semibold text-gray-900">{order.user.name}</p>
-            <p className="text-sm text-gray-500 mt-0.5">{order.user.email}</p>
+            {displayEmail(order.user.email) && <p className="text-sm text-gray-500 mt-0.5">{order.user.email}</p>}
             {order.user.phone && <p className="text-sm text-gray-500">{order.user.phone}</p>}
             <div className="mt-3 pt-3 border-t border-gray-100">
               <p className="text-xs text-gray-400">{order.user.orders.length} pedido{order.user.orders.length !== 1 ? "s" : ""} no total</p>

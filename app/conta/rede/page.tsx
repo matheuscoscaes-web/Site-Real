@@ -8,7 +8,7 @@ import {
   TrendingUp, Pencil, ChevronDown, ChevronUp, DollarSign,
   BarChart2, ShoppingBag, Calendar, Award
 } from "lucide-react";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, displayEmail } from "@/lib/utils";
 
 type OrderSummary = {
   id: string; total: number; subtotal?: number; shipping?: number;
@@ -386,7 +386,7 @@ export default function MinhaRedePage() {
                         <div className="flex items-start justify-between p-4 gap-3">
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-900 text-sm truncate">{r.user.name}</p>
-                            <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
+                            <p className="text-xs text-gray-400 truncate">{displayEmail(r.user.email)}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-1.5">
                               <ResellerCouponBadges coupons={r.coupons} />
                               <span className="text-xs text-green-600 font-bold">+2,5% p/ você</span>
@@ -654,7 +654,7 @@ export default function MinhaRedePage() {
                           <div key={r.id} className="flex items-center justify-between px-5 sm:px-6 py-3 gap-3">
                             <div className="min-w-0">
                               <p className="font-medium text-gray-900 text-sm truncate">{r.user.name}</p>
-                              <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
+                              <p className="text-xs text-gray-400 truncate">{displayEmail(r.user.email)}</p>
                             </div>
                             <div className="text-right flex-shrink-0">
                               <div className="flex flex-wrap justify-end gap-1"><ResellerCouponBadges coupons={r.coupons} /></div>
@@ -711,7 +711,7 @@ export default function MinhaRedePage() {
                           <div key={r.id} className="flex items-center justify-between px-5 py-3 gap-3">
                             <div className="min-w-0">
                               <p className="font-medium text-gray-900 text-sm truncate">{r.user.name}</p>
-                              <p className="text-xs text-gray-400 truncate">{r.user.email}</p>
+                              <p className="text-xs text-gray-400 truncate">{displayEmail(r.user.email)}</p>
                             </div>
                             <div className="text-right flex-shrink-0">
                               <div className="flex flex-wrap justify-end gap-1"><ResellerCouponBadges coupons={r.coupons} /></div>

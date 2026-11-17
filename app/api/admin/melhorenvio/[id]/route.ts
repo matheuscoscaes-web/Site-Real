@@ -84,7 +84,7 @@ export async function POST(
     to: {
       name: order.user.name,
       phone: sanitizePhone(order.user.phone),
-      email: order.user.email,
+      email: hasRealEmail(order.user.email) ? order.user.email : "",
       document: order.address.cpf?.replace(/\D/g, "") ?? "",
       address: order.address.street,
       number: order.address.number,

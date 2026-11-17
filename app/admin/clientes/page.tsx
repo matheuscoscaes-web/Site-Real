@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, displayEmail } from "@/lib/utils";
 import { ChevronRight, ChevronLeft, Search, Users } from "lucide-react";
 
 // So vendas pagas contam (mesma regra do Financeiro): aguardando pagamento e
@@ -124,7 +124,7 @@ export default async function AdminClientesPage({
               <span className="text-xs text-gray-400">Top cliente · só vendas pagas</span>
             </div>
             <p className="font-bold text-gray-900 truncate">{c.name}</p>
-            <p className="text-xs text-gray-500 mt-0.5 truncate">{c.email}</p>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{displayEmail(c.email)}</p>
             <p className="text-lg font-bold text-brand-700 mt-2">{formatCurrency(c.totalSpent)}</p>
             <p className="text-xs text-gray-400">{c._count.orders} pedido{c._count.orders !== 1 ? "s" : ""} pago{c._count.orders !== 1 ? "s" : ""}</p>
           </Link>
@@ -159,7 +159,7 @@ export default async function AdminClientesPage({
                 <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4">
                     <p className="font-semibold text-gray-900 text-sm">{c.name}</p>
-                    <p className="text-xs text-gray-400 truncate max-w-[180px]">{c.email}</p>
+                    <p className="text-xs text-gray-400 truncate max-w-[180px]">{displayEmail(c.email)}</p>
                   </td>
                   <td className="px-5 py-4 hidden sm:table-cell">
                     <p className="text-sm text-gray-600">{c.phone || "—"}</p>

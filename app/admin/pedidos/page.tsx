@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, isManualSale } from "@/lib/utils";
+import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, isManualSale, displayEmail } from "@/lib/utils";
 import { ChevronRight, ChevronLeft, Search, Plus } from "lucide-react";
 import { MarcarEnviadoButton } from "./MarcarEnviadoButton";
 import { VerificarPagamentosButton } from "./VerificarPagamentosButton";
@@ -206,7 +206,7 @@ export default async function AdminPedidosPage({
                     </td>
                     <td className="px-5 py-4 hidden md:table-cell">
                       <p className="text-sm font-medium text-gray-900">{order.user.name}</p>
-                      <p className="text-xs text-gray-400">{order.user.email}</p>
+                      {displayEmail(order.user.email) && <p className="text-xs text-gray-400">{order.user.email}</p>}
                     </td>
                     <td className="px-5 py-4">
                       {order.reseller ? (

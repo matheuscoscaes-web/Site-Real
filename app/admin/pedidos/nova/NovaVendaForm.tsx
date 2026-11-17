@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Trash2, Search, Check, ImagePlus, X } from "lucide-react";
-import { formatCurrency, MANUAL_PAYMENT_METHODS, PAYMENT_LABELS, ORDER_STATUS_LABELS } from "@/lib/utils";
+import { formatCurrency, MANUAL_PAYMENT_METHODS, PAYMENT_LABELS, ORDER_STATUS_LABELS, displayEmail } from "@/lib/utils";
 import { buscarEnderecoPorCEP } from "@/lib/frete";
 
 const UFS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
@@ -281,7 +281,7 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
                 >
                   <div>
                     <p className="text-sm font-medium text-gray-900">{c.name}</p>
-                    <p className="text-xs text-gray-400">{c.email}{c.phone ? ` • ${c.phone}` : ""}</p>
+                    <p className="text-xs text-gray-400">{[displayEmail(c.email), c.phone].filter(Boolean).join(" • ")}</p>
                   </div>
                   {selectedCustomerId === c.id && <Check size={16} className="text-brand-700 flex-shrink-0" />}
                 </button>

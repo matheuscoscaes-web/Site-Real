@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Phone, MapPin, ShoppingBag } from "lucide-react";
-import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+import { formatCurrency, formatDate, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, displayEmail } from "@/lib/utils";
 import { NotesForm } from "./NotesForm";
 import { PromoteToResellerForm } from "./PromoteToResellerForm";
 
@@ -44,10 +44,12 @@ export default async function AdminClientePage({ params }: { params: Promise<{ i
             <p className="text-sm text-gray-500 mt-1">Membro desde {formatDate(user.createdAt)}</p>
 
             <div className="mt-4 space-y-3">
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <Mail size={15} className="text-brand-600 flex-shrink-0" />
-                <span className="truncate">{user.email}</span>
-              </div>
+              {displayEmail(user.email) && (
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <Mail size={15} className="text-brand-600 flex-shrink-0" />
+                  <span className="truncate">{user.email}</span>
+                </div>
+              )}
               {user.phone && (
                 <div className="flex items-center gap-3 text-sm text-gray-600">
                   <Phone size={15} className="text-brand-600 flex-shrink-0" />
