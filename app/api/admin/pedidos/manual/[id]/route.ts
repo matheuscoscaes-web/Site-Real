@@ -18,6 +18,7 @@ const STORE_ADDRESS = {
 interface ManualItem {
   productId?: string | null;
   customName?: string | null;
+  customImage?: string | null;
   quantity: number;
   price: number;
   color?: string | null;
@@ -125,6 +126,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             create: items.map((item) => ({
               productId: item.productId || null,
               customName: item.productId ? null : (item.customName?.trim() || null),
+              customImage: item.productId ? null : (item.customImage?.startsWith("https://") ? item.customImage : null),
               quantity: item.quantity,
               price: item.price,
               color: item.color || null,

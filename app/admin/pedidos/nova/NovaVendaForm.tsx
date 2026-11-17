@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2, Search, Check } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, Check, ImagePlus, X } from "lucide-react";
 import { formatCurrency, MANUAL_PAYMENT_METHODS, PAYMENT_LABELS, ORDER_STATUS_LABELS } from "@/lib/utils";
 import { buscarEnderecoPorCEP } from "@/lib/frete";
 
@@ -23,6 +23,7 @@ interface CartItem {
   quantity: number;
   price: number;
   skipStock: boolean;
+  customImage?: string | null;
 }
 
 export interface ExistingOrderData {
@@ -59,6 +60,8 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
   const [skipStock, setSkipStock] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState(0);
+  const [customImage, setCustomImage] = useState<string | null>(null);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [items, setItems] = useState<CartItem[]>(editOrder?.items ?? []);
 
   const [paymentMethod, setPaymentMethod] = useState(editOrder?.paymentMethod ?? "DINHEIRO");
@@ -107,9 +110,11 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
         quantity,
         price: customPrice,
         skipStock: true,
+        customImage,
       }]);
       setCustomName("");
       setCustomPrice(0);
+      setCustomImage(null);
       setQuantity(1);
       return;
     }
@@ -143,6 +148,25 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
 
   function updateItem(key: string, patch: Partial<CartItem>) {
     setItems((prev) => prev.map((i) => (i.key === key ? { ...i, ...patch } : i)));
+  }
+
+  /** Sobe a foto (mesmo upload das fotos de produto) e devolve a URL pública. */
+  async function uploadPhoto(file: File, key: string): Promise<string | null> {
+    setUploadingKey(key);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erro ao enviar a foto");
+      return data.url as string;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar a foto");
+      return null;
+    } finally {
+      setUploadingKey(null);
+    }
   }
 
   function removeItem(key: string) {
@@ -182,6 +206,7 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
         items: items.map((i) => ({
           productId: i.productId ?? undefined,
           customName: i.productId ? undefined : i.productName,
+          customImage: i.productId ? undefined : i.customImage ?? undefined,
           quantity: i.quantity,
           price: i.price,
           color: i.color,
@@ -415,6 +440,34 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
                 <Plus size={16} /> Adicionar
               </button>
             </div>
+            <div className="sm:col-span-12 flex items-center gap-3">
+              {customImage ? (
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={customImage} alt="Foto do pedido" className="w-16 h-16 rounded-lg object-cover border border-gray-200" />
+                  <button type="button" onClick={() => setCustomImage(null)} className="absolute -top-2 -right-2 bg-white border border-gray-200 rounded-full p-0.5 text-gray-500 hover:text-red-600" aria-label="Remover foto">
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : null}
+              <label className="btn-outline gap-2 cursor-pointer text-xs py-2 px-3">
+                {uploadingKey === "novo" ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                {uploadingKey === "novo" ? "Enviando foto..." : customImage ? "Trocar foto" : "Adicionar foto do pedido"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingKey !== null}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    const url = await uploadPhoto(file, "novo");
+                    if (url) setCustomImage(url);
+                  }}
+                />
+              </label>
+            </div>
             <p className="sm:col-span-12 text-xs text-gray-400 -mt-2">
               Essa bolsa ainda não está cadastrada no site — a venda é registrada normalmente, mas sem descontar estoque de nenhum produto.
             </p>
@@ -427,6 +480,31 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
           <div className="space-y-2">
             {items.map((item) => (
               <div key={item.key} className="flex items-center gap-3 border border-gray-100 rounded-xl px-4 py-2.5">
+                {!item.productId && (
+                  <label className="relative w-12 h-12 flex-shrink-0 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center cursor-pointer overflow-hidden" title={item.customImage ? "Trocar foto" : "Adicionar foto"}>
+                    {uploadingKey === item.key ? (
+                      <Loader2 size={16} className="animate-spin text-gray-400" />
+                    ) : item.customImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.customImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImagePlus size={16} className="text-gray-400" />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingKey !== null}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file) return;
+                        const url = await uploadPhoto(file, item.key);
+                        if (url) updateItem(item.key, { customImage: url });
+                      }}
+                    />
+                  </label>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{item.productName}</p>
                   {(item.color || item.size) && (

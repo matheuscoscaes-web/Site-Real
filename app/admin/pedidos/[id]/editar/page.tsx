@@ -67,6 +67,7 @@ export default async function EditarVendaPage({ params }: { params: Promise<{ id
       quantity: item.quantity,
       price: item.price,
       skipStock: item.skipStock,
+      customImage: item.customImage,
     })),
     paymentMethod: order.paymentMethod,
     status: order.status,
