@@ -4,6 +4,7 @@ import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLOR
 import { ChevronRight, ChevronLeft, Search, Plus } from "lucide-react";
 import { MarcarEnviadoButton } from "./MarcarEnviadoButton";
 import { VerificarPagamentosButton } from "./VerificarPagamentosButton";
+import { syncPendingShipments } from "@/lib/rastreio";
 
 const PAGE_SIZE = 50;
 
@@ -22,6 +23,9 @@ export default async function AdminPedidosPage({
 }) {
   const { status, origem, vendorId, busca, pagina } = await searchParams;
   const page = Math.max(1, Number(pagina) || 1);
+
+  // Atualiza rastreio/status com o Melhor Envio antes de listar (reserva do webhook)
+  await syncPendingShipments();
 
   const where: Record<string, unknown> = {};
   if (status) where.status = status;

@@ -73,7 +73,7 @@ export function orderShippedEmail(order: OrderForEmail) {
           <p style="margin:0 0 4px; font-size:12px; color:#8a6d3b; text-transform:uppercase; letter-spacing:.05em;">Código de rastreio</p>
           <p style="margin:0; font-size:16px; font-weight:bold; color:#1c1c1c; font-family:monospace;">${order.trackingCode}</p>
           <p style="margin:8px 0 0; font-size:12px; color:#777;">
-            Acompanhe em <a href="https://melhorrastreio.com.br/" style="color:${BRAND};">melhorrastreio.com.br</a> colando o código acima.
+            <a href="https://www.melhorrastreio.com.br/rastreio/${encodeURIComponent(order.trackingCode)}" style="color:${BRAND};">Clique aqui para acompanhar a entrega</a>
           </p>
         </div>
       `

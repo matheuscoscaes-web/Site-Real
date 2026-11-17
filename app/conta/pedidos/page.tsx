@@ -5,10 +5,14 @@ import Link from "next/link";
 import { ShoppingBag, ChevronRight } from "lucide-react";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
 import { AvaliarCompra } from "@/components/reviews/AvaliarCompra";
+import { syncPendingShipments, trackingUrl } from "@/lib/rastreio";
 
 export default async function PedidosPage() {
   const session = await getServerSession(authOptions);
   if (!session) return null;
+
+  // Atualiza rastreio/status com o Melhor Envio antes de mostrar (reserva do webhook)
+  await syncPendingShipments({ userId: session.user.id });
 
   const orders = await prisma.order.findMany({
     where: { userId: session.user.id, status: { not: "PENDING" } },
@@ -89,14 +93,14 @@ export default async function PedidosPage() {
                 </p>
 
                 {/* Código de rastreio */}
-                {order.trackingCode && ["SHIPPED", "DELIVERED"].includes(order.status) && (
+                {order.trackingCode && ["PAID", "PREPARING", "SHIPPED", "DELIVERED"].includes(order.status) && (
                   <div className="mt-3 flex items-center justify-between bg-brand-50 border border-brand-200 rounded-xl px-3 py-2">
                     <div>
                       <p className="text-[11px] uppercase tracking-wide text-brand-700/70 mb-0.5">Código de rastreio</p>
                       <p className="font-mono font-semibold text-brand-700 text-sm">{order.trackingCode}</p>
                     </div>
                     <a
-                      href="https://melhorrastreio.com.br/"
+                      href={trackingUrl(order.trackingCode)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs font-medium text-brand-700 hover:text-brand-800 underline"
