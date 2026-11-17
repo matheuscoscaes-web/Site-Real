@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buscarCodigoRastreio } from "@/lib/rastreio";
+import { sendEmail } from "@/lib/email";
+import { orderPreparingEmail } from "@/lib/orderEmails";
+import { hasRealEmail } from "@/lib/utils";
 
 const ME_URL = "https://melhorenvio.com.br/api/v2/me";
 
@@ -181,6 +184,12 @@ export async function POST(
     where: { id },
     data: { melhorEnvioId: meOrderId, trackingCode, status: "PREPARING" },
   });
+
+  // Avisa o cliente que o pedido entrou em separação (só na primeira vez)
+  if (order.status !== "PREPARING" && hasRealEmail(order.user.email)) {
+    const { subject, html } = orderPreparingEmail(order);
+    sendEmail({ to: order.user.email, subject, html });
+  }
 
   return NextResponse.json({ url: printData.url, meOrderId, trackingCode });
 }

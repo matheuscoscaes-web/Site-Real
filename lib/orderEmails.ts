@@ -58,7 +58,28 @@ export function orderConfirmedEmail(order: OrderForEmail) {
         ${itemsList(order)}
         <p style="font-size:15px; font-weight:bold; text-align:right; margin:0 0 16px;">Total: ${formatCurrency(order.total)}</p>
         <p style="color:#555; font-size:14px; line-height:1.6;">
-          Assim que seu pedido for postado, você recebe um novo e-mail com a confirmação de envio — ou pode acompanhar o status a qualquer momento pelo site, na área "Meus Pedidos".
+          Você vai receber um e-mail quando o pedido entrar em separação e outro com o código de rastreio quando ele sair para entrega — ou pode acompanhar o status a qualquer momento pelo site, na área "Meus Pedidos".
+        </p>
+      `
+    ),
+  };
+}
+
+export function orderPreparingEmail(order: OrderForEmail) {
+  const isPickup = order.shippingCarrier === "Loja";
+  return {
+    subject: `Seu pedido está em separação — #${order.id.slice(-8).toUpperCase()}`,
+    html: wrapper(
+      "Seu pedido está em separação! ✂️",
+      `
+        <p style="color:#555; font-size:14px; line-height:1.6;">
+          Olá, ${order.user.name.split(" ")[0]}! Já estamos separando e embalando os itens do seu pedido <strong>#${order.id.slice(-8).toUpperCase()}</strong>.
+        </p>
+        ${itemsList(order)}
+        <p style="color:#555; font-size:14px; line-height:1.6;">
+          ${isPickup
+            ? "Avisamos por aqui assim que estiver pronto pra retirada na loja."
+            : "Assim que ele sair para entrega, você recebe um novo e-mail com o código de rastreio."}
         </p>
       `
     ),
@@ -79,9 +100,11 @@ export function orderShippedEmail(order: OrderForEmail) {
       `
     : "";
   return {
-    subject: `Pedido a caminho — #${order.id.slice(-8).toUpperCase()}`,
+    subject: isPickup
+      ? `Pedido pronto para retirada — #${order.id.slice(-8).toUpperCase()}`
+      : `Seu pedido saiu para entrega — #${order.id.slice(-8).toUpperCase()}`,
     html: wrapper(
-      isPickup ? "Seu pedido está pronto para retirada! 📦" : "Seu pedido foi enviado! 📦",
+      isPickup ? "Seu pedido está pronto para retirada! 📦" : "Seu pedido saiu para entrega! 📦",
       `
         <p style="color:#555; font-size:14px; line-height:1.6;">
           Olá, ${order.user.name.split(" ")[0]}! ${

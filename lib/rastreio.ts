@@ -131,3 +131,16 @@ export async function syncPendingShipments(opts: { userId?: string } = {}) {
     console.error("[rastreio] falha ao sincronizar envios", err);
   }
 }
+
+/**
+ * Despertador: confere os envios no Melhor Envio a cada 30 min enquanto o servidor
+ * estiver ligado (Render) — assim o pedido vira "Enviado"/"Entregue" e o e-mail
+ * sai mesmo sem ninguém abrir o site. Iniciado em instrumentation.ts.
+ */
+export function startTrackingSweep() {
+  const run = () => syncPendingShipments().catch((err) => console.error("[rastreio] erro na varredura:", err));
+  // Espera 1 min depois de ligar o servidor pra não pesar no início
+  setTimeout(run, 60 * 1000).unref?.();
+  const timer = setInterval(run, 30 * 60 * 1000);
+  timer.unref?.();
+}
