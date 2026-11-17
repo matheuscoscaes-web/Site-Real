@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Check, X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -22,7 +22,10 @@ export function VendorAssignForm({
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState(currentVendorId ?? "");
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
   const [error, setError] = useState("");
 
   async function handleSave() {
@@ -35,7 +38,7 @@ export function VendorAssignForm({
     });
     setLoading(false);
     if (res.ok) {
-      router.refresh();
+      startTransition(() => router.refresh());
     } else {
       const d = await res.json();
       setError(d.error || "Erro ao atribuir vendedor");

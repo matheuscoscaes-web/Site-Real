@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Truck } from "lucide-react";
 
 export function MarcarEnviadoButton({ orderId, hasTrackingCode }: { orderId: string; hasTrackingCode: boolean }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
 
   async function handleClick() {
     if (!hasTrackingCode) {
@@ -20,7 +23,7 @@ export function MarcarEnviadoButton({ orderId, hasTrackingCode }: { orderId: str
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "SHIPPED" }),
       });
-      router.refresh();
+      startTransition(() => router.refresh());
     } finally {
       setLoading(false);
     }

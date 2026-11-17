@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Package, ShoppingCart, Users, TrendingUp, LogOut, Menu, X, UserCheck, MessageCircle, Tag, Image as ImageIcon, LayoutGrid,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -26,9 +26,18 @@ const navItems = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Item clicado fica destacado na hora, sem esperar a página carregar
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
-  const isActive = (href: string, exact?: boolean) =>
-    exact ? pathname === href : pathname.startsWith(href);
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  const isActive = (href: string, exact?: boolean) => {
+    const current = pendingHref ?? pathname;
+    if (pendingHref) return current === href;
+    return exact ? current === href : current.startsWith(href);
+  };
 
   return (
     <>
@@ -70,7 +79,10 @@ export function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                if (pathname !== item.href) setPendingHref(item.href);
+              }}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
                 isActive(item.href, item.exact)

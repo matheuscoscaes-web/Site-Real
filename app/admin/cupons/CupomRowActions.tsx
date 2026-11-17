@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Power, Trash2 } from "lucide-react";
 import { CopyCouponLinkButton } from "@/components/CopyCouponLinkButton";
@@ -9,25 +9,30 @@ import { CupomForm, type EditableCoupon } from "./CupomForm";
 export function CupomRowActions({ coupon }: { coupon: EditableCoupon & { active: boolean } }) {
   const { id: couponId, code, active } = coupon;
   const router = useRouter();
-  const [loading, setLoading] = useState<"toggle" | "delete" | null>(null);
+  const [requesting, setLoading] = useState<"toggle" | "delete" | null>(null);
+  const [lastAction, setLastAction] = useState<"toggle" | "delete" | null>(null);
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting ?? (refreshing ? lastAction : null);
 
   async function toggle() {
     setLoading("toggle");
+    setLastAction("toggle");
     await fetch(`/api/admin/cupons/${couponId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !active }),
     });
     setLoading(null);
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   async function remove() {
     if (!confirm(`Remover o cupom "${code}"?\n\nEsta ação não pode ser desfeita.`)) return;
     setLoading("delete");
+    setLastAction("delete");
     await fetch(`/api/admin/cupons/${couponId}`, { method: "DELETE" });
     setLoading(null);
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   return (

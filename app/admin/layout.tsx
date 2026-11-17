@@ -1,7 +1,9 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminNavProgress } from "@/components/admin/AdminNavProgress";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -12,6 +14,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <Suspense fallback={null}>
+        <AdminNavProgress />
+      </Suspense>
       <AdminSidebar />
       <main className="flex-1 ml-0 lg:ml-64 min-h-screen min-w-0">
         <div className="pt-20 px-6 pb-6 lg:p-8">{children}</div>

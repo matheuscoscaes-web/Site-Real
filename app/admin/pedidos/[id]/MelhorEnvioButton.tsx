@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Package, Printer, RefreshCw, Copy, CheckCheck } from "lucide-react";
 
@@ -15,7 +15,9 @@ export function MelhorEnvioButton({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [requesting, setRefreshing] = useState(false);
+  const [pageRefreshing, startTransition] = useTransition();
+  const refreshing = requesting || pageRefreshing;
   const [printUrl, setPrintUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -38,7 +40,7 @@ export function MelhorEnvioButton({
       } else if (!data.trackingCode) {
         setError("Rastreio ainda não disponível — tente novamente mais tarde.");
       } else {
-        router.refresh();
+        startTransition(() => router.refresh());
       }
     } catch {
       setError("Erro de conexão");

@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 export function VendorToggle({ vendorId, active }: { vendorId: string; active: boolean }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
   const [current, setCurrent] = useState(active);
 
   async function toggle() {
@@ -19,7 +22,7 @@ export function VendorToggle({ vendorId, active }: { vendorId: string; active: b
     setLoading(false);
     if (res.ok) {
       setCurrent((v) => !v);
-      router.refresh();
+      startTransition(() => router.refresh());
     }
   }
 

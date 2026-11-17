@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, UserCheck, X, Check } from "lucide-react";
 
@@ -11,7 +11,10 @@ export function PromoteToResellerForm({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorId, setVendorId] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -32,7 +35,7 @@ export function PromoteToResellerForm({ userId }: { userId: string }) {
     setLoading(false);
     if (res.ok) {
       setOpen(false);
-      router.refresh();
+      startTransition(() => router.refresh());
     } else {
       const d = await res.json();
       setError(d.error || "Erro ao converter cliente");

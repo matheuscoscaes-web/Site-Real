@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Loader2, Plus, X, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function VendorForm() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
   const [error, setError] = useState("");
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
 
@@ -24,7 +27,7 @@ export function VendorForm() {
     if (res.ok) {
       setOpen(false);
       setForm({ name: "", email: "", password: "", phone: "" });
-      router.refresh();
+      startTransition(() => router.refresh());
     } else {
       const d = await res.json();
       setError(d.error || "Erro ao cadastrar");

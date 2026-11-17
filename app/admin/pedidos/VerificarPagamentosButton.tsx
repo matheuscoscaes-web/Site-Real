@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, SearchCheck } from "lucide-react";
 
 export function VerificarPagamentosButton() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
 
   async function handleClick() {
     setLoading(true);
@@ -34,7 +37,7 @@ export function VerificarPagamentosButton() {
       }
       alert(partes.join("\n"));
 
-      if (recovered > 0) router.refresh();
+      if (recovered > 0) startTransition(() => router.refresh());
     } catch {
       alert("Erro ao verificar pagamentos.");
     } finally {

@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 
 export function RemoveVendorButton({ vendorId, name }: { vendorId: string; name: string }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
   const [error, setError] = useState("");
 
   async function handleRemove() {
@@ -21,7 +24,7 @@ export function RemoveVendorButton({ vendorId, name }: { vendorId: string; name:
       return;
     }
     router.push("/admin/vendedores");
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   return (

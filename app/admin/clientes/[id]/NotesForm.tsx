@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Save, StickyNote } from "lucide-react";
 
 export function NotesForm({ userId, currentNotes }: { userId: string; currentNotes: string }) {
   const router = useRouter();
   const [notes, setNotes] = useState(currentNotes);
-  const [saving, setSaving] = useState(false);
+  const [requesting, setSaving] = useState(false);
+  const [refreshing, startTransition] = useTransition();
+  const saving = requesting || refreshing;
   const [saved, setSaved] = useState(false);
 
   async function handleSave() {
@@ -20,7 +22,7 @@ export function NotesForm({ userId, currentNotes }: { userId: string; currentNot
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   return (

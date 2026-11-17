@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Loader2, Plus, X, Check, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -42,7 +42,10 @@ function formFromCoupon(c: EditableCoupon): typeof initialForm {
 export function CupomForm({ coupon }: { coupon?: EditableCoupon }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
   const [error, setError] = useState("");
   const [form, setForm] = useState(initialForm);
 
@@ -73,7 +76,7 @@ export function CupomForm({ coupon }: { coupon?: EditableCoupon }) {
     if (res.ok) {
       setOpen(false);
       setForm(initialForm);
-      router.refresh();
+      startTransition(() => router.refresh());
     } else {
       const d = await res.json();
       setError(d.error || (coupon ? "Erro ao salvar cupom" : "Erro ao criar cupom"));

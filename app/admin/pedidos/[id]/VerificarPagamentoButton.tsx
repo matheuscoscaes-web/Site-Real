@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, Loader2 } from "lucide-react";
 
 export function VerificarPagamentoButton({ orderId, hasPaymentId }: { orderId: string; hasPaymentId: boolean }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
   const [msg, setMsg] = useState("");
 
   async function handleCheck() {
@@ -19,7 +22,7 @@ export function VerificarPagamentoButton({ orderId, hasPaymentId }: { orderId: s
         setMsg(data.error ?? "Nenhum pagamento do Mercado Pago vinculado a este pedido ainda.");
       } else {
         setMsg(`Status atual no Mercado Pago: ${data.status}`);
-        router.refresh();
+        startTransition(() => router.refresh());
       }
     } catch {
       setMsg("Erro ao consultar o Mercado Pago.");

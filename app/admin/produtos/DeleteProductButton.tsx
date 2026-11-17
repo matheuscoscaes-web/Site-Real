@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Trash2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function DeleteProductButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
 
   async function handleDelete() {
     if (!confirm(`Tem certeza que deseja EXCLUIR "${name}"?\n\nEsta ação não pode ser desfeita.`)) return;
     setLoading(true);
     await fetch(`/api/produtos/${id}`, { method: "DELETE" });
     setLoading(false);
-    router.refresh();
+    startTransition(() => router.refresh());
   }
 
   return (

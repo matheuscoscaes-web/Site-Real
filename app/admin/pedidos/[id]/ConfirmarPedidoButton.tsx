@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Loader2, CheckCircle2 } from "lucide-react";
 
@@ -14,7 +14,10 @@ export function ConfirmarPedidoButton({
   confirmed: boolean;
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [requesting, setLoading] = useState(false);
+  // Mantém o botão travado/girando até a página terminar de atualizar (evita cliques repetidos)
+  const [refreshing, startTransition] = useTransition();
+  const loading = requesting || refreshing;
   const [error, setError] = useState("");
 
   async function handleConfirm() {
@@ -26,7 +29,7 @@ export function ConfirmarPedidoButton({
       if (!res.ok) {
         setError(data.error ?? "Erro ao confirmar pedido.");
       } else {
-        router.refresh();
+        startTransition(() => router.refresh());
       }
     } catch {
       setError("Erro ao confirmar pedido.");

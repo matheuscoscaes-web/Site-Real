@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, isManualSale } from "@/lib/utils";
-import { ChevronRight, Search, Plus } from "lucide-react";
+import { ChevronRight, ChevronLeft, Search, Plus } from "lucide-react";
 import { MarcarEnviadoButton } from "./MarcarEnviadoButton";
 import { VerificarPagamentosButton } from "./VerificarPagamentosButton";
+
+const PAGE_SIZE = 50;
 
 const STATUS_LIST = ["", "PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 const ORIGEM_LIST = [
@@ -16,9 +18,10 @@ const ORIGEM_LIST = [
 export default async function AdminPedidosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; origem?: string; vendorId?: string; busca?: string }>;
+  searchParams: Promise<{ status?: string; origem?: string; vendorId?: string; busca?: string; pagina?: string }>;
 }) {
-  const { status, origem, vendorId, busca } = await searchParams;
+  const { status, origem, vendorId, busca, pagina } = await searchParams;
+  const page = Math.max(1, Number(pagina) || 1);
 
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
@@ -35,10 +38,14 @@ export default async function AdminPedidosPage({
     ];
   }
 
-  const [orders, vendors] = await Promise.all([
+  // 50 por página: antes a lista desenhava todos os pedidos de uma vez
+  const [total, orders, vendors] = await Promise.all([
+    prisma.order.count({ where }),
     prisma.order.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       select: {
         id: true,
         status: true,
@@ -55,13 +62,24 @@ export default async function AdminPedidosPage({
     }),
     prisma.vendor.findMany({ select: { id: true, user: { select: { name: true } } }, orderBy: { createdAt: "desc" } }),
   ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageHref = (p: number) => ({
+    pathname: "/admin/pedidos",
+    query: {
+      ...(status ? { status } : {}),
+      ...(origem ? { origem } : {}),
+      ...(vendorId ? { vendorId } : {}),
+      ...(busca ? { busca } : {}),
+      ...(p > 1 ? { pagina: String(p) } : {}),
+    },
+  });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pedidos</h1>
-          <p className="text-sm text-gray-500 mt-1">{orders.length} pedido{orders.length !== 1 ? "s" : ""}{status ? ` com status "${ORDER_STATUS_LABELS[status]}"` : ""}</p>
+          <p className="text-sm text-gray-500 mt-1">{total} pedido{total !== 1 ? "s" : ""}{status ? ` com status "${ORDER_STATUS_LABELS[status]}"` : ""}</p>
         </div>
         <div className="flex items-center gap-2">
           <VerificarPagamentosButton />
@@ -235,6 +253,21 @@ export default async function AdminPedidosPage({
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-gray-100 text-sm">
+            {page > 1 ? (
+              <Link href={pageHref(page - 1)} className="inline-flex items-center gap-1 text-brand-600 font-medium hover:underline">
+                <ChevronLeft size={14} /> Anterior
+              </Link>
+            ) : <span />}
+            <span className="text-gray-500">Página {page} de {totalPages}</span>
+            {page < totalPages ? (
+              <Link href={pageHref(page + 1)} className="inline-flex items-center gap-1 text-brand-600 font-medium hover:underline">
+                Próxima <ChevronRight size={14} />
+              </Link>
+            ) : <span />}
+          </div>
+        )}
       </div>
     </div>
   );

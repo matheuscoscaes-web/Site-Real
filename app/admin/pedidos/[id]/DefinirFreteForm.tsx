@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -10,7 +10,9 @@ export function DefinirFreteForm({ orderId, zipCode, totalItems }: { orderId: st
   const router = useRouter();
   const [options, setOptions] = useState<FreteOption[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [requesting, setSaving] = useState(false);
+  const [refreshing, startTransition] = useTransition();
+  const saving = requesting || refreshing;
   const [error, setError] = useState("");
 
   async function handleBuscar() {
@@ -42,7 +44,8 @@ export function DefinirFreteForm({ orderId, zipCode, totalItems }: { orderId: st
         body: JSON.stringify({ shippingServiceId: opt.id, shippingService: opt.name, shippingCarrier: opt.company }),
       });
       if (!res.ok) throw new Error();
-      router.refresh();
+      setSaving(false);
+      startTransition(() => router.refresh());
     } catch {
       setError("Não foi possível salvar a opção de frete.");
       setSaving(false);
