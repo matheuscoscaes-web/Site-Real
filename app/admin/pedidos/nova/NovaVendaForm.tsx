@@ -191,10 +191,6 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
       setError("Adicione ao menos um item à venda.");
       return;
     }
-    if (delivery === "ENTREGA" && (!address.street || !address.number || !address.district || !address.city || !address.state || !address.zipCode)) {
-      setError("Preencha o endereço de entrega.");
-      return;
-    }
 
     setSaving(true);
     try {
@@ -323,7 +319,7 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
         {delivery === "ENTREGA" && (
           <div className="grid sm:grid-cols-6 gap-3">
             <div className="sm:col-span-2">
-              <label className="label">CEP *</label>
+              <label className="label">CEP</label>
               <input className="input-field" value={address.zipCode} onChange={(e) => setAddress((p) => ({ ...p, zipCode: e.target.value }))} onBlur={handleCepBlur} placeholder="00000-000" />
               {loadingCep && <p className="text-xs text-gray-400 mt-1">Buscando endereço...</p>}
             </div>
@@ -336,28 +332,28 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
               <input className="input-field" type="number" step="0.01" min={0} value={shipping} onChange={(e) => setShipping(parseFloat(e.target.value) || 0)} />
             </div>
             <div className="sm:col-span-4">
-              <label className="label">Rua *</label>
-              <input className="input-field" value={address.street} onChange={(e) => setAddress((p) => ({ ...p, street: e.target.value }))} required={delivery === "ENTREGA"} />
+              <label className="label">Rua</label>
+              <input className="input-field" value={address.street} onChange={(e) => setAddress((p) => ({ ...p, street: e.target.value }))} />
             </div>
             <div className="sm:col-span-2">
-              <label className="label">Número *</label>
-              <input className="input-field" value={address.number} onChange={(e) => setAddress((p) => ({ ...p, number: e.target.value }))} required={delivery === "ENTREGA"} />
+              <label className="label">Número</label>
+              <input className="input-field" value={address.number} onChange={(e) => setAddress((p) => ({ ...p, number: e.target.value }))} />
             </div>
             <div className="sm:col-span-2">
               <label className="label">Complemento</label>
               <input className="input-field" value={address.complement} onChange={(e) => setAddress((p) => ({ ...p, complement: e.target.value }))} />
             </div>
             <div className="sm:col-span-2">
-              <label className="label">Bairro *</label>
-              <input className="input-field" value={address.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))} required={delivery === "ENTREGA"} />
+              <label className="label">Bairro</label>
+              <input className="input-field" value={address.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))} />
             </div>
             <div className="sm:col-span-2">
-              <label className="label">Cidade *</label>
-              <input className="input-field" value={address.city} onChange={(e) => setAddress((p) => ({ ...p, city: e.target.value }))} required={delivery === "ENTREGA"} />
+              <label className="label">Cidade</label>
+              <input className="input-field" value={address.city} onChange={(e) => setAddress((p) => ({ ...p, city: e.target.value }))} />
             </div>
             <div className="sm:col-span-2">
-              <label className="label">UF *</label>
-              <select className="input-field" value={address.state} onChange={(e) => setAddress((p) => ({ ...p, state: e.target.value }))} required={delivery === "ENTREGA"}>
+              <label className="label">UF</label>
+              <select className="input-field" value={address.state} onChange={(e) => setAddress((p) => ({ ...p, state: e.target.value }))}>
                 <option value="">Selecione</option>
                 {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
               </select>

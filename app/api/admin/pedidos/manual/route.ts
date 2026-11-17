@@ -71,9 +71,7 @@ export async function POST(request: NextRequest) {
   if (status && !["PAID", "PREPARING", "SHIPPED", "DELIVERED"].includes(status)) {
     return NextResponse.json({ error: "Status inválido" }, { status: 400 });
   }
-  if (delivery === "ENTREGA" && (!address?.street || !address?.number || !address?.district || !address?.city || !address?.state || !address?.zipCode)) {
-    return NextResponse.json({ error: "Preencha o endereço de entrega" }, { status: 400 });
-  }
+  // Venda manual: endereço de entrega é opcional (pode ser preenchido depois, editando a venda)
   if (!customerId && !newCustomer?.name) {
     return NextResponse.json({ error: "Selecione um cliente ou informe o nome do novo cliente" }, { status: 400 });
   }
@@ -106,7 +104,7 @@ export async function POST(request: NextRequest) {
       // Endereço
       const addressData = delivery === "RETIRADA"
         ? { name: "Retirada na loja", cpf: null, ...STORE_ADDRESS }
-        : { name: newCustomer?.name ?? "Cliente", cpf: address!.cpf?.replace(/\D/g, "") || null, street: address!.street, number: address!.number, complement: address!.complement || "", district: address!.district, city: address!.city, state: address!.state, zipCode: address!.zipCode.replace(/\D/g, "") };
+        : { name: newCustomer?.name ?? "Cliente", cpf: address?.cpf?.replace(/\D/g, "") || null, street: address?.street?.trim() || "", number: address?.number?.trim() || "", complement: address?.complement || "", district: address?.district?.trim() || "", city: address?.city?.trim() || "", state: address?.state || "", zipCode: (address?.zipCode ?? "").replace(/\D/g, "") };
 
       const savedAddress = await tx.address.create({
         data: { userId, isDefault: false, ...addressData },

@@ -72,9 +72,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (status && !["PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"].includes(status)) {
     return NextResponse.json({ error: "Status inválido" }, { status: 400 });
   }
-  if (delivery === "ENTREGA" && (!address?.street || !address?.number || !address?.district || !address?.city || !address?.state || !address?.zipCode)) {
-    return NextResponse.json({ error: "Preencha o endereço de entrega" }, { status: 400 });
-  }
+  // Venda manual: endereço de entrega é opcional (pode ser preenchido depois, editando a venda)
 
   try {
     const order = await prisma.$transaction(async (tx) => {
@@ -88,7 +86,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       const addressData = delivery === "RETIRADA"
         ? { ...STORE_ADDRESS, cpf: null }
-        : { cpf: address!.cpf?.replace(/\D/g, "") || null, street: address!.street, number: address!.number, complement: address!.complement || "", district: address!.district, city: address!.city, state: address!.state, zipCode: address!.zipCode.replace(/\D/g, "") };
+        : { cpf: address?.cpf?.replace(/\D/g, "") || null, street: address?.street?.trim() || "", number: address?.number?.trim() || "", complement: address?.complement || "", district: address?.district?.trim() || "", city: address?.city?.trim() || "", state: address?.state || "", zipCode: (address?.zipCode ?? "").replace(/\D/g, "") };
 
       await tx.address.update({ where: { id: existing.addressId }, data: addressData });
 
