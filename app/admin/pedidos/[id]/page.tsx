@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { UpdateStatusButton } from "./UpdateStatusButton";
 import { MelhorEnvioButton } from "./MelhorEnvioButton";
+import { syncPendingShipments } from "@/lib/rastreio";
 import { DefinirFreteForm } from "./DefinirFreteForm";
 import { VerificarPagamentoButton } from "./VerificarPagamentoButton";
 import { ConfirmarPedidoButton } from "./ConfirmarPedidoButton";
@@ -15,6 +16,8 @@ const STATUS_OPTIONS = ["PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", 
 
 export default async function AdminPedidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Puxa código de rastreio/status do Melhor Envio antes de mostrar o pedido
+  await syncPendingShipments();
   const [order, vendors] = await Promise.all([
     prisma.order.findUnique({
       where: { id },

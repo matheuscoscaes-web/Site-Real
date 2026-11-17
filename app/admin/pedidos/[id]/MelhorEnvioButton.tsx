@@ -19,12 +19,14 @@ export function MelhorEnvioButton({
   const [pageRefreshing, startTransition] = useTransition();
   const refreshing = requesting || pageRefreshing;
   const [printUrl, setPrintUrl] = useState<string | null>(null);
+  const [newTrackingCode, setNewTrackingCode] = useState<string | null>(null);
+  const code = trackingCode ?? newTrackingCode;
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
   async function copyCode() {
-    if (!trackingCode) return;
-    await navigator.clipboard.writeText(trackingCode);
+    if (!code) return;
+    await navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -49,19 +51,26 @@ export function MelhorEnvioButton({
     }
   }
 
+  const codeBox = code ? (
+    <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-xl px-3 py-2">
+      <div>
+        <p className="text-[11px] uppercase tracking-wide text-brand-700/70 mb-0.5">Código de rastreio</p>
+        <span className="font-mono font-semibold text-brand-700 text-sm">{code}</span>
+      </div>
+      <button onClick={copyCode} className="text-xs text-brand-700 hover:text-brand-800 inline-flex items-center gap-1">
+        {copied ? <><CheckCheck size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
+      </button>
+    </div>
+  ) : null;
+
   if (melhorEnvioId && !printUrl) {
     return (
       <div className="space-y-2">
         <p className="text-xs text-gray-500">
           Etiqueta já gerada (ID: <span className="font-mono">{melhorEnvioId}</span>)
         </p>
-        {trackingCode ? (
-          <div className="flex items-center justify-between bg-brand-50 border border-brand-200 rounded-xl px-3 py-2">
-            <span className="font-mono font-semibold text-brand-700 text-sm">{trackingCode}</span>
-            <button onClick={copyCode} className="text-xs text-brand-700 hover:text-brand-800 inline-flex items-center gap-1">
-              {copied ? <><CheckCheck size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
-            </button>
-          </div>
+        {code ? (
+          codeBox
         ) : (
           <button
             onClick={handleAtualizarRastreio}
@@ -79,14 +88,23 @@ export function MelhorEnvioButton({
 
   if (printUrl) {
     return (
-      <a
-        href={printUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="btn-primary gap-2 inline-flex items-center"
-      >
-        <Printer size={16} /> Imprimir etiqueta
-      </a>
+      <div className="space-y-2">
+        <a
+          href={printUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-primary gap-2 inline-flex items-center"
+        >
+          <Printer size={16} /> Imprimir etiqueta
+        </a>
+        {code ? (
+          codeBox
+        ) : (
+          <p className="text-xs text-gray-500">
+            O código de rastreio ainda está sendo criado pelo Melhor Envio — ele aparece aqui e pro cliente automaticamente em alguns minutos.
+          </p>
+        )}
+      </div>
     );
   }
 
@@ -100,6 +118,9 @@ export function MelhorEnvioButton({
         setError(data.error ?? "Erro ao gerar etiqueta");
       } else {
         setPrintUrl(data.url);
+        setNewTrackingCode(data.trackingCode ?? null);
+        // Atualiza o resto da página (status "Em Separação")
+        startTransition(() => router.refresh());
       }
     } catch {
       setError("Erro de conexão");

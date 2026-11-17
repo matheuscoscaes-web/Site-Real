@@ -167,9 +167,14 @@ export async function POST(
 
   const printData = await printRes.json();
 
-  // Código de rastreio: às vezes só fica disponível depois da coleta pela
-  // transportadora — se vier null aqui, o admin pode tentar de novo depois.
-  const trackingCode = await buscarCodigoRastreio(meOrderId);
+  // Código de rastreio: o Melhor Envio leva alguns segundos pra criar depois que a
+  // etiqueta é gerada — tenta algumas vezes antes de desistir. Se ainda não vier,
+  // a consulta automática (lib/rastreio.ts) pega depois, quando abrirem os pedidos.
+  let trackingCode: string | null = null;
+  for (let tentativa = 0; tentativa < 6 && !trackingCode; tentativa++) {
+    if (tentativa > 0) await new Promise((r) => setTimeout(r, 2000));
+    trackingCode = await buscarCodigoRastreio(meOrderId);
+  }
 
   // Salva o ID do ME no pedido
   await prisma.order.update({
