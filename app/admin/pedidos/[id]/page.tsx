@@ -6,7 +6,6 @@ import { ArrowLeft, Pencil } from "lucide-react";
 import { UpdateStatusButton } from "./UpdateStatusButton";
 import { MelhorEnvioButton } from "./MelhorEnvioButton";
 import { syncPendingShipments } from "@/lib/rastreio";
-import { DefinirFreteForm } from "./DefinirFreteForm";
 import { VerificarPagamentoButton } from "./VerificarPagamentoButton";
 import { ConfirmarPedidoButton } from "./ConfirmarPedidoButton";
 import { VendorAssignForm } from "./VendorAssignForm";
@@ -207,9 +206,6 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
           {/* Envio */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-bold text-gray-900 mb-3">Envio</h2>
-            {!order.shippingServiceId && order.shippingCarrier !== "Loja" && !["SHIPPED", "DELIVERED", "CANCELLED"].includes(order.status) && (
-              <DefinirFreteForm orderId={order.id} zipCode={order.address.zipCode} totalItems={order.items.reduce((s, i) => s + i.quantity, 0)} />
-            )}
             {order.shippingService ? (
               <p className="text-sm text-gray-700 mb-4">
                 {order.shippingCarrier} — {order.shippingService}
@@ -217,11 +213,17 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
             ) : (
               <p className="text-sm text-gray-400 mb-4">Serviço não informado</p>
             )}
-            {order.shippingServiceId && (
+            {(order.melhorEnvioId ||
+              (order.shippingCarrier !== "Loja" && !["SHIPPED", "DELIVERED", "CANCELLED"].includes(order.status))) && (
               <MelhorEnvioButton
                 orderId={order.id}
                 melhorEnvioId={order.melhorEnvioId ?? null}
                 trackingCode={order.trackingCode ?? null}
+                zipCode={order.address.zipCode}
+                totalItems={order.items.reduce((s, i) => s + i.quantity, 0)}
+                orderTotal={order.total}
+                shippingServiceId={order.shippingServiceId ?? null}
+                shippingLabel={order.shippingService ? `${order.shippingCarrier} — ${order.shippingService}` : null}
               />
             )}
           </div>

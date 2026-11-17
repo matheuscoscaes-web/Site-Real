@@ -6,6 +6,7 @@ import { buscarCodigoRastreio } from "@/lib/rastreio";
 import { sendEmail } from "@/lib/email";
 import { orderPreparingEmail } from "@/lib/orderEmails";
 import { hasRealEmail } from "@/lib/utils";
+import { parseCaixa } from "@/lib/caixa";
 
 const ME_URL = "https://melhorenvio.com.br/api/v2/me";
 
@@ -22,9 +23,10 @@ function sanitizePhone(phone: string | null | undefined): string {
 }
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const reqBody = await request.json().catch(() => ({}));
   const session = await getServerSession(authOptions);
   if (session?.user?.role !== "ADMIN") {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -64,6 +66,8 @@ export async function POST(
   }
 
   const totalItems = order.items.reduce((s, i) => s + i.quantity, 0);
+  // Caixa e seguro informados na tela do pedido (o que faltar cai no padrão)
+  const caixa = parseCaixa(reqBody?.caixa, totalItems);
 
   // 1. Adicionar ao carrinho ME
   const cartBody = {
@@ -102,14 +106,14 @@ export async function POST(
     })),
     volumes: [
       {
-        height: 11 * totalItems,
-        width: 30,
-        length: 32,
-        weight: totalItems,
+        height: caixa.height,
+        width: caixa.width,
+        length: caixa.length,
+        weight: caixa.weight,
       },
     ],
     options: {
-      insurance_value: order.total,
+      insurance_value: caixa.insuranceValue,
       receipt: false,
       own_hand: false,
     },
