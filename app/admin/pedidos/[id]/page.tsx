@@ -10,6 +10,7 @@ import { VerificarPagamentoButton } from "./VerificarPagamentoButton";
 import { ConfirmarPedidoButton } from "./ConfirmarPedidoButton";
 import { VendorAssignForm } from "./VendorAssignForm";
 import { ZoomableImage } from "./ZoomableImage";
+import { EtiquetaRetiradaButton } from "./EtiquetaRetiradaButton";
 
 const STATUS_OPTIONS = ["PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 
@@ -212,6 +213,14 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
               </p>
             ) : (
               <p className="text-sm text-gray-400 mb-4">Serviço não informado</p>
+            )}
+            {order.shippingCarrier === "Loja" && (
+              <EtiquetaRetiradaButton
+                orderCode={order.id.slice(-8).toUpperCase()}
+                customerName={order.user.name ?? ""}
+                customerPhone={order.user.phone ?? null}
+                totalItems={order.items.reduce((s, i) => s + i.quantity, 0)}
+              />
             )}
             {(order.melhorEnvioId ||
               (order.shippingCarrier !== "Loja" && !["SHIPPED", "DELIVERED", "CANCELLED"].includes(order.status))) && (
