@@ -214,14 +214,14 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
             ) : (
               <p className="text-sm text-gray-400 mb-4">Serviço não informado</p>
             )}
-            {order.shippingCarrier === "Loja" && (
+            <div className="mb-3">
               <EtiquetaRetiradaButton
                 orderCode={order.id.slice(-8).toUpperCase()}
                 customerName={order.user.name ?? ""}
                 customerPhone={order.user.phone ?? null}
                 totalItems={order.items.reduce((s, i) => s + i.quantity, 0)}
               />
-            )}
+            </div>
             {(order.melhorEnvioId ||
               (order.shippingCarrier !== "Loja" && !["SHIPPED", "DELIVERED", "CANCELLED"].includes(order.status))) && (
               <MelhorEnvioButton
