@@ -31,6 +31,21 @@ const getFeaturedProducts = unstable_cache(
   { revalidate: 60, tags: ["products"] }
 );
 
+/** Produtos marcados com a categoria "Black Friday" no admin: aparecem no topo da home. */
+const BLACK_FRIDAY_CATEGORY = "Black Friday";
+
+const getBlackFridayProducts = unstable_cache(
+  async () =>
+    prisma.product.findMany({
+      where: { active: true, categories: { has: BLACK_FRIDAY_CATEGORY } },
+      take: 12,
+      orderBy: { updatedAt: "desc" },
+      include: { variants: true },
+    }),
+  ["home-black-friday-products"],
+  { revalidate: 60, tags: ["products"] }
+);
+
 const DEFAULT_HERO_IMAGES: Record<number, string> = {
   1: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=80",
   2: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&q=80",
@@ -77,16 +92,53 @@ const benefits = [
 
 export default async function HomePage() {
   const flashSale = isFlashSaleActive();
-  const [featuredProductsRaw, categories, heroImages] = await Promise.all([
+  const [featuredProductsRaw, categories, heroImages, blackFridayRaw] = await Promise.all([
     getFeaturedProducts(),
     getCategories(),
     getHeroImages(),
+    getBlackFridayProducts(),
   ]);
+  const blackFridayProducts = sortOutOfStockLast(blackFridayRaw);
+  const blackFridayHref = `/produtos?categoria=${encodeURIComponent(BLACK_FRIDAY_CATEGORY)}`;
   const featuredProducts = sortOutOfStockLast(featuredProductsRaw);
   const hasFeatured = featuredProducts.some((p) => p.featured);
 
   return (
     <>
+      {/* BLACK FRIDAY — primeira coisa da home */}
+      {blackFridayProducts.length > 0 && (
+        <section className="pt-6 pb-12 md:pt-10 md:pb-16">
+          <div className="container-main">
+            <div className="relative overflow-hidden rounded-[28px] bg-[#111] px-6 py-8 md:px-12 md:py-10 mb-8">
+              <div className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-amber-500/25 blur-3xl" />
+              <div className="absolute -left-20 -bottom-28 w-72 h-72 rounded-full bg-amber-300/10 blur-3xl" />
+              <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-5 text-white">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-300 mb-3">As mais top da Black</p>
+                  <h2 className="text-4xl md:text-6xl font-bold leading-none">
+                    Black <span className="italic text-amber-200">Friday</span>
+                  </h2>
+                </div>
+                <Link
+                  href={blackFridayHref}
+                  className="btn-primary bg-amber-300 text-black hover:bg-amber-200 px-7 py-3.5 w-full md:w-auto flex-shrink-0"
+                >
+                  Ver todas <ArrowRight size={18} />
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-8 md:gap-x-6 md:gap-y-10">
+              {blackFridayProducts.map((product) => (
+                <div key={product.id}>
+                  <ProductCard product={toCardProduct(product)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* HERO */}
       <section className="relative overflow-hidden">
         {/* Mobile: foto em destaque com o texto por cima */}
