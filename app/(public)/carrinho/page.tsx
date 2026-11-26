@@ -51,9 +51,22 @@ export default function CarrinhoPage() {
   useEffect(() => {
     if (items.length === 0) return;
     const ids = [...new Set(items.map((i) => i.productId))];
-    Promise.all(
-      ids.map((id) => fetch(`/api/produtos/${id}`).then((r) => (r.ok ? r.json() : null)).catch(() => null))
-    ).then((produtos) => {
+    // Peças reservadas pra própria pessoa (pedido dela não pago, de quando saiu no
+    // meio do pagamento) contam como disponíveis pra ela — senão a reserva dela
+    // mesma tirava o produto do carrinho como "esgotado".
+    const reservadoReq = fetch("/api/carrinho/reservado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ previousGuestOrder: loadPrefill().lastGuestOrder }),
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .catch(() => []) as Promise<{ productId: string; color: string | null; size: string | null; quantity: number }[]>;
+    Promise.all([
+      Promise.all(
+        ids.map((id) => fetch(`/api/produtos/${id}`).then((r) => (r.ok ? r.json() : null)).catch(() => null))
+      ),
+      reservadoReq,
+    ]).then(([produtos, reservado]) => {
       const estoqueMap = new Map(ids.map((id, i) => [id, produtos[i]]));
       const ajustes: string[] = [];
       for (const item of items) {
@@ -68,7 +81,10 @@ export default function CarrinhoPage() {
         const variantes = (produto.variants as { color: string | null; size: string | null; stock: number }[]).filter(
           (v) => (!item.color || v.color === item.color) && (!item.size || v.size === item.size)
         );
-        const disponivel = variantes.reduce((s, v) => s + v.stock, 0);
+        const meuReservado = (Array.isArray(reservado) ? reservado : [])
+          .filter((r) => r.productId === item.productId && (!item.color || r.color === item.color) && (!item.size || r.size === item.size))
+          .reduce((s, r) => s + r.quantity, 0);
+        const disponivel = variantes.reduce((s, v) => s + v.stock, 0) + meuReservado;
         if (item.quantity > disponivel) {
           if (disponivel > 0) {
             updateQuantity(item.id, disponivel);

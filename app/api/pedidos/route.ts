@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveCoupon, computeDiscountAmount, CouponExhaustedError } from "@/lib/coupons";
 import { decrementStockForItems, InsufficientStockError } from "@/lib/stock";
 import { isCupomElegivel, isFreteGratisElegivel, formatCurrency } from "@/lib/utils";
-import { updateOrderStatus } from "@/lib/orders";
+import { releaseOwnPendingOrders } from "@/lib/orders";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
 import { currentPrice, isFlashSaleActive } from "@/lib/black";
 import { validateGuestContact, findOrCreateGuestUser, guestOrderToken, isValidGuestOrderToken } from "@/lib/guestOrder";
@@ -79,24 +79,22 @@ export async function POST(request: NextRequest) {
     guestIsNewUser = guestUser.isNew;
   }
 
-  // Se a pessoa saiu do checkout sem nunca ter tentado pagar (voltou pro carrinho pra
-  // adicionar outra peça, fechou a aba, etc.) e volta a "Continuar para pagamento", um
-  // pedido novo seria criado sem cancelar o antigo — a mesma peça ficaria com estoque
-  // descontado duas vezes. Cancela qualquer pendente sem tentativa de pagamento antes.
-  // Sem login, o pedido anterior só é reconhecido pela chave dele: o e-mail digitado
-  // pode ser de outra pessoa, então nunca cancela pelo userId nesse caso.
+  // A pessoa saiu/atualizou no meio da compra e voltou: o pedido antigo dela ainda
+  // segura as mesmas peças. Libera essas reservas antes de reservar de novo, senão
+  // o pedido novo era barrado com "estoque insuficiente" pela reserva dela mesma.
+  // Sem login, o pedido anterior é reconhecido pela chave dele (mesmo navegador) ou,
+  // em outro navegador, pela conta do e-mail — mas aí só se for das mesmas peças.
   const previous = body.previousGuestOrder as { id?: unknown; token?: unknown } | undefined;
-  const pedidosAbandonados = isGuest
-    ? typeof previous?.id === "string" && isValidGuestOrderToken(previous.id, previous.token)
-      ? await prisma.order.findMany({ where: { id: previous.id, status: "PENDING", mpPaymentId: null }, select: { id: true } })
-      : []
-    : await prisma.order.findMany({
-        where: { userId, status: "PENDING", mpPaymentId: null },
-        select: { id: true },
-      });
-  for (const pedido of pedidosAbandonados) {
-    await updateOrderStatus(pedido.id, "CANCELLED");
-  }
+  const guestOrder =
+    isGuest && typeof previous?.id === "string" && isValidGuestOrderToken(previous.id, previous.token)
+      ? { id: previous.id }
+      : undefined;
+  await releaseOwnPendingOrders({
+    userId: isGuest ? undefined : userId,
+    guestOrder,
+    emailUserId: isGuest ? userId : undefined,
+    cart: items as { productId: string; color?: string; size?: string }[],
+  });
 
   // Cupom (boas-vindas, vendedor/revendedor ou cupom personalizado do admin) —
   // sempre resolvido de novo aqui, nunca confiando no valor calculado no navegador.

@@ -31,7 +31,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const { status, ...rest } = await request.json();
 
-  const afterStatus = status ? await updateOrderStatus(id, status) : null;
+  const afterStatus = status ? await updateOrderStatus(id, status, { reopen: true }) : null;
 
   const order = Object.keys(rest).length > 0
     ? await prisma.order.update({ where: { id }, data: rest })

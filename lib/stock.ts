@@ -45,6 +45,31 @@ export async function decrementStockForItems(tx: Prisma.TransactionClient, items
   }
 }
 
+/**
+ * Volta a reservar o estoque de um pedido que tinha sido cancelado (estoque
+ * já devolvido) e acabou sendo pago mesmo assim — ex: a pessoa pagou um PIX
+ * antigo depois de refazer o pedido. O pagamento já aconteceu, então nunca
+ * falha: desconta o que tiver, sem deixar o estoque negativo.
+ */
+export async function reclaimStockForItems(items: StockItem[], client: PrismaClient | Prisma.TransactionClient = prisma) {
+  for (const item of items) {
+    if (item.skipStock) continue;
+
+    const variant = await client.productVariant.findFirst({
+      where: { productId: item.productId, color: item.color || null, size: item.size || null },
+    });
+    if (!variant) continue;
+    const res = await client.productVariant.updateMany({
+      where: { id: variant.id, stock: { gte: item.quantity } },
+      data: { stock: { decrement: item.quantity } },
+    });
+    if (res.count === 0) {
+      await client.productVariant.update({ where: { id: variant.id }, data: { stock: 0 } });
+      console.warn(`Pedido pago sem estoque reservado: variante ${variant.id} zerada (faltou ${item.quantity - variant.stock} un.)`);
+    }
+  }
+}
+
 /** Devolve ao estoque os itens de um pedido cancelado. */
 export async function restoreStockForItems(items: StockItem[], client: PrismaClient | Prisma.TransactionClient = prisma) {
   for (const item of items) {

@@ -13,6 +13,7 @@ import { Product, ProductVariant } from "@/types";
 import { AvaliacoesBadge } from "./AvaliacoesSection";
 import { DiscountBadge, useFlashSale } from "@/components/layout/BlackMode";
 import { discountPercent, NO_DISCOUNT } from "@/lib/black";
+import { loadPrefill } from "@/lib/checkoutPrefill";
 
 interface ProductWithVariants extends Product {
   variants: ProductVariant[];
@@ -27,19 +28,42 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
 
   const images = parseProductImages(product.images);
 
+  // Peças reservadas pra própria pessoa (pedido dela ainda não pago, de quando saiu
+  // no meio do pagamento) contam como disponíveis pra ela: só quem reservou consegue
+  // comprar a peça de novo; pra todo mundo ela continua esgotada.
+  const [reservado, setReservado] = useState<{ productId: string; color: string | null; size: string | null; quantity: number }[]>([]);
+  useEffect(() => {
+    fetch("/api/carrinho/reservado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ previousGuestOrder: loadPrefill().lastGuestOrder }),
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => Array.isArray(list) && setReservado(list.filter((r) => r.productId === product.id)))
+      .catch(() => {});
+  }, [product.id]);
+  const variants = product.variants.map((v) => ({
+    ...v,
+    stock:
+      v.stock +
+      reservado
+        .filter((r) => (r.color || null) === (v.color || null) && (r.size || null) === (v.size || null))
+        .reduce((s, r) => s + r.quantity, 0),
+  }));
+
   const colorStockMap = new Map<string, number>();
-  for (const v of product.variants) {
+  for (const v of variants) {
     if (!v.color) continue;
     colorStockMap.set(v.color, (colorStockMap.get(v.color) ?? 0) + v.stock);
   }
   // Cores esgotadas vão pro final da lista (sort é estável, preserva a ordem entre elas)
-  const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean) as string[])].sort(
+  const colors = [...new Set(variants.map((v) => v.color).filter(Boolean) as string[])].sort(
     (a, b) => Number(colorStockMap.get(a) === 0) - Number(colorStockMap.get(b) === 0)
   );
   // Numeração/tamanhos de cada cor, com o estoque de cada um. Cada cor pode ter
   // uma grade diferente (ex: o preto vai do 33 ao 40 e o caramelo só até o 38).
   const sizesFor = (color: string) => {
-    const vs = product.variants.filter((v) => v.size && (!color || v.color === color));
+    const vs = variants.filter((v) => v.size && (!color || v.color === color));
     return sortSizes([...new Set(vs.map((v) => v.size as string))]).map((size) => ({
       size,
       stock: vs.filter((v) => v.size === size).reduce((s, v) => s + v.stock, 0),
@@ -49,7 +73,7 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
     const list = sizesFor(color);
     return (list.find((s) => s.stock > 0) ?? list[0])?.size ?? "";
   };
-  const isNumbered = product.variants.some((v) => v.size && /^\d/.test(v.size));
+  const isNumbered = variants.some((v) => v.size && /^\d/.test(v.size));
   const sizeLabel = isNumbered ? "Numeração" : "Tamanho";
 
   const [selectedImage, setSelectedImage] = useState<number | "video">(0);
@@ -151,15 +175,15 @@ export function ProductDetail({ product }: { product: ProductWithVariants }) {
   const maxInstallments = getMaxInstallments(finalPrice);
   const installment = finalPrice / maxInstallments;
 
-  const totalStock = product.variants.reduce((s, v) => s + v.stock, 0);
+  const totalStock = variants.reduce((s, v) => s + v.stock, 0);
 
   const colorStock = selectedColor
-    ? product.variants.filter((v) => v.color === selectedColor).reduce((s, v) => s + v.stock, 0)
+    ? variants.filter((v) => v.color === selectedColor).reduce((s, v) => s + v.stock, 0)
     : totalStock;
 
   // Estoque exato da combinação cor+tamanho escolhida — é o que de fato pode
   // ser comprado (o colorStock acima soma todos os tamanhos daquela cor).
-  const selectedVariants = product.variants.filter(
+  const selectedVariants = variants.filter(
     (v) => (!selectedColor || v.color === selectedColor) && (!selectedSize || v.size === selectedSize)
   );
   const availableStock = colors.length === 0 && sizes.length === 0
