@@ -40,16 +40,25 @@ export interface ExistingOrderData {
   notes: string;
 }
 
-export function NovaVendaForm({ customers, products, vendors, editOrder }: { customers: Customer[]; products: Product[]; vendors: Vendor[]; editOrder?: ExistingOrderData }) {
+export interface TrocaPrefill {
+  originalCode: string;
+  customer: Customer;
+  delivery: "RETIRADA" | "ENTREGA";
+  address: ExistingOrderData["address"];
+}
+
+export function NovaVendaForm({ customers: allCustomers, products, vendors, editOrder, troca }: { customers: Customer[]; products: Product[]; vendors: Vendor[]; editOrder?: ExistingOrderData; troca?: TrocaPrefill }) {
+  // A cliente da troca sempre aparece na lista, mesmo que a conta não seja CUSTOMER
+  const customers = troca && !allCustomers.some((c) => c.id === troca.customer.id) ? [troca.customer, ...allCustomers] : allCustomers;
   const router = useRouter();
 
   const [customerMode, setCustomerMode] = useState<"existing" | "novo">("existing");
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [customerSearch, setCustomerSearch] = useState(troca?.customer.name.trim() ?? "");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(troca?.customer.id ?? null);
   const [newCustomer, setNewCustomer] = useState({ name: "", email: "", phone: "" });
 
-  const [delivery, setDelivery] = useState<"RETIRADA" | "ENTREGA">(editOrder?.delivery ?? "RETIRADA");
-  const [address, setAddress] = useState(editOrder?.address ?? { cpf: "", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
+  const [delivery, setDelivery] = useState<"RETIRADA" | "ENTREGA">(editOrder?.delivery ?? troca?.delivery ?? "RETIRADA");
+  const [address, setAddress] = useState(editOrder?.address ?? troca?.address ?? { cpf: "", street: "", number: "", complement: "", district: "", city: "", state: "", zipCode: "" });
   const [loadingCep, setLoadingCep] = useState(false);
   const [shipping, setShipping] = useState(editOrder?.shipping ?? 0);
 
@@ -64,10 +73,10 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [items, setItems] = useState<CartItem[]>(editOrder?.items ?? []);
 
-  const [paymentMethod, setPaymentMethod] = useState(editOrder?.paymentMethod ?? "DINHEIRO");
+  const [paymentMethod, setPaymentMethod] = useState(editOrder?.paymentMethod ?? (troca ? "TROCA" : "DINHEIRO"));
   const [status, setStatus] = useState(editOrder?.status ?? "PAID");
   const [vendorId, setVendorId] = useState(editOrder?.vendorId ?? "");
-  const [notes, setNotes] = useState(editOrder?.notes ?? "");
+  const [notes, setNotes] = useState(editOrder?.notes ?? (troca ? `Troca do pedido #${troca.originalCode}` : ""));
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -136,7 +145,8 @@ export function NovaVendaForm({ customers, products, vendors, editOrder }: { cus
         color: variant?.color ?? null,
         size: variant?.size ?? null,
         quantity,
-        price: selectedProduct.price,
+        // Troca: a peça nova vai sem cobrança (dá pra pôr a diferença no preço, se tiver)
+        price: paymentMethod === "TROCA" ? 0 : selectedProduct.price,
         skipStock,
       }];
     });

@@ -155,10 +155,11 @@ export const PAYMENT_LABELS: Record<string, string> = {
   CARTAO_MAQUININHA: "Cartão (maquininha)",
   TRANSFERENCIA: "Transferência",
   OUTRO: "Outro",
+  TROCA: "Troca (sem cobrança)",
 };
 
 /** Formas de pagamento disponíveis pra registrar uma venda manual (balcão, WhatsApp etc). */
-export const MANUAL_PAYMENT_METHODS = ["DINHEIRO", "PIX_MANUAL", "CARTAO_MAQUININHA", "TRANSFERENCIA", "OUTRO"];
+export const MANUAL_PAYMENT_METHODS = ["DINHEIRO", "PIX_MANUAL", "CARTAO_MAQUININHA", "TRANSFERENCIA", "OUTRO", "TROCA"];
 
 /** Pedidos do checkout do site sempre usam MERCADOPAGO; qualquer outro método
  *  identifica uma venda registrada manualmente pelo admin (não existe coluna própria pra isso). */

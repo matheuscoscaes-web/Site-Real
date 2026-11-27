@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { formatCurrency, formatDateTime, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, PAYMENT_LABELS, parseProductImages, isManualSale, displayEmail } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, RefreshCw } from "lucide-react";
 import { UpdateStatusButton } from "./UpdateStatusButton";
 import { MelhorEnvioButton } from "./MelhorEnvioButton";
 import { syncPendingShipments } from "@/lib/rastreio";
@@ -47,7 +47,12 @@ export default async function AdminPedidoPage({ params }: { params: Promise<{ id
           <h1 className="text-2xl font-bold text-gray-900">Pedido #{order.id.slice(-8).toUpperCase()}</h1>
           <p className="text-sm text-gray-500">{formatDateTime(order.createdAt)}</p>
         </div>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
+          {order.status !== "CANCELLED" && (
+            <Link href={`/admin/pedidos/nova?troca=${order.id}`} className="btn-outline text-sm py-2 gap-2">
+              <RefreshCw size={15} /> Gerar troca
+            </Link>
+          )}
           {isManualSale(order.paymentMethod) && (
             <Link href={`/admin/pedidos/${order.id}/editar`} className="btn-outline text-sm py-2 gap-2">
               <Pencil size={15} /> Editar venda
