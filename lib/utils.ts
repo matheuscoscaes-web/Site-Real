@@ -226,3 +226,25 @@ export const COLORS = [
   "Rosé", "Rose", "Rosa Floral", "Ouro Rosé", "Dourado", "Prata",
   "Azul", "Verde", "Tartaruga", "Coral",
 ];
+
+/** Máscara 000.000.000-00 — aceita colado com pontos, espaços, "CPF:" etc. */
+export function formatCpf(value: string): string {
+  const v = value.replace(/\D/g, "").slice(0, 11);
+  if (v.length > 9) return `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`;
+  if (v.length > 6) return `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`;
+  if (v.length > 3) return `${v.slice(0, 3)}.${v.slice(3)}`;
+  return v;
+}
+
+/** Confere os dígitos verificadores — o Mercado Pago recusa o PIX com CPF inválido. */
+export function isValidCpf(value: string): boolean {
+  const d = value.replace(/\D/g, "");
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const check = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(d[i]) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return (r === 10 ? 0 : r) === Number(d[len]);
+  };
+  return check(9) && check(10);
+}

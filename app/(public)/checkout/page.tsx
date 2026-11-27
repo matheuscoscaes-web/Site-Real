@@ -10,7 +10,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useCouponStore, toActiveCoupon } from "@/store/couponStore";
 import { useMounted } from "@/lib/useMounted";
 import { useFlashSale } from "@/components/layout/BlackMode";
-import { formatCurrency, getMaxInstallments, carrinhoLiberaFreteGratis, carrinhoTemProdutoFreteGratis } from "@/lib/utils";
+import { formatCurrency, formatCpf, isValidCpf, getMaxInstallments, carrinhoLiberaFreteGratis, carrinhoTemProdutoFreteGratis } from "@/lib/utils";
 import { buscarEnderecoPorCEP, FreteOption } from "@/lib/frete";
 import { loadPrefill, savePrefill, formatCep } from "@/lib/checkoutPrefill";
 import { NO_DISCOUNT } from "@/lib/black";
@@ -324,8 +324,8 @@ export default function CheckoutPage() {
         return;
       }
       const cpfDigits = address.cpf.replace(/\D/g, "");
-      if (cpfDigits.length !== 11) {
-        setCpfError("Digite um CPF válido (11 dígitos).");
+      if (!isValidCpf(cpfDigits)) {
+        setCpfError(cpfDigits.length !== 11 ? "O CPF tem 11 números — confira se faltou algum." : "Esse CPF não existe — confira se não trocou algum número.");
         return;
       }
       if (!selectedShipping) {
@@ -422,8 +422,8 @@ export default function CheckoutPage() {
   async function gerarPixDireto() {
     if (!currentOrderId) return;
     const cpfDigits = pixCpf.replace(/\D/g, "");
-    if (cpfDigits.length !== 11) {
-      setPixCpfError("Digite um CPF válido (11 dígitos).");
+    if (!isValidCpf(cpfDigits)) {
+      setPixCpfError(cpfDigits.length !== 11 ? "O CPF tem 11 números — confira se faltou algum." : "Esse CPF não existe — confira se não trocou algum número.");
       return;
     }
     setPixCpfError("");
@@ -764,19 +764,12 @@ export default function CheckoutPage() {
                   className="input-field max-w-xs"
                   value={address.cpf}
                   onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, "").slice(0, 11);
-                    const formatted = v.length > 9
-                      ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
-                      : v.length > 6
-                      ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
-                      : v.length > 3
-                      ? `${v.slice(0, 3)}.${v.slice(3)}`
-                      : v;
+                    const formatted = formatCpf(e.target.value);
                     setAddress((p) => ({ ...p, cpf: formatted }));
                     setCpfError("");
                   }}
                   placeholder="000.000.000-00"
-                  maxLength={14}
+                  autoComplete="off"
                 />
                 {cpfError && <p className="text-xs text-red-600 mt-1">{cpfError}</p>}
                 <p className="text-xs text-gray-400 mt-1">Necessário para emitir a etiqueta de envio.</p>
@@ -947,19 +940,13 @@ export default function CheckoutPage() {
                           className="input-field"
                           value={pixCpf}
                           onChange={(e) => {
-                            const v = e.target.value.replace(/\D/g, "").slice(0, 11);
-                            const formatted = v.length > 9
-                              ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
-                              : v.length > 6
-                              ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
-                              : v.length > 3
-                              ? `${v.slice(0, 3)}.${v.slice(3)}`
-                              : v;
+                            const formatted = formatCpf(e.target.value);
                             setPixCpf(formatted);
                             setPixCpfError("");
                           }}
                           placeholder="000.000.000-00"
-                          maxLength={14}
+                          inputMode="numeric"
+                          autoComplete="off"
                         />
                         {pixCpfError && <p className="text-xs text-red-600 mt-1">{pixCpfError}</p>}
                       </div>

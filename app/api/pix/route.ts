@@ -6,12 +6,17 @@ import { prisma } from "@/lib/prisma";
 import { ownsOrder } from "@/lib/guestOrder";
 import { reserveStockForRetry } from "@/lib/orders";
 import { InsufficientStockError } from "@/lib/stock";
+import { isValidCpf } from "@/lib/utils";
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  const { orderId, cpf, orderToken } = await request.json();
+  const { orderId, cpf: rawCpf, orderToken } = await request.json();
+  const cpf = typeof rawCpf === "string" ? rawCpf.replace(/\D/g, "") : "";
+  if (cpf && !isValidCpf(cpf)) {
+    return NextResponse.json({ error: "Esse CPF não existe — confira se não trocou algum número." }, { status: 400 });
+  }
 
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true, user: { select: { email: true } } } });
   if (!order) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
@@ -45,12 +50,18 @@ export async function POST(request: NextRequest) {
           ...(cpf ? { identification: { type: "CPF", number: cpf } } : {}),
         },
       },
-      requestOptions: { idempotencyKey: `pix-${orderId}` },
+      // O CPF entra na chave: se a primeira tentativa foi com CPF errado, o Mercado
+      // Pago devolvia o mesmo erro guardado pra chave e a pessoa nunca conseguia
+      // gerar o PIX, mesmo depois de corrigir o número.
+      requestOptions: { idempotencyKey: `pix-${orderId}-${cpf || "semcpf"}` },
     });
   } catch (err) {
     console.error("Erro ao criar pagamento PIX no Mercado Pago:", err);
-    const message = err instanceof Error ? err.message : "Erro desconhecido";
-    return NextResponse.json({ error: `Erro ao gerar PIX: ${message}` }, { status: 500 });
+    const message = err instanceof Error ? err.message : JSON.stringify(err);
+    if (/identification|cpf|document/i.test(message)) {
+      return NextResponse.json({ error: "O Mercado Pago não aceitou esse CPF. Confira os números ou use o CPF de quem vai pagar." }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Não conseguimos gerar o PIX agora. Tente de novo em instantes ou chame a gente no WhatsApp." }, { status: 500 });
   }
 
   await prisma.order.update({

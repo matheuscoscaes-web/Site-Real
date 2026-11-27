@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { MapPin, Plus, Trash2, Loader2, X } from "lucide-react";
 import { buscarEnderecoPorCEP } from "@/lib/frete";
+import { formatCpf } from "@/lib/utils";
 
 interface Address {
   id: string;
@@ -141,18 +142,12 @@ export default function EnderecosPage() {
                 className="input-field"
                 value={form.cpf}
                 onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, "").slice(0, 11);
-                  const formatted = v.length > 9
-                    ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9)}`
-                    : v.length > 6
-                    ? `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`
-                    : v.length > 3
-                    ? `${v.slice(0, 3)}.${v.slice(3)}`
-                    : v;
+                  const formatted = formatCpf(e.target.value);
                   setForm((p) => ({ ...p, cpf: formatted }));
                 }}
                 placeholder="000.000.000-00"
-                maxLength={14}
+                inputMode="numeric"
+                autoComplete="off"
               />
             </div>
 
